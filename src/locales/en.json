@@ -89,6 +89,8 @@
         "token_summary_detail": "View Details",
         "token_usage_desc": "View token consumption and cost analysis",
         "workspaces_desc": "Manage project workspaces and sessions",
+        "project_token_title": "Project Token Ranking",
+        "project_token_empty": "No project token data",
         "total_accounts": "Total Accounts",
         "avg_gemini": "Avg. Gemini Quota",
         "avg_gemini_image": "Avg. Gemini Image Quota",
@@ -649,7 +651,11 @@
         "session_id": "Session ID",
         "last_modified": "Last Modified",
         "file_size": "Size",
+        "last_message": "Last Message",
+        "role_user": "User",
+        "role_assistant": "Assistant",
         "no_sessions": "No sessions found",
+        "session_preview_empty": "No readable session summary",
         "open_terminal_error": "Failed to open terminal"
     }
 }

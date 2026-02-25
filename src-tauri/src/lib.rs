@@ -8,7 +8,7 @@ use models::prompt::PromptPreset;
 use models::skill::Skill;
 use models::subagent::Subagent;
 use models::token::ApiToken;
-use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, SessionInfo};
+use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat, SessionInfo};
 use services::stats_service::StatsCache;
 use services::{config_service, dashboard_service, mcp_service, prompt_service, skill_service, stats_service, subagent_service, token_service};
 
@@ -125,6 +125,11 @@ fn get_activity_history() -> Result<Vec<HistoryEntry>, String> {
 }
 
 #[tauri::command]
+fn get_project_token_stats() -> Result<Vec<ProjectTokenStat>, String> {
+    dashboard_service::get_project_token_stats().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn add_api_token(token: ApiToken) -> Result<(), String> {
     token_service::add_token(token).map_err(|e| e.to_string())
 }
@@ -225,6 +230,7 @@ pub fn run() {
             get_dashboard_stats,
             get_dashboard_projects,
             get_activity_history,
+            get_project_token_stats,
             get_stats_cache_data,
             get_project_sessions,
             open_in_terminal,

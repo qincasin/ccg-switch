@@ -15,6 +15,12 @@ interface SessionInfo {
     file_path: string;
     last_modified: string | null;
     file_size: number;
+    session_title?: string;
+    session_preview?: string;
+    session_slug?: string;
+    last_message?: string;
+    last_message_role?: string;
+    last_message_at?: string;
 }
 
 function WorkspacesPage() {
@@ -75,6 +81,23 @@ function WorkspacesPage() {
         if (bytes >= 1_048_576) return (bytes / 1_048_576).toFixed(1) + ' MB';
         if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
         return bytes + ' B';
+    };
+
+    const formatSessionId = (id: string) => {
+        if (id.length <= 18) return id;
+        return `${id.slice(0, 8)}...${id.slice(-6)}`;
+    };
+
+    const getSessionTitle = (session: SessionInfo) => {
+        if (session.session_title?.trim()) return session.session_title.trim();
+        if (session.session_slug?.trim()) return session.session_slug.trim();
+        return `${t('workspaces.session_id')} ${formatSessionId(session.session_id)}`;
+    };
+
+    const getRoleText = (role?: string) => {
+        if (role === 'assistant') return t('workspaces.role_assistant');
+        if (role === 'user') return t('workspaces.role_user');
+        return t('workspaces.last_message');
     };
 
     return (
@@ -195,11 +218,29 @@ function WorkspacesPage() {
                                                 <div key={session.session_id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-base-200 transition-colors">
                                                     <div className="flex items-center gap-2">
                                                         <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                                                        <span className="font-mono text-sm text-gray-900 dark:text-base-content truncate">
-                                                            {session.session_id}
+                                                        <span
+                                                            className="font-medium text-sm text-gray-900 dark:text-base-content truncate"
+                                                            title={session.session_title || session.session_slug || session.session_id}
+                                                        >
+                                                            {getSessionTitle(session)}
+                                                        </span>
+                                                        <span
+                                                            className="ml-auto text-[11px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-base-300 text-gray-500 dark:text-gray-400"
+                                                            title={session.session_id}
+                                                        >
+                                                            {formatSessionId(session.session_id)}
                                                         </span>
                                                     </div>
+                                                    <div
+                                                        className="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-6 truncate"
+                                                        title={session.last_message || session.session_preview || t('workspaces.session_preview_empty')}
+                                                    >
+                                                        {session.last_message ? `${getRoleText(session.last_message_role)}: ${session.last_message}` : (session.session_preview || t('workspaces.session_preview_empty'))}
+                                                    </div>
                                                     <div className="mt-1 flex items-center gap-4 text-xs text-gray-400 ml-6">
+                                                        {session.last_message_at && (
+                                                            <span>{session.last_message_at}</span>
+                                                        )}
                                                         {session.last_modified && (
                                                             <span>{session.last_modified}</span>
                                                         )}

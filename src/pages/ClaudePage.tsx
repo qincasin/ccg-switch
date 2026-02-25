@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Plus, RefreshCw, Trash2, Check, Eye, EyeOff, Zap, Settings, Download, ChevronDown, Edit2, LayoutGrid, List } from 'lucide-react';
+import { Sparkles, Plus, RefreshCw, Trash2, Check, Eye, EyeOff, Zap, Settings, Download, ChevronDown, Edit2, LayoutGrid, List, Globe } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { useTokenStore } from '../stores/useTokenStore';
 import ModalDialog from '../components/common/ModalDialog';
@@ -224,6 +224,33 @@ function ClaudePage() {
         return key.substring(0, 7) + '...' + key.substring(key.length - 4);
     };
 
+    const getBaseUrl = (url?: string) => {
+        if (!url) return '';
+        const raw = url.trim();
+        if (!raw) return '';
+
+        const normalized = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(raw) ? raw : `https://${raw}`;
+        try {
+            const parsed = new URL(normalized);
+            return `${parsed.protocol}//${parsed.host}`;
+        } catch {
+            return '';
+        }
+    };
+
+    const handleOpenBaseUrl = async (url?: string) => {
+        const baseUrl = getBaseUrl(url);
+        if (!baseUrl) {
+            showToast('URL 格式不正确，无法打开', 'error');
+            return;
+        }
+        try {
+            await open(baseUrl);
+        } catch (error) {
+            showToast('打开链接失败: ' + error, 'error');
+        }
+    };
+
     const handleFetchModels = async () => {
         if (!newToken.url || !newToken.apiKey) {
             showToast('请先填写 URL 和 API Key', 'error');
@@ -403,9 +430,23 @@ function ClaudePage() {
                                             </div>
                                         </td>
                                         <td>
-                                            <code className="font-mono text-xs text-base-content/70">
-                                                {token.url || 'api.anthropic.com'}
-                                            </code>
+                                            <div className="flex items-center gap-1 min-w-0">
+                                                <code
+                                                    className="font-mono text-xs text-base-content/70 truncate"
+                                                    title={token.url || 'api.anthropic.com'}
+                                                >
+                                                    {token.url || 'api.anthropic.com'}
+                                                </code>
+                                                {token.url && (
+                                                    <button
+                                                        onClick={() => handleOpenBaseUrl(token.url)}
+                                                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-info/80 hover:text-info hover:bg-info/10 transition-colors"
+                                                        title="打开主域名"
+                                                    >
+                                                        <Globe className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                         <td>
                                             <div className="text-xs space-y-1 font-mono">
@@ -538,10 +579,22 @@ function ClaudePage() {
                                     </div>
 
                                     {/* URL - 固定高度 */}
-                                    <div className="h-6 mb-2">
+                                    <div className="h-7 mb-2">
                                         {token.url && (
-                                            <div className="text-xs text-base-content/50 truncate" title={token.url}>
-                                                <span className="font-medium">URL:</span> {token.url}
+                                            <div className="flex items-center gap-1 min-w-0">
+                                                <div
+                                                    className="text-xs text-base-content/50 truncate"
+                                                    title={token.url}
+                                                >
+                                                    <span className="font-medium">URL:</span> {token.url}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleOpenBaseUrl(token.url)}
+                                                    className="inline-flex h-5 w-5 items-center justify-center rounded-md text-info/80 hover:text-info hover:bg-info/10 transition-colors"
+                                                    title="打开主域名"
+                                                >
+                                                    <Globe className="w-3 h-3" />
+                                                </button>
                                             </div>
                                         )}
                                     </div>

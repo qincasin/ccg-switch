@@ -74,7 +74,9 @@
         "token_summary_top_model": "最常用模型",
         "token_summary_detail": "查看详情",
         "token_usage_desc": "查看 Token 消耗与费用分析",
-        "workspaces_desc": "管理项目工作区和会话"
+        "workspaces_desc": "管理项目工作区和会话",
+        "project_token_title": "项目 Token 使用排行",
+        "project_token_empty": "暂无项目 Token 数据"
     },
     "prompts": {
         "title": "Prompt 预设管理",
@@ -139,7 +141,11 @@
         "session_id": "会话 ID",
         "last_modified": "最后修改",
         "file_size": "大小",
+        "last_message": "最后消息",
+        "role_user": "用户",
+        "role_assistant": "助手",
         "no_sessions": "暂无会话",
+        "session_preview_empty": "未提取到会话摘要",
         "open_terminal_error": "打开终端失败"
     }
 }
