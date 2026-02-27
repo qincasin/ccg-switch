@@ -1,3 +1,4 @@
+// 兼容层：保留旧 API，内部逻辑不变。后续将逐步迁移到 useProviderStore
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { ApiToken } from '../types/token';

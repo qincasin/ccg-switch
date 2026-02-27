@@ -29,13 +29,15 @@
     },
     "nav": {
         "dashboard": "Dashboard",
+        "providers": "Providers",
+        "proxy": "Proxy",
         "mcp": "MCP Servers",
         "prompts": "Prompt Presets",
         "skills": "Skill Management",
         "subagents": "Subagents",
+        "workspaces": "Workspaces",
         "settings": "Settings",
-        "token_usage": "Token Usage",
-        "workspaces": "Workspaces"
+        "token_usage": "Token Usage"
     },
     "mcp": {
         "title": "MCP Server Management",
@@ -50,6 +52,7 @@
         "env": "Environment Variables",
         "confirm_delete": "Are you sure you want to delete this MCP server?",
         "delete_failed": "Delete failed",
+        "toggle_failed": "Failed to toggle app switch",
         "add_server": "Add MCP Server",
         "edit_server": "Edit MCP Server",
         "server_name": "Server Name",
@@ -58,7 +61,12 @@
         "config_level": "Configuration Level",
         "transport_type": "Transport Type",
         "args_hint": "One argument per line",
-        "env_hint": "One variable per line, format: KEY=VALUE"
+        "env_hint": "One variable per line, format: KEY=VALUE",
+        "all_apps": "All",
+        "app_enabled": "Enabled",
+        "app_disabled": "Disabled",
+        "app_switches": "App Switches",
+        "app_switches_hint": "Control whether this MCP server is enabled per app; enabled by default"
     },
     "dashboard": {
         "hello": "Hello, User 👋",
@@ -640,6 +648,26 @@
         "duration_minutes": "{{minutes}} min",
         "messages": "messages",
         "no_data": "No stats data available"
+    },
+    "skills": {
+        "title": "Skill Management",
+        "empty": "No skills",
+        "empty_hint": "Click the \"Add\" button above to add your first skill",
+        "confirm_delete": "Are you sure you want to delete this skill?",
+        "delete_title": "Delete Skill",
+        "delete_success": "Deleted successfully",
+        "delete_failed": "Delete failed",
+        "toggle_failed": "Failed to toggle app switch",
+        "count": "skills",
+        "user": "User",
+        "project": "Project",
+        "add": "Add Skill",
+        "edit": "Edit Skill",
+        "name_placeholder": "Skill name (letters/numbers/hyphens)",
+        "content_placeholder": "Enter skill content (Markdown format)",
+        "all_apps": "All",
+        "app_enabled": "Enabled",
+        "app_disabled": "Disabled"
     },
     "workspaces": {
         "title": "Workspaces",

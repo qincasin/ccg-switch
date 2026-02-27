@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react';
 import { useSkillStore } from '../stores/useSkillStore';
 import ModalDialog from '../components/common/ModalDialog';
 import { showToast } from '../components/common/ToastContainer';
+import { APP_TYPES, APP_LABELS } from '../types/app';
+
+const ALL_TAB = 'all';
 
 function SkillsPage() {
     const { t } = useTranslation();
-    const { skills, loading, loadSkills, saveSkill, deleteSkill } = useSkillStore();
+    const { skills, loading, loadSkills, saveSkill, deleteSkill, currentApp, setCurrentApp, toggleSkillForApp } = useSkillStore();
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editContent, setEditContent] = useState('');
@@ -58,6 +61,30 @@ function SkillsPage() {
         }
     };
 
+    // 按当前选中应用过滤列表
+    const filteredSkills = currentApp && currentApp !== ALL_TAB
+        ? skills.filter((s) => {
+            if (!s.apps || Object.keys(s.apps).length === 0) {
+                return true;
+            }
+            return s.apps[currentApp] !== false;
+        })
+        : skills;
+
+    // 获取技能在当前应用下的启用状态
+    const getAppEnabled = (skillApps: Record<string, boolean> | undefined, app: string): boolean => {
+        if (!skillApps || Object.keys(skillApps).length === 0) return true;
+        return skillApps[app] !== false;
+    };
+
+    const handleAppToggle = async (name: string, app: string, enabled: boolean) => {
+        try {
+            await toggleSkillForApp(name, app, enabled);
+        } catch {
+            showToast(t('skills.toggle_failed'), 'error');
+        }
+    };
+
     if (isEditing) {
         return (
             <div className="h-full w-full overflow-y-auto">
@@ -97,6 +124,7 @@ function SkillsPage() {
     return (
         <div className="h-full w-full overflow-y-auto">
             <div className="p-6 space-y-4 max-w-7xl mx-auto">
+                {/* 标题栏 */}
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <Zap className="w-6 h-6 text-purple-500" />
@@ -104,7 +132,7 @@ function SkillsPage() {
                             {t('skills.title')}
                         </h1>
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {skills.length} {t('skills.count')}
+                            ({filteredSkills.length} {t('skills.count')})
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -119,7 +147,35 @@ function SkillsPage() {
                     </div>
                 </div>
 
-                {skills.length === 0 ? (
+                {/* 应用过滤标签 */}
+                <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={() => setCurrentApp(null)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                            !currentApp || currentApp === ALL_TAB
+                                ? 'bg-gray-900 dark:bg-base-content text-white dark:text-base-100'
+                                : 'bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-base-100'
+                        }`}
+                    >
+                        {t('skills.all_apps')}
+                    </button>
+                    {APP_TYPES.map((appType) => (
+                        <button
+                            key={appType}
+                            onClick={() => setCurrentApp(appType)}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                                currentApp === appType
+                                    ? 'bg-purple-500 text-white'
+                                    : 'bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-base-100'
+                            }`}
+                        >
+                            {APP_LABELS[appType]}
+                        </button>
+                    ))}
+                </div>
+
+                {/* 技能列表 */}
+                {filteredSkills.length === 0 ? (
                     <div className="bg-white dark:bg-base-100 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-base-200 text-center">
                         <Zap className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400">{t('skills.empty')}</p>
@@ -127,7 +183,7 @@ function SkillsPage() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {skills.map((skill) => (
+                        {filteredSkills.map((skill) => (
                             <div key={skill.name} className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200">
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1 min-w-0">
@@ -140,6 +196,24 @@ function SkillsPage() {
                                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 font-mono">
                                             {skill.content.substring(0, 150)}...
                                         </p>
+
+                                        {/* 当前应用视图下显示该应用的 toggle */}
+                                        {currentApp && currentApp !== ALL_TAB && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {APP_LABELS[currentApp as keyof typeof APP_LABELS] ?? currentApp}:
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle toggle-sm toggle-primary"
+                                                    checked={getAppEnabled(skill.apps, currentApp)}
+                                                    onChange={(e) => handleAppToggle(skill.name, currentApp, e.target.checked)}
+                                                />
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {getAppEnabled(skill.apps, currentApp) ? t('skills.app_enabled') : t('skills.app_disabled')}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 ml-4">
                                         <button onClick={() => setPreviewName(previewName === skill.name ? null : skill.name)} className="p-2 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors">

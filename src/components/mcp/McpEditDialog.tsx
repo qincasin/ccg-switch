@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { McpServer } from '../../types/mcp';
+import { McpServer, McpApps, APP_KEYS, APP_LABELS } from '../../types/mcp';
 
 interface McpEditDialogProps {
     isOpen: boolean;
@@ -20,10 +20,12 @@ function McpEditDialog({ isOpen, server, onClose, onSave }: McpEditDialogProps) 
         args: [],
         url: '',
         env: {},
+        apps: {},
     });
     const [isGlobal, setIsGlobal] = useState(true);
     const [argsText, setArgsText] = useState('');
     const [envText, setEnvText] = useState('');
+    const [appsState, setAppsState] = useState<McpApps>({});
 
     useEffect(() => {
         if (server) {
@@ -45,6 +47,7 @@ function McpEditDialog({ isOpen, server, onClose, onSave }: McpEditDialogProps) 
                           .join('\n')
                     : ''
             );
+            setAppsState(server.apps ?? {});
         } else {
             setFormData({
                 name: '',
@@ -57,8 +60,18 @@ function McpEditDialog({ isOpen, server, onClose, onSave }: McpEditDialogProps) 
             setIsGlobal(true);
             setArgsText('');
             setEnvText('');
+            setAppsState({});
         }
     }, [server]);
+
+    const getAppEnabled = (appKey: string): boolean => {
+        if (Object.keys(appsState).length === 0) return true;
+        return appsState[appKey] !== false;
+    };
+
+    const handleAppToggle = (appKey: string, enabled: boolean) => {
+        setAppsState((prev) => ({ ...prev, [appKey]: enabled }));
+    };
 
     const handleSave = async () => {
         if (!formData.name) {
@@ -95,6 +108,7 @@ function McpEditDialog({ isOpen, server, onClose, onSave }: McpEditDialogProps) 
             env: Object.keys(env).length > 0 ? env : undefined,
             enabled: true,
             source: isGlobal ? 'global' : 'project',
+            apps: appsState,
         };
 
         setLoading(true);
@@ -253,6 +267,31 @@ function McpEditDialog({ isOpen, server, onClose, onSave }: McpEditDialogProps) 
                             className="w-full px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-base-content font-mono text-sm"
                             placeholder="API_KEY=your_key&#x0a;DEBUG=true"
                         />
+                    </div>
+
+                    {/* per-app 开关区域 */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {t('mcp.app_switches')}
+                        </label>
+                        <div className="space-y-2 bg-gray-50 dark:bg-base-200 rounded-lg p-3">
+                            {APP_KEYS.map((appKey) => (
+                                <div key={appKey} className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        {APP_LABELS[appKey]}
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-sm toggle-primary"
+                                        checked={getAppEnabled(appKey)}
+                                        onChange={(e) => handleAppToggle(appKey, e.target.checked)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            {t('mcp.app_switches_hint')}
+                        </p>
                     </div>
                 </div>
 

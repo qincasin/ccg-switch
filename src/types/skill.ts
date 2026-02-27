@@ -1,3 +1,5 @@
+export type SkillApps = Record<string, boolean>;
+
 export interface Skill {
     id: string;
     name: string;
@@ -6,4 +8,5 @@ export interface Skill {
     contentPath: string;
     source: 'user' | 'project' | 'plugin';
     enabled: boolean;
+    apps?: SkillApps;
 }

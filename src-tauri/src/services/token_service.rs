@@ -1,3 +1,5 @@
+// 兼容层：保留原有 token_service API，确保向后兼容。
+// 新功能请使用 provider_service，此模块将在命令层适配完成后逐步废弃。
 use crate::models::token::{ApiToken, TokensConfig};
 use std::fs;
 use std::io;

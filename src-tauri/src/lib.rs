@@ -1,16 +1,25 @@
+mod commands;
 mod models;
+mod proxy;
 mod services;
+mod tray;
 mod utils;
+
+use commands::provider_commands;
+use commands::proxy_commands;
+use commands::utility_commands;
 
 use models::config::Config;
 use models::mcp::McpServer;
 use models::prompt::PromptPreset;
-use models::skill::Skill;
+use models::skill::{Skill, SkillApps};
 use models::subagent::Subagent;
 use models::token::ApiToken;
 use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat, SessionInfo};
 use services::stats_service::StatsCache;
-use services::{config_service, dashboard_service, mcp_service, prompt_service, skill_service, stats_service, subagent_service, token_service};
+use services::{config_service, dashboard_service, mcp_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
+use services::universal_provider_service::UniversalProviderConfig;
+use models::mcp::McpApps;
 
 // 配置管理命令
 #[tauri::command]
@@ -79,6 +88,11 @@ fn save_skill(name: String, content: String) -> Result<(), String> {
 #[tauri::command]
 fn delete_skill(name: String) -> Result<(), String> {
     skill_service::delete_skill(&name).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_skill_apps(name: String, apps: SkillApps) -> Result<(), String> {
+    skill_service::update_skill_apps(&name, apps).map_err(|e| e.to_string())
 }
 
 // Subagent 子代理管理命令
@@ -203,6 +217,29 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String) -> Result<(), Str
     Ok(())
 }
 
+// MCP per-app 命令
+#[tauri::command]
+fn update_mcp_server_apps(server_name: String, is_global: bool, apps: McpApps) -> Result<(), String> {
+    mcp_service::update_mcp_server_apps(&server_name, is_global, apps).map_err(|e| e.to_string())
+}
+
+// Universal Provider 命令
+#[tauri::command]
+fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<String>, String> {
+    universal_provider_service::apply_universal_provider(config).map_err(|e| e.to_string())
+}
+
+// Prompt 同步命令
+#[tauri::command]
+fn sync_prompt_to_app(name: String, app: String) -> Result<(), String> {
+    prompt_service::sync_prompt_to_app(&name, &app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_prompt_sync_status(name: String) -> Result<Vec<String>, String> {
+    prompt_service::get_prompt_sync_status(&name).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -222,6 +259,7 @@ pub fn run() {
             get_skill,
             save_skill,
             delete_skill,
+            update_skill_apps,
             list_subagents,
             get_subagent,
             save_subagent,
@@ -240,7 +278,38 @@ pub fn run() {
             get_stats_cache_data,
             get_project_sessions,
             open_in_terminal,
+            // Provider 命令
+            provider_commands::get_providers,
+            provider_commands::get_all_providers,
+            provider_commands::add_provider,
+            provider_commands::update_provider,
+            provider_commands::delete_provider,
+            provider_commands::switch_provider,
+            provider_commands::move_provider,
+            // Proxy 命令
+            proxy_commands::start_proxy,
+            proxy_commands::stop_proxy,
+            proxy_commands::get_proxy_status,
+            // MCP per-app
+            update_mcp_server_apps,
+            // Universal Provider
+            apply_universal_provider,
+            // Prompt 同步
+            sync_prompt_to_app,
+            get_prompt_sync_status,
+            // Utility 命令
+            utility_commands::export_config,
+            utility_commands::import_config,
+            utility_commands::test_endpoint_speed,
+            utility_commands::check_stream_connectivity,
+            utility_commands::get_global_proxy,
+            utility_commands::set_global_proxy,
+            utility_commands::check_env,
         ])
+        .setup(|app| {
+            let _ = tray::setup_tray(app);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Settings as SettingsIcon, Sun, Moon, Globe } from 'lucide-react';
 import { useConfigStore } from '../stores/useConfigStore';
+import ImportExportPanel from '../components/settings/ImportExportPanel';
+import SpeedTestPanel from '../components/settings/SpeedTestPanel';
+import StreamCheckPanel from '../components/settings/StreamCheckPanel';
+import GlobalProxyPanel from '../components/settings/GlobalProxyPanel';
+import EnvCheckerPanel from '../components/settings/EnvCheckerPanel';
 
 function Settings() {
     const { t, i18n } = useTranslation();
@@ -39,7 +44,7 @@ function Settings() {
                     <h2 className="font-semibold text-gray-900 dark:text-base-content mb-4">
                         {t('settings.appearance')}
                     </h2>
-                    
+
                     <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-base-200">
                         <div className="flex items-center gap-3">
                             {config?.theme === 'light' ? (
@@ -86,6 +91,12 @@ function Settings() {
                         </div>
                     </div>
                 </div>
+
+                <ImportExportPanel />
+                <SpeedTestPanel />
+                <StreamCheckPanel />
+                <GlobalProxyPanel />
+                <EnvCheckerPanel />
 
                 <div className="text-center text-sm text-gray-400 dark:text-gray-500">
                     CC Switch v1.0.0

@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 import { useMcpStore } from '../stores/useMcpStore';
 import McpEditDialog from '../components/mcp/McpEditDialog';
 import ModalDialog from '../components/common/ModalDialog';
-import { McpServer } from '../types/mcp';
+import { McpServer, APP_KEYS, APP_LABELS } from '../types/mcp';
 import { showToast } from '../components/common/ToastContainer';
+
+// 应用过滤标签（"全部" + 5 个应用）
+const ALL_TAB = 'all';
 
 function McpPage() {
     const { t } = useTranslation();
-    const { servers, loading, loadServers, deleteServer, addServer } = useMcpStore();
+    const { servers, loading, loadServers, deleteServer, addServer, currentApp, setCurrentApp, toggleServerForApp } = useMcpStore();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingServer, setEditingServer] = useState<McpServer | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; serverName: string; isGlobal: boolean }>({
@@ -55,6 +58,31 @@ function McpPage() {
         }
     };
 
+    // 按当前选中应用过滤列表
+    const filteredServers = currentApp && currentApp !== ALL_TAB
+        ? servers.filter((s) => {
+            if (!s.apps || Object.keys(s.apps).length === 0) {
+                // 旧数据：未设置 apps，视为全部启用
+                return true;
+            }
+            return s.apps[currentApp] !== false;
+        })
+        : servers;
+
+    // 获取服务器在当前应用下的启用状态
+    const getAppEnabled = (server: McpServer, app: string): boolean => {
+        if (!server.apps || Object.keys(server.apps).length === 0) return true;
+        return server.apps[app] !== false;
+    };
+
+    const handleAppToggle = async (server: McpServer, app: string, enabled: boolean) => {
+        try {
+            await toggleServerForApp(server.name, server.source === 'global', app, enabled);
+        } catch {
+            showToast(t('mcp.toggle_failed'), 'error');
+        }
+    };
+
     return (
         <div className="h-full w-full overflow-y-auto">
             <div className="p-6 space-y-4 max-w-7xl mx-auto">
@@ -66,7 +94,7 @@ function McpPage() {
                             {t('nav.mcp')}
                         </h1>
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                            ({servers.length} {t('mcp.servers')})
+                            ({filteredServers.length} {t('mcp.servers')})
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -88,13 +116,40 @@ function McpPage() {
                     </div>
                 </div>
 
+                {/* 应用过滤标签 */}
+                <div className="flex gap-2 flex-wrap">
+                    <button
+                        onClick={() => setCurrentApp(null)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                            !currentApp || currentApp === ALL_TAB
+                                ? 'bg-gray-900 dark:bg-base-content text-white dark:text-base-100'
+                                : 'bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-base-100'
+                        }`}
+                    >
+                        {t('mcp.all_apps')}
+                    </button>
+                    {APP_KEYS.map((appKey) => (
+                        <button
+                            key={appKey}
+                            onClick={() => setCurrentApp(appKey)}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                                currentApp === appKey
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-base-100'
+                            }`}
+                        >
+                            {APP_LABELS[appKey]}
+                        </button>
+                    ))}
+                </div>
+
                 {/* 服务器列表 */}
                 {loading ? (
                     <div className="bg-white dark:bg-base-100 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-base-200 text-center">
                         <RefreshCw className="w-8 h-8 text-blue-500 mx-auto mb-2 animate-spin" />
                         <p className="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
                     </div>
-                ) : servers.length === 0 ? (
+                ) : filteredServers.length === 0 ? (
                     <div className="bg-white dark:bg-base-100 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-base-200 text-center">
                         <Server className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400">{t('mcp.empty')}</p>
@@ -102,7 +157,7 @@ function McpPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-3">
-                        {servers.map((server) => (
+                        {filteredServers.map((server) => (
                             <div
                                 key={server.id}
                                 className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200 hover:shadow-md transition-shadow"
@@ -155,6 +210,24 @@ function McpPage() {
                                                 </p>
                                             )}
                                         </div>
+
+                                        {/* 当前应用视图下显示该应用的 toggle */}
+                                        {currentApp && currentApp !== ALL_TAB && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {APP_LABELS[currentApp as keyof typeof APP_LABELS] ?? currentApp}:
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle toggle-sm toggle-primary"
+                                                    checked={getAppEnabled(server, currentApp)}
+                                                    onChange={(e) => handleAppToggle(server, currentApp, e.target.checked)}
+                                                />
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {getAppEnabled(server, currentApp) ? t('mcp.app_enabled') : t('mcp.app_disabled')}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 ml-4">
                                         <button

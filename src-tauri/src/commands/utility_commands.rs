@@ -1,0 +1,42 @@
+use crate::services::{
+    import_export_service,
+    speedtest_service,
+    stream_check_service,
+    global_proxy_service,
+    env_checker_service,
+};
+
+#[tauri::command]
+pub fn export_config() -> Result<serde_json::Value, String> {
+    import_export_service::export_all_config().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_config(data: serde_json::Value) -> Result<Vec<String>, String> {
+    import_export_service::import_config(data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn test_endpoint_speed(url: String, api_key: String) -> Result<speedtest_service::SpeedTestResult, String> {
+    speedtest_service::test_endpoint(url, api_key).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn check_stream_connectivity(url: String, api_key: String, model: String) -> Result<stream_check_service::StreamCheckResult, String> {
+    stream_check_service::check_stream(url, api_key, model).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_global_proxy() -> Result<global_proxy_service::GlobalProxyConfig, String> {
+    global_proxy_service::get_global_proxy().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_global_proxy(config: global_proxy_service::GlobalProxyConfig) -> Result<(), String> {
+    global_proxy_service::set_global_proxy(&config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn check_env() -> Result<Vec<env_checker_service::EnvIssue>, String> {
+    env_checker_service::check_env_conflicts().map_err(|e| e.to_string())
+}

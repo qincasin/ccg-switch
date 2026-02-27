@@ -1,4 +1,5 @@
-use crate::models::skill::{Skill, SkillSource};
+use crate::models::skill::{Skill, SkillApps, SkillSource};
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -7,6 +8,34 @@ fn get_user_skills_dir() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
     Ok(home.join(".claude").join("commands"))
+}
+
+fn get_skill_apps_path() -> Result<PathBuf, io::Error> {
+    let home = dirs::home_dir()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
+    Ok(home.join(".claude-switch").join("skill-apps.json"))
+}
+
+fn load_skill_apps() -> Result<HashMap<String, SkillApps>, io::Error> {
+    let path = get_skill_apps_path()?;
+    if !path.exists() {
+        return Ok(HashMap::new());
+    }
+    let content = fs::read_to_string(&path)?;
+    let apps: HashMap<String, SkillApps> = serde_json::from_str(&content)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    Ok(apps)
+}
+
+fn save_skill_apps(apps: &HashMap<String, SkillApps>) -> Result<(), io::Error> {
+    let path = get_skill_apps_path()?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let content = serde_json::to_string_pretty(apps)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    fs::write(&path, content)?;
+    Ok(())
 }
 
 pub fn list_skills(project_dir: Option<&str>) -> Result<Vec<Skill>, io::Error> {
@@ -23,6 +52,14 @@ pub fn list_skills(project_dir: Option<&str>) -> Result<Vec<Skill>, io::Error> {
         let project_skills = PathBuf::from(dir).join(".claude").join("commands");
         if project_skills.exists() {
             scan_skills_dir(&project_skills, SkillSource::Project, &mut skills)?;
+        }
+    }
+
+    // 加载 skill-apps.json 并合并 apps 字段
+    let skill_apps = load_skill_apps().unwrap_or_default();
+    for skill in &mut skills {
+        if let Some(apps) = skill_apps.get(&skill.name) {
+            skill.apps = apps.clone();
         }
     }
 
@@ -45,6 +82,7 @@ fn scan_skills_dir(dir: &PathBuf, source: SkillSource, skills: &mut Vec<Skill>) 
                 content,
                 file_path: path.to_string_lossy().to_string(),
                 source: source.clone(),
+                apps: HashMap::new(),
             });
         }
     }
@@ -57,11 +95,14 @@ pub fn get_skill(name: &str) -> Result<Skill, io::Error> {
         return Err(io::Error::new(io::ErrorKind::NotFound, "Skill not found"));
     }
     let content = fs::read_to_string(&path)?;
+    let skill_apps = load_skill_apps().unwrap_or_default();
+    let apps = skill_apps.get(name).cloned().unwrap_or_default();
     Ok(Skill {
         name: name.to_string(),
         content,
         file_path: path.to_string_lossy().to_string(),
         source: SkillSource::User,
+        apps,
     })
 }
 
@@ -77,5 +118,36 @@ pub fn delete_skill(name: &str) -> Result<(), io::Error> {
     if path.exists() {
         fs::remove_file(&path)?;
     }
+    // 同步清理 skill-apps.json 中的记录
+    let mut skill_apps = load_skill_apps().unwrap_or_default();
+    if skill_apps.remove(name).is_some() {
+        let _ = save_skill_apps(&skill_apps);
+    }
     Ok(())
+}
+
+/// 获取指定应用已启用的技能列表
+/// - apps 字段为空（旧数据）→ 默认全部启用
+/// - apps[app] = true → 启用
+/// - apps[app] = false → 禁用
+pub fn list_skills_for_app(project_dir: Option<&str>, app: &str) -> Result<Vec<Skill>, io::Error> {
+    let all_skills = list_skills(project_dir)?;
+    let filtered = all_skills
+        .into_iter()
+        .filter(|s| {
+            if s.apps.is_empty() {
+                true
+            } else {
+                *s.apps.get(app).unwrap_or(&true)
+            }
+        })
+        .collect();
+    Ok(filtered)
+}
+
+/// 更新 Skill 的 per-app 开关，存储到 ~/.claude-switch/skill-apps.json
+pub fn update_skill_apps(name: &str, apps: SkillApps) -> Result<(), io::Error> {
+    let mut skill_apps = load_skill_apps().unwrap_or_default();
+    skill_apps.insert(name.to_string(), apps);
+    save_skill_apps(&skill_apps)
 }

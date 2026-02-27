@@ -1,0 +1,416 @@
+import { useTranslation } from 'react-i18next';
+import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useProviderStore } from '../stores/useProviderStore';
+import { useAppStore } from '../stores/useAppStore';
+import { Provider } from '../types/provider';
+import { APP_TYPES, APP_LABELS, AppType } from '../types/app';
+import ModalDialog from '../components/common/ModalDialog';
+import { showToast } from '../components/common/ToastContainer';
+import ProviderCard from '../components/providers/ProviderCard';
+import ProviderForm from '../components/providers/ProviderForm';
+import ProviderIcon from '../components/providers/ProviderIcon';
+
+type ViewMode = 'card' | 'table';
+
+function maskApiKey(key: string) {
+    if (key.length <= 10) return '***';
+    return key.substring(0, 7) + '...' + key.substring(key.length - 4);
+}
+
+function ProvidersPage() {
+    const { t } = useTranslation();
+    const { providers, hasLoaded, loading, loadAllProviders, switchProvider, deleteProvider, moveProvider } = useProviderStore();
+    const { currentApp } = useAppStore();
+    const [viewMode, setViewMode] = useState<ViewMode>('card');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterApp, setFilterApp] = useState<AppType | 'all'>('all');
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+    const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string; name: string }>({ isOpen: false, id: '', name: '' });
+
+    // 拖拽状态
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
+    const dragSourceRef = useRef<string | null>(null);
+    const dragOverRef = useRef<string | null>(null);
+
+    // 过滤
+    const filteredProviders = useMemo(() => {
+        let result = providers;
+        if (filterApp !== 'all') {
+            result = result.filter(p => p.appType === filterApp);
+        }
+        const query = searchQuery.trim().toLowerCase();
+        if (query) {
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(query) ||
+                p.apiKey.toLowerCase().includes(query) ||
+                (p.url && p.url.toLowerCase().includes(query)) ||
+                (p.description && p.description.toLowerCase().includes(query))
+            );
+        }
+        return result;
+    }, [providers, filterApp, searchQuery]);
+
+    useEffect(() => {
+        if (!hasLoaded) {
+            void loadAllProviders();
+        }
+    }, [hasLoaded, loadAllProviders]);
+
+    // 操作
+    const handleAdd = () => {
+        setEditingProvider(null);
+        setIsFormOpen(true);
+    };
+
+    const handleEdit = (provider: Provider) => {
+        setEditingProvider(provider);
+        setIsFormOpen(true);
+    };
+
+    const handleSwitch = async (providerId: string) => {
+        const provider = providers.find(p => p.id === providerId);
+        if (!provider) return;
+        try {
+            await switchProvider(provider.appType, providerId);
+            showToast(t('providers.switch_success', 'Provider 切换成功'), 'success');
+        } catch (error) {
+            showToast('切换失败: ' + error, 'error');
+        }
+    };
+
+    const handleDelete = (id: string, name: string) => {
+        setDeleteModal({ isOpen: true, id, name });
+    };
+
+    const confirmDelete = async () => {
+        try {
+            await deleteProvider(deleteModal.id);
+            setDeleteModal({ isOpen: false, id: '', name: '' });
+            showToast(t('providers.delete_success', 'Provider 删除成功'), 'success');
+        } catch (error) {
+            showToast('删除失败: ' + error, 'error');
+        }
+    };
+
+    const toggleShowKey = (id: string) => {
+        setShowKeys(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    // 拖拽逻辑
+    const getProviderIndex = (id: string) => providers.findIndex(p => p.id === id);
+
+    const updateDragOverId = (id: string | null) => {
+        dragOverRef.current = id;
+        setDragOverId(id);
+    };
+
+    const resolveProviderIdFromPoint = (x: number, y: number) => {
+        const el = document.elementFromPoint(x, y) as HTMLElement | null;
+        return el?.closest<HTMLElement>('[data-provider-id]')?.dataset.providerId || null;
+    };
+
+    const clearDragState = () => {
+        dragSourceRef.current = null;
+        updateDragOverId(null);
+        setDraggingId(null);
+    };
+
+    const handlePointerDragStart = (id: string) => (e: React.PointerEvent<HTMLElement>) => {
+        if (loading || e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragSourceRef.current = id;
+        setDraggingId(id);
+    };
+
+    const handlePointerOver = (id: string) => () => {
+        const src = dragSourceRef.current;
+        if (!src || src === id) return;
+        if (dragOverRef.current !== id) updateDragOverId(id);
+    };
+
+    useEffect(() => {
+        const onMove = (e: PointerEvent) => {
+            if (!dragSourceRef.current) return;
+            const hoverId = resolveProviderIdFromPoint(e.clientX, e.clientY);
+            if (hoverId && hoverId !== dragSourceRef.current) {
+                if (dragOverRef.current !== hoverId) updateDragOverId(hoverId);
+            } else if (dragOverRef.current !== null) {
+                updateDragOverId(null);
+            }
+        };
+        const onUp = (e: PointerEvent) => {
+            const sourceId = dragSourceRef.current;
+            if (!sourceId) return;
+            const targetId = dragOverRef.current || resolveProviderIdFromPoint(e.clientX, e.clientY);
+            clearDragState();
+            if (!targetId || targetId === sourceId) return;
+            const srcIdx = getProviderIndex(sourceId);
+            const tgtIdx = getProviderIndex(targetId);
+            if (srcIdx < 0 || tgtIdx < 0 || srcIdx === tgtIdx) return;
+            void moveProvider(sourceId, tgtIdx).then(() => {
+                showToast('已更新排序', 'success');
+            }).catch((err) => {
+                showToast('排序失败: ' + err, 'error');
+            });
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+        return () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+        };
+    }, [providers]);
+
+    return (
+        <div className="h-full w-full overflow-y-auto">
+            <div className="p-6 space-y-4 max-w-7xl mx-auto">
+                {/* 标题栏 */}
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-md">
+                            <Layers className="w-5 h-5 text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-base-content">
+                            {t('providers.title', 'Providers')}
+                        </h1>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                            ({filteredProviders.length} / {providers.length})
+                        </span>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="btn-group">
+                            <button
+                                onClick={() => setViewMode('table')}
+                                className={`btn btn-sm ${viewMode === 'table' ? 'btn-active' : 'btn-ghost'}`}
+                                title="表格视图"
+                            >
+                                <List className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('card')}
+                                className={`btn btn-sm ${viewMode === 'card' ? 'btn-active' : 'btn-ghost'}`}
+                                title="卡片视图"
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => loadAllProviders(true)}
+                            disabled={loading}
+                            className="btn btn-ghost btn-sm gap-2"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            {t('common.refresh', '刷新')}
+                        </button>
+                        <button
+                            onClick={handleAdd}
+                            className="btn bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-none btn-sm gap-2"
+                        >
+                            <Plus className="w-4 h-4" />
+                            {t('providers.add_btn', '添加 Provider')}
+                        </button>
+                    </div>
+                </div>
+
+                {/* 搜索 + 过滤 */}
+                <div className="flex gap-3">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+                        <input
+                            type="text"
+                            placeholder={t('providers.search_placeholder', '搜索名称、API Key、URL 或描述...')}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input input-bordered input-sm w-full pl-9"
+                        />
+                    </div>
+                    <select
+                        className="select select-bordered select-sm"
+                        value={filterApp}
+                        onChange={(e) => setFilterApp(e.target.value as AppType | 'all')}
+                    >
+                        <option value="all">{t('providers.filter_all', '全部类型')}</option>
+                        {APP_TYPES.map(type => (
+                            <option key={type} value={type}>{APP_LABELS[type]}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 空状态 */}
+                {providers.length === 0 && !loading && (
+                    <div className="text-center py-16">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 flex items-center justify-center mx-auto mb-4">
+                            <Layers className="w-10 h-10 text-blue-500" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">{t('providers.empty_title', '还没有 Provider')}</h3>
+                        <p className="text-base-content/60 mb-4 text-sm">
+                            {t('providers.empty_desc', '添加您的第一个 Provider 开始使用')}
+                        </p>
+                        <button
+                            onClick={handleAdd}
+                            className="btn bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-none gap-2 btn-sm"
+                        >
+                            <Plus className="w-4 h-4" />
+                            {t('providers.add_first', '添加第一个 Provider')}
+                        </button>
+                    </div>
+                )}
+
+                {filteredProviders.length === 0 && providers.length > 0 && (
+                    <div className="text-center py-16">
+                        <p className="text-base-content/60">{t('providers.no_match', '没有找到匹配的 Provider')}</p>
+                    </div>
+                )}
+
+                {/* 卡片视图 */}
+                {viewMode === 'card' && filteredProviders.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredProviders.map((provider) => (
+                            <ProviderCard
+                                key={provider.id}
+                                provider={provider}
+                                isDragging={draggingId === provider.id}
+                                isDragOver={dragOverId === provider.id && draggingId !== provider.id}
+                                onSwitch={handleSwitch}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onPointerDragStart={handlePointerDragStart(provider.id)}
+                                onPointerOver={handlePointerOver(provider.id)}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* 表格视图 */}
+                {viewMode === 'table' && filteredProviders.length > 0 && (
+                    <div className="overflow-x-auto bg-base-100 rounded-lg border border-base-300">
+                        <table className="table table-fixed min-w-[1100px]">
+                            <thead>
+                                <tr className="border-b border-base-300">
+                                    <th className="bg-base-200 w-14"></th>
+                                    <th className="bg-base-200 w-48">{t('providers.col_name', '名称')}</th>
+                                    <th className="bg-base-200 w-28">{t('providers.col_type', '类型')}</th>
+                                    <th className="bg-base-200 w-48">API Key</th>
+                                    <th className="bg-base-200 w-64">URL</th>
+                                    <th className="bg-base-200 text-right w-40 sticky right-0 z-20">{t('common.action', '操作')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredProviders.map((provider) => (
+                                    <tr
+                                        key={provider.id}
+                                        data-provider-id={provider.id}
+                                        onPointerOver={handlePointerOver(provider.id)}
+                                        className={`border-b border-base-200 hover:bg-base-200/50 transition-colors ${
+                                            provider.isActive ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-l-4 border-l-green-500' : ''
+                                        } ${draggingId === provider.id ? 'opacity-60' : ''} ${
+                                            dragOverId === provider.id && draggingId !== provider.id ? 'bg-info/5' : ''
+                                        }`}
+                                    >
+                                        <td className="w-14">
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onPointerDown={handlePointerDragStart(provider.id)}
+                                                    onClick={(e) => e.preventDefault()}
+                                                    className="inline-flex h-6 w-6 items-center justify-center rounded text-base-content/50 hover:bg-base-200 cursor-grab active:cursor-grabbing"
+                                                >
+                                                    <GripVertical className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="w-48">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <ProviderIcon appType={provider.appType} size="sm" />
+                                                <div className="flex flex-col min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium truncate">{provider.name}</span>
+                                                        {provider.isActive && (
+                                                            <span className="badge badge-sm bg-green-500 text-white border-none gap-1 shrink-0">
+                                                                <Zap className="w-3 h-3" fill="currentColor" />
+                                                                Active
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {provider.description && (
+                                                        <span className="text-xs text-base-content/50 truncate">{provider.description}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="w-28">
+                                            <span className="badge badge-sm badge-outline">{APP_LABELS[provider.appType]}</span>
+                                        </td>
+                                        <td className="w-48">
+                                            <div className="flex items-center gap-2">
+                                                <code className="font-mono text-xs bg-base-200 px-2 py-1 rounded truncate max-w-[140px]">
+                                                    {showKeys[provider.id] ? provider.apiKey : maskApiKey(provider.apiKey)}
+                                                </code>
+                                                <button onClick={() => toggleShowKey(provider.id)} className="btn btn-ghost btn-xs">
+                                                    {showKeys[provider.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="w-64">
+                                            <code className="font-mono text-xs text-base-content/70 truncate block max-w-[240px]" title={provider.url || ''}>
+                                                {provider.url || '-'}
+                                            </code>
+                                        </td>
+                                        <td className="w-40 sticky right-0 z-20">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    onClick={() => handleSwitch(provider.id)}
+                                                    className={`btn btn-xs gap-1 ${provider.isActive ? 'btn-disabled' : 'btn-ghost text-green-600'}`}
+                                                    disabled={provider.isActive}
+                                                >
+                                                    <Zap className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => handleEdit(provider)} className="btn btn-ghost btn-xs">
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(provider.id, provider.name)}
+                                                    className="btn btn-ghost btn-xs text-red-500"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* 表单弹窗 */}
+            <ProviderForm
+                isOpen={isFormOpen}
+                editingProvider={editingProvider}
+                onClose={() => { setIsFormOpen(false); setEditingProvider(null); }}
+                defaultAppType={currentApp}
+            />
+
+            {/* 删除确认 */}
+            <ModalDialog
+                isOpen={deleteModal.isOpen}
+                title={t('providers.delete_title', '删除 Provider')}
+                message={t('providers.delete_confirm', `确定要删除 "${deleteModal.name}" 吗？此操作不可撤销。`)}
+                type="confirm"
+                isDestructive
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteModal({ isOpen: false, id: '', name: '' })}
+            />
+        </div>
+    );
+}
+
+export default ProvidersPage;

@@ -11,12 +11,14 @@ import { useTranslation } from 'react-i18next';
 
 // 懒加载非首屏页面，减少 Dashboard 切换到其他页面时的渲染开销
 const ClaudePage = lazy(() => import('./pages/ClaudePage'));
+const ProvidersPage = lazy(() => import('./pages/ProvidersPage'));
 const McpPage = lazy(() => import('./pages/McpPage'));
 const PromptsPage = lazy(() => import('./pages/PromptsPage'));
 const SkillsPage = lazy(() => import('./pages/SkillsPage'));
 const SubagentsPage = lazy(() => import('./pages/SubagentsPage'));
 const WorkspacesPage = lazy(() => import('./pages/WorkspacesPage'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ProxyPage = lazy(() => import('./pages/ProxyPage'));
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><span className="loading loading-spinner loading-sm"></span></div>}>{children}</Suspense>;
@@ -34,6 +36,14 @@ const router = createHashRouter([
       {
         path: 'claude',
         element: <SuspenseWrapper><ClaudePage /></SuspenseWrapper>,
+      },
+      {
+        path: 'providers',
+        element: <SuspenseWrapper><ProvidersPage /></SuspenseWrapper>,
+      },
+      {
+        path: 'proxy',
+        element: <SuspenseWrapper><ProxyPage /></SuspenseWrapper>,
       },
       {
         path: 'workspaces',
