@@ -36,7 +36,7 @@ export default function ProviderCard({
         <div
             data-provider-id={provider.id}
             onPointerOver={onPointerOver}
-            className={`bg-white dark:bg-base-100 rounded-xl shadow-sm border transition-all ${
+            className={`bg-white dark:bg-base-100 rounded-xl shadow-sm border transition-all flex flex-col ${
                 provider.isActive
                     ? 'border-green-400 dark:border-green-500 ring-1 ring-green-200 dark:ring-green-800'
                     : 'border-gray-100 dark:border-base-200'
@@ -44,7 +44,7 @@ export default function ProviderCard({
                 isDragOver ? 'ring-2 ring-info/40' : ''
             }`}
         >
-            <div className="p-4">
+            <div className="p-4 flex flex-col flex-1">
                 {/* 顶部：拖拽 + 图标 + 名称 + 状态 */}
                 <div className="flex items-center gap-3 mb-3">
                     <button
@@ -90,13 +90,32 @@ export default function ProviderCard({
                     </div>
                 )}
 
+                {/* 模型配置 */}
+                <div className="mb-2 grid grid-cols-[3.5rem_1fr] gap-y-0.5">
+                    <span className="text-xs text-base-content/40">Sonnet</span>
+                    {provider.defaultSonnetModel
+                        ? <code className="font-mono text-xs text-base-content/70 truncate min-w-0" title={provider.defaultSonnetModel}>{provider.defaultSonnetModel}</code>
+                        : <span className="text-xs text-base-content/25 italic">默认</span>
+                    }
+                    <span className="text-xs text-base-content/40">Opus</span>
+                    {provider.defaultOpusModel
+                        ? <code className="font-mono text-xs text-base-content/70 truncate min-w-0" title={provider.defaultOpusModel}>{provider.defaultOpusModel}</code>
+                        : <span className="text-xs text-base-content/25 italic">默认</span>
+                    }
+                    <span className="text-xs text-base-content/40">Haiku</span>
+                    {provider.defaultHaikuModel
+                        ? <code className="font-mono text-xs text-base-content/70 truncate min-w-0" title={provider.defaultHaikuModel}>{provider.defaultHaikuModel}</code>
+                        : <span className="text-xs text-base-content/25 italic">默认</span>
+                    }
+                </div>
+
                 {/* 描述 */}
                 {provider.description && (
                     <p className="text-xs text-base-content/50 mb-3 line-clamp-2">{provider.description}</p>
                 )}
 
                 {/* 操作按钮 */}
-                <div className="flex items-center gap-1 pt-2 border-t border-base-200">
+                <div className="flex items-center gap-1 pt-2 border-t border-base-200 mt-auto">
                     <button
                         onClick={() => onSwitch(provider.id)}
                         className={`btn btn-xs gap-1 ${provider.isActive ? 'btn-disabled' : 'btn-ghost text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'}`}

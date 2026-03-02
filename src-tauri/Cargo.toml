@@ -35,4 +35,9 @@ tower-http = { version = "0.6", features = ["cors"] }
 uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
 bytes = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+indexmap = { version = "2", features = ["serde"] }
+zip = "2.2"
+futures = "0.3"
+toml = "0.8"
 

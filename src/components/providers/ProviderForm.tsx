@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff } from 'lucide-react';
 import ModalDialog from '../common/ModalDialog';
@@ -35,6 +35,20 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [description, setDescription] = useState(editingProvider?.description || '');
     const [showKey, setShowKey] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setName(editingProvider?.name || '');
+            setAppType(editingProvider?.appType || defaultAppType);
+            setApiKey(editingProvider?.apiKey || '');
+            setUrl(editingProvider?.url || 'https://api.anthropic.com');
+            setDefaultSonnetModel(editingProvider?.defaultSonnetModel || '');
+            setDefaultOpusModel(editingProvider?.defaultOpusModel || '');
+            setDefaultHaikuModel(editingProvider?.defaultHaikuModel || '');
+            setDescription(editingProvider?.description || '');
+            setShowKey(false);
+        }
+    }, [isOpen, editingProvider]);
 
     const applyPreset = (preset: typeof PRESETS[number]) => {
         if (preset.url) setUrl(preset.url);

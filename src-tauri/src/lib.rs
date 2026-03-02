@@ -1,26 +1,31 @@
 mod commands;
+mod database;
+mod mcp;
 mod models;
 mod proxy;
 mod services;
+mod store;
 mod tray;
 mod utils;
 
+use tauri::Manager;
 use commands::provider_commands;
 use commands::proxy_commands;
 use commands::utility_commands;
 use commands::advanced_commands;
+use commands::mcp_commands;
+use commands::skill_commands;
+use commands::prompt_commands;
 
 use models::config::Config;
-use models::mcp::McpServer;
 use models::prompt::PromptPreset;
 use models::skill::{Skill, SkillApps};
 use models::subagent::Subagent;
 use models::token::ApiToken;
 use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat, SessionInfo};
 use services::stats_service::StatsCache;
-use services::{config_service, dashboard_service, mcp_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
+use services::{config_service, dashboard_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
 use services::universal_provider_service::UniversalProviderConfig;
-use models::mcp::McpApps;
 
 // 配置管理命令
 #[tauri::command]
@@ -31,22 +36,6 @@ fn get_config() -> Result<Config, String> {
 #[tauri::command]
 fn save_config(config: Config) -> Result<(), String> {
     config_service::save_config(&config).map_err(|e| e.to_string())
-}
-
-// MCP 服务器管理命令
-#[tauri::command]
-fn list_mcp_servers(project_dir: Option<String>) -> Result<Vec<McpServer>, String> {
-    mcp_service::list_mcp_servers(project_dir.as_deref()).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn add_mcp_server(server: McpServer, is_global: bool) -> Result<(), String> {
-    mcp_service::add_mcp_server(server, is_global).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn delete_mcp_server(server_name: String, is_global: bool) -> Result<(), String> {
-    mcp_service::delete_mcp_server(&server_name, is_global).map_err(|e| e.to_string())
 }
 
 // Prompt 预设管理命令
@@ -218,12 +207,6 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String) -> Result<(), Str
     Ok(())
 }
 
-// MCP per-app 命令
-#[tauri::command]
-fn update_mcp_server_apps(server_name: String, is_global: bool, apps: McpApps) -> Result<(), String> {
-    mcp_service::update_mcp_server_apps(&server_name, is_global, apps).map_err(|e| e.to_string())
-}
-
 // Universal Provider 命令
 #[tauri::command]
 fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<String>, String> {
@@ -249,9 +232,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
-            list_mcp_servers,
-            add_mcp_server,
-            delete_mcp_server,
             list_prompts,
             get_prompt,
             save_prompt,
@@ -291,8 +271,6 @@ pub fn run() {
             proxy_commands::start_proxy,
             proxy_commands::stop_proxy,
             proxy_commands::get_proxy_status,
-            // MCP per-app
-            update_mcp_server_apps,
             // Universal Provider
             apply_universal_provider,
             // Prompt 同步
@@ -312,8 +290,37 @@ pub fn run() {
             advanced_commands::get_auto_launch_status,
             advanced_commands::set_auto_launch,
             advanced_commands::get_usage_summaries,
+            // MCP v2 (数据库版)
+            mcp_commands::get_mcp_servers,
+            mcp_commands::upsert_mcp_server,
+            mcp_commands::delete_mcp_server_v2,
+            mcp_commands::toggle_mcp_app,
+            mcp_commands::import_mcp_from_apps,
+            // Skills v2 (数据库版)
+            skill_commands::get_installed_skills,
+            skill_commands::install_skill,
+            skill_commands::uninstall_skill,
+            skill_commands::toggle_skill_app,
+            skill_commands::discover_skills,
+            skill_commands::get_skill_repos,
+            skill_commands::save_skill_repo,
+            skill_commands::delete_skill_repo,
+            // Prompts v2 (数据库版)
+            prompt_commands::get_prompts_v2,
+            prompt_commands::upsert_prompt_v2,
+            prompt_commands::delete_prompt_v2,
+            prompt_commands::enable_prompt_v2,
+            prompt_commands::disable_prompt_v2,
+            prompt_commands::import_prompt_from_file,
+            prompt_commands::get_prompt_live_content,
         ])
         .setup(|app| {
+            // 初始化数据库
+            let db = database::Database::init()
+                .expect("Failed to initialize database");
+            let state = store::AppState::new(std::sync::Arc::new(db));
+            app.manage(state);
+
             let _ = tray::setup_tray(app);
             Ok(())
         })
