@@ -246,7 +246,10 @@
         "fetchModelsFailed": "获取模型失败",
         "fetchModelsSuccess": "获取到 {{count}} 个模型",
         "fetchModelsNeedUrlKey": "请先填写 URL 和 API Key",
-        "modelConfig": "模型配置"
+        "modelConfig": "模型配置",
+        "tags": "标签",
+        "tagPlaceholder": "输入标签后回车添加",
+        "openUrl": "在浏览器中打开"
     },
     "settings": {
         "title": "设置",

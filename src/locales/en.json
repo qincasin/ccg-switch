@@ -360,7 +360,10 @@
         "fetchModelsFailed": "Failed to fetch models",
         "fetchModelsSuccess": "Fetched {{count}} models",
         "fetchModelsNeedUrlKey": "Please fill in URL and API Key first",
-        "modelConfig": "Model Configuration"
+        "modelConfig": "Model Configuration",
+        "tags": "Tags",
+        "tagPlaceholder": "Type a tag and press Enter to add",
+        "openUrl": "Open in browser"
     },
     "settings": {
         "title": "Settings",

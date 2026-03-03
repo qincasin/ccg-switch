@@ -1,4 +1,4 @@
-import { Zap, Edit2, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react';
+import { Zap, Edit2, Trash2, Eye, EyeOff, GripVertical, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { Provider } from '../../types/provider';
 import { APP_LABELS } from '../../types/app';
@@ -83,10 +83,26 @@ export default function ProviderCard({
 
                 {/* URL */}
                 {provider.url && (
-                    <div className="mb-2">
-                        <code className="font-mono text-xs text-base-content/60 truncate block" title={provider.url}>
-                            {provider.url}
+                    <div className="mb-2 flex items-center gap-1">
+                        <code className="font-mono text-xs text-base-content/60 truncate flex-1 min-w-0" title={provider.url}>
+                            URL: {provider.url}
                         </code>
+                        <button
+                            type="button"
+                            className="shrink-0 p-0.5 text-blue-400/60 hover:text-blue-400 transition-colors"
+                            title="在浏览器中打开"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                try {
+                                    const u = provider.url!.trim();
+                                    if (u.startsWith('http://') || u.startsWith('https://')) {
+                                        window.open(u, '_blank');
+                                    }
+                                } catch { /* ignore */ }
+                            }}
+                        >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 )}
 
@@ -111,7 +127,21 @@ export default function ProviderCard({
 
                 {/* 描述 */}
                 {provider.description && (
-                    <p className="text-xs text-base-content/50 mb-3 line-clamp-2">{provider.description}</p>
+                    <p className="text-xs text-base-content/50 mb-2 line-clamp-2">{provider.description}</p>
+                )}
+
+                {/* 标签 */}
+                {provider.tags && provider.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                        {provider.tags.map((tag) => (
+                            <span
+                                key={tag}
+                                className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            >
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
                 )}
 
                 {/* 操作按钮 */}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Loader2, RefreshCw, ChevronDown, ExternalLink, X, Plus } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import ModalDialog from '../common/ModalDialog';
 import { showToast } from '../common/ToastContainer';
@@ -34,6 +34,8 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [defaultOpusModel, setDefaultOpusModel] = useState(editingProvider?.defaultOpusModel || '');
     const [defaultHaikuModel, setDefaultHaikuModel] = useState(editingProvider?.defaultHaikuModel || '');
     const [description, setDescription] = useState(editingProvider?.description || '');
+    const [tags, setTags] = useState<string[]>(editingProvider?.tags || []);
+    const [tagInput, setTagInput] = useState('');
     const [showKey, setShowKey] = useState(false);
     const [saving, setSaving] = useState(false);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -49,6 +51,8 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             setDefaultOpusModel(editingProvider?.defaultOpusModel || '');
             setDefaultHaikuModel(editingProvider?.defaultHaikuModel || '');
             setDescription(editingProvider?.description || '');
+            setTags(editingProvider?.tags || []);
+            setTagInput('');
             setShowKey(false);
             setFetchedModels([]);
         }
@@ -75,6 +79,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 defaultOpusModel: defaultOpusModel.trim() || undefined,
                 defaultHaikuModel: defaultHaikuModel.trim() || undefined,
                 description: description.trim() || undefined,
+                tags: tags.length > 0 ? tags : undefined,
             };
             if (isEditing && editingProvider) {
                 await updateProvider(editingProvider.id, data);
@@ -167,13 +172,33 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 {/* URL */}
                 <div>
                     <label className="label label-text text-xs font-medium">URL</label>
-                    <input
-                        type="text"
-                        className="input input-bordered input-sm w-full font-mono text-xs"
-                        placeholder="https://api.anthropic.com"
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                    />
+                    <div className="relative">
+                        <input
+                            type="text"
+                            className="input input-bordered input-sm w-full font-mono text-xs pr-8"
+                            placeholder="https://api.anthropic.com"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                        />
+                        {url.trim() && (
+                            <button
+                                type="button"
+                                tabIndex={-1}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-blue-400/60 hover:text-blue-400 transition-colors"
+                                title={t('providers.openUrl', '在浏览器中打开')}
+                                onClick={() => {
+                                    try {
+                                        const u = url.trim();
+                                        if (u.startsWith('http://') || u.startsWith('https://')) {
+                                            window.open(u, '_blank');
+                                        }
+                                    } catch { /* ignore */ }
+                                }}
+                            >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* 模型配置 */}
@@ -228,7 +253,59 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                     />
                 </div>
 
-                {/* 描述 */}
+                {/* 标签 */}
+                <div>
+                    <label className="label label-text text-xs font-medium">{t('providers.tags', '标签')}</label>
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                        {tags.map((tag) => (
+                            <span
+                                key={tag}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                            >
+                                {tag}
+                                <button
+                                    type="button"
+                                    onClick={() => setTags(tags.filter(t => t !== tag))}
+                                    className="hover:text-red-400 transition-colors"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                    <div className="flex gap-1">
+                        <input
+                            type="text"
+                            className="input input-bordered input-sm flex-1 text-xs"
+                            placeholder={t('providers.tagPlaceholder', '输入标签后回车添加')}
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const v = tagInput.trim();
+                                    if (v && !tags.includes(v)) {
+                                        setTags([...tags, v]);
+                                    }
+                                    setTagInput('');
+                                }
+                            }}
+                        />
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm btn-square"
+                            onClick={() => {
+                                const v = tagInput.trim();
+                                if (v && !tags.includes(v)) {
+                                    setTags([...tags, v]);
+                                }
+                                setTagInput('');
+                            }}
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
                 <div>
                     <label className="label label-text text-xs font-medium">{t('providers.field_description', '描述')}</label>
                     <textarea

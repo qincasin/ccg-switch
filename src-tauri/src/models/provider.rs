@@ -28,6 +28,8 @@ pub struct Provider {
     #[serde(rename = "inFailoverQueue", default)]
     pub in_failover_queue: bool,
     pub description: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
     #[serde(rename = "isActive")]
     pub is_active: bool,
     #[serde(rename = "createdAt")]
@@ -58,6 +60,7 @@ impl From<ApiToken> for Provider {
             icon: None,
             in_failover_queue: false,
             description: token.description,
+            tags: None,
             is_active: token.is_active,
             created_at: token.created_at,
             last_used: token.last_used,

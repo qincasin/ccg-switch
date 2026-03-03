@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2, Tag } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useProviderStore } from '../stores/useProviderStore';
 import { Provider } from '../types/provider';
@@ -30,6 +30,7 @@ function ProvidersPage() {
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string; name: string }>({ isOpen: false, id: '', name: '' });
     const [exportLoading, setExportLoading] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
+    const [filterTag, setFilterTag] = useState<string | null>(null);
 
     // 拖拽状态
     const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -37,11 +38,21 @@ function ProvidersPage() {
     const dragSourceRef = useRef<string | null>(null);
     const dragOverRef = useRef<string | null>(null);
 
+    // 收集所有标签
+    const allTags = useMemo(() => {
+        const tagSet = new Set<string>();
+        providers.forEach(p => p.tags?.forEach(t => tagSet.add(t)));
+        return Array.from(tagSet).sort();
+    }, [providers]);
+
     // 过滤
     const filteredProviders = useMemo(() => {
         let result = providers;
         if (filterApp !== 'all') {
             result = result.filter(p => p.appType === filterApp);
+        }
+        if (filterTag) {
+            result = result.filter(p => p.tags?.includes(filterTag));
         }
         const query = searchQuery.trim().toLowerCase();
         if (query) {
@@ -49,11 +60,12 @@ function ProvidersPage() {
                 p.name.toLowerCase().includes(query) ||
                 p.apiKey.toLowerCase().includes(query) ||
                 (p.url && p.url.toLowerCase().includes(query)) ||
-                (p.description && p.description.toLowerCase().includes(query))
+                (p.description && p.description.toLowerCase().includes(query)) ||
+                (p.tags && p.tags.some(t => t.toLowerCase().includes(query)))
             );
         }
         return result;
-    }, [providers, filterApp, searchQuery]);
+    }, [providers, filterApp, filterTag, searchQuery]);
 
     useEffect(() => {
         if (!hasLoaded) {
@@ -296,6 +308,26 @@ function ProvidersPage() {
                         ))}
                     </select>
                 </div>
+
+                {/* 标签筛选 */}
+                {allTags.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Tag className="w-3.5 h-3.5 text-base-content/40 shrink-0" />
+                        {allTags.map(tag => (
+                            <button
+                                key={tag}
+                                onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                                className={`px-2 py-0.5 rounded-full text-xs transition-all border ${
+                                    filterTag === tag
+                                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                                        : 'bg-base-200/50 text-base-content/60 border-transparent hover:bg-base-200 hover:text-base-content'
+                                }`}
+                            >
+                                {tag}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* 空状态 */}
                 {providers.length === 0 && !loading && (

@@ -15,6 +15,7 @@ export interface Provider {
     icon?: string;
     inFailoverQueue: boolean;
     description?: string;
+    tags?: string[];
     isActive: boolean;
     createdAt: string;
     lastUsed?: string;

@@ -92,6 +92,7 @@ pub fn update_provider(id: &str, updated: Provider) -> Result<(), io::Error> {
     p.icon = updated.icon;
     p.in_failover_queue = updated.in_failover_queue;
     p.description = updated.description;
+    p.tags = updated.tags;
 
     save_providers(&all)
 }
