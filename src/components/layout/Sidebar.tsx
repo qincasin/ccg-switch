@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon } from 'lucide-react';
 import { useConfigStore } from '../../stores/useConfigStore';
+import Logo from './Logo';
 import {
     LayoutDashboard, Key, Globe, FileText, Zap,
     Bot, FolderOpen, Settings, Server
@@ -56,6 +57,10 @@ export default function Sidebar({ position }: SidebarProps) {
         return (
             <nav className="w-full pt-8">
                 <div className="relative flex items-center justify-center px-6 h-14">
+                    {/* 左侧 Logo */}
+                    <div className="absolute left-6">
+                        <Logo />
+                    </div>
                     {/* 居中：导航图标 */}
                     <div className="flex items-center gap-1">
                         {allItems.map(item => {

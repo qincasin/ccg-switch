@@ -128,8 +128,8 @@
         }
     },
     "dashboard": {
-        "welcome": "欢迎使用 CCG Switch",
-        "subtitle": "管理您的 Claude Code 配置",
+        "welcome": "欢迎回来",
+        "subtitle": "管理您的 Claude · Codex · Gemini 配置",
         "mcp_desc": "管理 MCP 服务器配置",
         "prompts_desc": "管理和切换 Prompt 预设",
         "skills_desc": "管理用户和项目技能",

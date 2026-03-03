@@ -1,6 +1,7 @@
 import { Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
+import Logo from './Logo';
 
 function Navbar() {
     const { i18n } = useTranslation();
@@ -81,8 +82,8 @@ function Navbar() {
 
             <div className="px-6 relative" style={{ zIndex: 10 }}>
                 <div className="flex items-center justify-between h-12">
-                    {/* 左侧留空 */}
-                    <div />
+                    {/* 左侧 Logo */}
+                    <Logo size="sm" />
 
                     {/* 右侧：主题切换 + 语言切换 */}
                     <div className="flex items-center gap-2">
