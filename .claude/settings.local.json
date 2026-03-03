@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo:*)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "Bash(head:*)",
+      "Bash(grep:*)",
+      "Bash(cargo check:*)",
+      "Bash(taskkill:*)",
+      "Bash(cargo build:*)",
+      "Bash(ls:*)",
+      "mcp__ace-tool__search_context",
+      "Bash(printenv CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:*)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(python:*)",
+      "Bash(\"C:/Users/Administrator/.claude/bin/codeagent-wrapper.exe\":*)"
+    ]
+  }
+}

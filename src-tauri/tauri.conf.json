@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
-  "version": "0.1.0",
-  "identifier": "com.administrator.tauri-app",
+  "productName": "CCG Switch",
+  "version": "1.0.0",
+  "identifier": "com.ccgswitch.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -17,7 +17,7 @@
   "app": {
     "windows": [
       {
-        "title": "CC Switch",
+        "title": "CCG Switch",
         "width": 1100,
         "height": 700
       }
