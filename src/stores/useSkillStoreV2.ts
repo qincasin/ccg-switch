@@ -18,6 +18,7 @@ interface SkillStoreV2State {
     toggleApp: (id: string, app: string, enabled: boolean) => Promise<void>;
     saveRepo: (repo: SkillRepo) => Promise<void>;
     deleteRepo: (owner: string, name: string) => Promise<void>;
+    scanAndImport: () => Promise<{ imported: number; skipped: number; names: string[] }>;
 }
 
 export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
@@ -106,6 +107,19 @@ export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
             await get().loadRepos();
         } catch (error) {
             set({ error: String(error) });
+            throw error;
+        }
+    },
+
+    scanAndImport: async () => {
+        set({ loading: true, error: null });
+        try {
+            const [imported, skipped, names] = await invoke<[number, number, string[]]>('scan_and_import_skills');
+            await get().loadInstalled();
+            set({ loading: false });
+            return { imported, skipped, names };
+        } catch (error) {
+            set({ error: String(error), loading: false });
             throw error;
         }
     },
