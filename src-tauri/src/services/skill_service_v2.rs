@@ -6,9 +6,18 @@
 use crate::database::dao::skills::{InstalledSkillRow, SkillRepo};
 use crate::database::Database;
 use crate::services::skill_discovery::{discover_available, download_skill_to_ssot, DiscoverableSkill};
+use regex::Regex;
+use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+/// SKILL.md frontmatter 结构
+#[derive(Debug, Deserialize)]
+struct SkillFrontmatter {
+    name: String,
+    description: Option<String>,
+}
 
 // ========== 路径管理 ==========
 
@@ -234,4 +243,124 @@ impl SkillServiceV2 {
         let skills = discover_available(repos).await;
         Ok(skills)
     }
+
+    // ========== 扫描导入 ==========
+
+    /// 扫描 ~/.claude/skills/、~/.codex/skills/、~/.gemini/skills/ 目录并导入到数据库
+    ///
+    /// 返回 (导入数量, 跳过数量, 导入的 skill 名称列表)
+    pub fn scan_and_import(db: &Arc<Database>) -> Result<(usize, usize, Vec<String>), String> {
+        // 获取数据库中已有的 directory 列表
+        let existing = db.get_all_installed_skills()?;
+        let existing_dirs: std::collections::HashSet<String> = existing
+            .values()
+            .map(|r| r.directory.to_lowercase())
+            .collect();
+
+        let mut imported = 0;
+        let mut skipped = 0;
+        let mut imported_names: Vec<String> = vec![];
+
+        // 扫描三个应用的目录
+        for (app_name, enabled_field) in [
+            ("claude", "claude"),
+            ("codex", "codex"),
+            ("gemini", "gemini"),
+        ] {
+            let app_dir = match get_app_skills_dir(app_name) {
+                Ok(dir) => dir,
+                Err(_) => continue,
+            };
+
+            if !app_dir.exists() {
+                continue;
+            }
+
+            // 遍历目录
+            let entries = match fs::read_dir(&app_dir) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+
+            for entry in entries.flatten() {
+                let path = entry.path();
+
+                // 只处理目录
+                if !path.is_dir() {
+                    continue;
+                }
+
+                let directory = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                // 跳过已在数据库中的
+                if existing_dirs.contains(&directory.to_lowercase()) {
+                    skipped += 1;
+                    continue;
+                }
+
+                // 查找 SKILL.md 文件
+                let skill_md = path.join("SKILL.md");
+                let (name, description) = if skill_md.exists() {
+                    match parse_skill_frontmatter(&skill_md) {
+                        Ok(Some((n, d))) => (n, Some(d)),
+                        _ => (directory.clone(), None),
+                    }
+                } else {
+                    (directory.clone(), None)
+                };
+
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0);
+
+                let row = InstalledSkillRow {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    name,
+                    description,
+                    directory: directory.clone(),
+                    repo_owner: None,
+                    repo_name: None,
+                    repo_branch: None,
+                    readme_url: None,
+                    enabled_claude: app_name == "claude",
+                    enabled_codex: app_name == "codex",
+                    enabled_gemini: app_name == "gemini",
+                    installed_at: now,
+                };
+
+                db.save_skill(&row)?;
+                imported += 1;
+                imported_names.push(row.name);
+            }
+        }
+
+        Ok((imported, skipped, imported_names))
+    }
+}
+
+/// 解析 SKILL.md 的 YAML frontmatter
+fn parse_skill_frontmatter(path: &PathBuf) -> Result<Option<(String, String)>, String> {
+    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+
+    // 使用正则提取 frontmatter
+    let re = Regex::new(r"^---\s*\n([\s\S]*?)\n---").map_err(|e| e.to_string())?;
+
+    if let Some(caps) = re.captures(&content) {
+        let yaml_str = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+
+        // 解析 YAML
+        if let Ok(frontmatter) = serde_yaml::from_str::<SkillFrontmatter>(yaml_str) {
+            return Ok(Some((
+                frontmatter.name,
+                frontmatter.description.unwrap_or_default(),
+            )));
+        }
+    }
+
+    Ok(None)
 }

@@ -68,3 +68,11 @@ pub fn delete_skill_repo(
 ) -> Result<(), String> {
     SkillServiceV2::delete_repo(&state.db, &owner, &name)
 }
+
+/// 扫描并导入本地已有的 Skills
+#[tauri::command]
+pub fn scan_and_import_skills(
+    state: State<'_, AppState>,
+) -> Result<(usize, usize, Vec<String>), String> {
+    SkillServiceV2::scan_and_import(&state.db)
+}
