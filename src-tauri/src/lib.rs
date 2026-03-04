@@ -314,6 +314,7 @@ pub fn run() {
             skill_commands::get_skill_repos,
             skill_commands::save_skill_repo,
             skill_commands::delete_skill_repo,
+            skill_commands::scan_and_import_skills,
             // Prompts v2 (数据库版)
             prompt_commands::get_prompts_v2,
             prompt_commands::upsert_prompt_v2,

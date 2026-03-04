@@ -40,4 +40,6 @@ indexmap = { version = "2", features = ["serde"] }
 zip = "2.2"
 futures = "0.3"
 toml = "0.8"
+serde_yaml = "0.9"
+regex = "1"
 

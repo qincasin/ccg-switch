@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package } from 'lucide-react';
+import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package, FolderInput } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSkillStore } from '../stores/useSkillStore';
 import { useSkillStoreV2 } from '../stores/useSkillStoreV2';
@@ -26,11 +26,12 @@ function SkillsPage() {
     });
 
     // ---- V2 (DB) ----
-    const { installed, discoverable, discovering, loading: v2Loading, loadInstalled, discoverSkills, installSkill, uninstallSkill, toggleApp: toggleV2App, repos, loadRepos, saveRepo, deleteRepo } = useSkillStoreV2();
+    const { installed, discoverable, discovering, loading: v2Loading, loadInstalled, discoverSkills, installSkill, uninstallSkill, toggleApp: toggleV2App, repos, loadRepos, saveRepo, deleteRepo, scanAndImport } = useSkillStoreV2();
     const [v2DeleteModal, setV2DeleteModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
     const [installLoading, setInstallLoading] = useState<string | null>(null);
     const [addRepoModal, setAddRepoModal] = useState(false);
     const [newRepo, setNewRepo] = useState({ owner: '', name: '', branch: 'main' });
+    const [scanning, setScanning] = useState(false);
 
     useEffect(() => {
         if (pageTab === 'legacy') loadSkills();
@@ -160,10 +161,32 @@ function SkillsPage() {
                             </>
                         )}
                         {pageTab === 'installed' && (
-                            <button onClick={() => loadInstalled()} disabled={v2Loading} className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-100 transition-colors flex items-center gap-1.5 disabled:opacity-50">
-                                <RefreshCw className={`w-4 h-4 ${v2Loading ? 'animate-spin' : ''}`} />
-                                {t('common.refresh')}
-                            </button>
+                            <>
+                                <button onClick={async () => {
+                                    setScanning(true);
+                                    try {
+                                        const result = await scanAndImport();
+                                        if (result.imported > 0) {
+                                            showToast(`成功导入 ${result.imported} 个技能`, 'success');
+                                        } else if (result.skipped > 0) {
+                                            showToast('所有技能已在数据库中', 'info');
+                                        } else {
+                                            showToast('未发现可导入的技能', 'info');
+                                        }
+                                    } catch (e) {
+                                        showToast(String(e), 'error');
+                                    } finally {
+                                        setScanning(false);
+                                    }
+                                }} disabled={scanning || v2Loading} className="px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                                    <FolderInput className={`w-4 h-4 ${scanning ? 'animate-pulse' : ''}`} />
+                                    {scanning ? '扫描中...' : '扫描导入'}
+                                </button>
+                                <button onClick={() => loadInstalled()} disabled={v2Loading} className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-100 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                                    <RefreshCw className={`w-4 h-4 ${v2Loading ? 'animate-spin' : ''}`} />
+                                    {t('common.refresh')}
+                                </button>
+                            </>
                         )}
                         {pageTab === 'discover' && (
                             <button onClick={() => discoverSkills()} disabled={discovering} className="px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5 disabled:opacity-50">
