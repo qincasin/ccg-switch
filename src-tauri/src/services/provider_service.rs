@@ -86,6 +86,7 @@ pub fn update_provider(id: &str, updated: Provider) -> Result<(), io::Error> {
     p.default_sonnet_model = updated.default_sonnet_model;
     p.default_opus_model = updated.default_opus_model;
     p.default_haiku_model = updated.default_haiku_model;
+    p.default_reasoning_model = updated.default_reasoning_model;
     p.custom_params = updated.custom_params;
     p.settings_config = updated.settings_config;
     p.meta = updated.meta;
@@ -200,6 +201,7 @@ fn sync_to_claude_settings(provider: &Provider) -> Result<(), io::Error> {
         ("ANTHROPIC_DEFAULT_SONNET_MODEL", &provider.default_sonnet_model),
         ("ANTHROPIC_DEFAULT_OPUS_MODEL", &provider.default_opus_model),
         ("ANTHROPIC_DEFAULT_HAIKU_MODEL", &provider.default_haiku_model),
+        ("ANTHROPIC_REASONING_MODEL", &provider.default_reasoning_model),
     ];
     for (key, value) in optional_fields {
         match value {

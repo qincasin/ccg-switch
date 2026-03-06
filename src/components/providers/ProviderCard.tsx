@@ -123,6 +123,11 @@ export default function ProviderCard({
                         ? <code className="font-mono text-xs text-base-content/70 truncate min-w-0" title={provider.defaultHaikuModel}>{provider.defaultHaikuModel}</code>
                         : <span className="text-xs text-base-content/25 italic">默认</span>
                     }
+                    <span className="text-xs text-base-content/40">Thinking</span>
+                    {provider.defaultReasoningModel
+                        ? <code className="font-mono text-xs text-base-content/70 truncate min-w-0" title={provider.defaultReasoningModel}>{provider.defaultReasoningModel}</code>
+                        : <span className="text-xs text-base-content/25 italic">默认</span>
+                    }
                 </div>
 
                 {/* 描述 */}

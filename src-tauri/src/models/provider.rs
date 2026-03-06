@@ -19,6 +19,8 @@ pub struct Provider {
     pub default_opus_model: Option<String>,
     #[serde(rename = "defaultHaikuModel")]
     pub default_haiku_model: Option<String>,
+    #[serde(rename = "defaultReasoningModel")]
+    pub default_reasoning_model: Option<String>,
     #[serde(rename = "customParams")]
     pub custom_params: Option<HashMap<String, serde_json::Value>>,
     #[serde(rename = "settingsConfig")]
@@ -54,6 +56,7 @@ impl From<ApiToken> for Provider {
             default_sonnet_model: token.default_sonnet_model,
             default_opus_model: token.default_opus_model,
             default_haiku_model: token.default_haiku_model,
+            default_reasoning_model: None,
             custom_params: token.custom_params,
             settings_config: None,
             meta: None,

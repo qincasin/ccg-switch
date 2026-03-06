@@ -250,7 +250,8 @@
         "modelConfig": "模型配置",
         "tags": "标签",
         "tagPlaceholder": "输入标签后回车添加",
-        "openUrl": "在浏览器中打开"
+        "openUrl": "在浏览器中打开",
+        "reasoningModel": "推理模型 (Thinking)"
     },
     "settings": {
         "title": "设置",
