@@ -17,7 +17,8 @@
       "Bash(npm:*)",
       "Bash(python:*)",
       "Bash(\"C:/Users/Administrator/.claude/bin/codeagent-wrapper.exe\":*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -49,3 +49,8 @@ pub fn get_provider_config_files(app: String) -> Result<Vec<(String, String)>, S
 pub fn preview_provider_sync(provider: Provider) -> Result<Vec<(String, String, String)>, String> {
     provider_service::preview_provider_sync(&provider).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn get_claude_settings_state() -> Result<serde_json::Value, String> {
+    provider_service::get_claude_settings_state().map_err(|e| e.to_string())
+}
