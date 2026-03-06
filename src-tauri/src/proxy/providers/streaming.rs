@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /// SSE 流式代理工具函数
 
 /// 检查请求体 JSON 中是否包含 `"stream": true`

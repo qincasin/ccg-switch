@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::database::{lock_conn, Database};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};

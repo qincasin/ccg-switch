@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde_json::Value;
 
 /// 从响应体字节中提取 token 用量（支持 Claude 和 OpenAI 格式）

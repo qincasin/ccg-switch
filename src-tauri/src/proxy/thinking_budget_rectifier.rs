@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::proxy::error::ProxyError;
 use serde_json::Value;
 

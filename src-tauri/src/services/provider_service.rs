@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::models::app_type::AppType;
 use crate::models::provider::{Provider, ProvidersConfig};
 use crate::services::storage::json_store;
