@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::models::skill::{Skill, SkillApps, SkillSource};
 use std::collections::HashMap;
 use std::fs;

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod atomic_io;
 pub mod json_store;
 pub mod jsonl_store;

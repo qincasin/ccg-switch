@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use crate::models::provider::Provider;
 use crate::proxy::error::ProxyError;

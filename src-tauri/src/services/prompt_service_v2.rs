@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::database::dao::prompts::PromptRow;
 use crate::database::Database;
 use std::path::PathBuf;

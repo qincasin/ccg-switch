@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Skills 数据库版服务层 (v2)
 //!
 //! SSOT 目录: ~/.claude-switch/skills/<directory>/
@@ -133,7 +134,7 @@ impl SkillServiceV2 {
             .map(|d| d.as_secs() as i64)
             .unwrap_or(0);
 
-        let mut row = InstalledSkillRow {
+        let row = InstalledSkillRow {
             id: uuid::Uuid::new_v4().to_string(),
             name: skill.name.clone(),
             description: Some(skill.description.clone()),

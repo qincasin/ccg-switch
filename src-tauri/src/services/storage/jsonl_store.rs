@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write, BufRead, BufReader};
 use std::path::Path;

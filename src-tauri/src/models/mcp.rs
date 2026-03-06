@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -40,6 +41,7 @@ pub struct McpServer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct McpConfig {
     pub mcpServers: HashMap<String, ServerConfig>,
 }
