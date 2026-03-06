@@ -205,27 +205,92 @@ pub fn move_provider(provider_id: &str, target_index: usize) -> Result<(), io::E
 /// 而是需要映射为 env 环境变量。
 /// 本函数从 settings 中提取这些字段，写入 env 并从顶层移除。
 fn remap_settings_to_env(settings: &mut serde_json::Value) {
-    // teammatesMode → env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
+    // 提取所有需要映射到 env 的布尔字段
     let teammates_enabled = settings.get("teammatesMode")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let disable_traffic = settings.get("disableNonessentialTraffic")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let disable_attribution = settings.get("disableAttributionHeader")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let max_output = settings.get("maxOutputTokens")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
 
     // 从顶层移除（不属于 settings.json 原生字段）
     if let Some(obj) = settings.as_object_mut() {
         obj.remove("teammatesMode");
+        obj.remove("disableNonessentialTraffic");
+        obj.remove("disableAttributionHeader");
+        obj.remove("maxOutputTokens");
+        obj.remove("hideSignature"); // 已废弃，清理残留
     }
 
     // 写入 env
     if let Some(env) = settings.get_mut("env").and_then(|e| e.as_object_mut()) {
+        // teammatesMode → CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
         if teammates_enabled {
-            env.insert(
-                "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS".to_string(),
-                serde_json::Value::String("1".to_string()),
-            );
+            env.insert("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS".to_string(),
+                serde_json::Value::String("1".to_string()));
         } else {
             env.remove("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
         }
+        // disableNonessentialTraffic → CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+        if disable_traffic {
+            env.insert("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
+        }
+        // disableAttributionHeader → CLAUDE_CODE_ATTRIBUTION_HEADER
+        if disable_attribution {
+            env.insert("CLAUDE_CODE_ATTRIBUTION_HEADER".to_string(),
+                serde_json::Value::String("0".to_string()));
+        } else {
+            env.remove("CLAUDE_CODE_ATTRIBUTION_HEADER");
+        }
+        // maxOutputTokens → CLAUDE_CODE_MAX_OUTPUT_TOKENS（用户自定义值）
+        if !max_output.is_empty() {
+            env.insert("CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string(),
+                serde_json::Value::String(max_output.clone()));
+        } else {
+            env.remove("CLAUDE_CODE_MAX_OUTPUT_TOKENS");
+        }
     }
+}
+
+// ── 读取当前 Claude settings.json 中的 checkbox 状态 ──────────
+
+/// 从当前 settings.json 中读取所有 checkbox 对应的配置状态，
+/// 用于编辑 Provider 时正确初始化复选框。
+pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
+    let settings_path = get_claude_settings_path()?;
+    let settings: serde_json::Value = if settings_path.exists() {
+        let content = fs::read_to_string(&settings_path)?;
+        serde_json::from_str(&content)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+    } else {
+        serde_json::json!({})
+    };
+
+    let env = settings.get("env").and_then(|e| e.as_object());
+
+    Ok(serde_json::json!({
+        "alwaysThinkingEnabled": settings.get("alwaysThinkingEnabled")
+            .and_then(|v| v.as_bool()).unwrap_or(false),
+        "teammatesMode": env.and_then(|e| e.get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableNonessentialTraffic": env.and_then(|e| e.get("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableAttributionHeader": env.and_then(|e| e.get("CLAUDE_CODE_ATTRIBUTION_HEADER"))
+            .and_then(|v| v.as_str()) == Some("0"),
+        "maxOutputTokens": env.and_then(|e| e.get("CLAUDE_CODE_MAX_OUTPUT_TOKENS"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+    }))
 }
 
 // ── 配置预览（不写入文件） ──────────────────────────────────

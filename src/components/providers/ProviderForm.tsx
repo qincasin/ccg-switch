@@ -54,9 +54,10 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
         }
         return {
             alwaysThinkingEnabled: false,
-            enabledPlugins: {},
-            hideSignature: false,
             teammatesMode: false,
+            disableNonessentialTraffic: false,
+            disableAttributionHeader: false,
+            maxOutputTokens: '',
         };
     });
 
@@ -81,10 +82,31 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             } else {
                 setInternalSettings({
                     alwaysThinkingEnabled: false,
-                    enabledPlugins: {},
-                    hideSignature: false,
                     teammatesMode: false,
+                    disableNonessentialTraffic: false,
+                    disableAttributionHeader: false,
+                    maxOutputTokens: '',
                 });
+            }
+
+            // 对 Claude 类型，从当前 settings.json 读取 checkbox 状态
+            // 用文件实际值填充 Provider 未显式保存的新字段
+            const currentAppType = editingProvider?.appType || defaultAppType;
+            if (currentAppType === 'claude') {
+                invoke<any>('get_claude_settings_state').then(fileState => {
+                    setInternalSettings((prev: any) => {
+                        const saved = editingProvider?.settingsConfig || {};
+                        const merged = { ...prev };
+                        // 对每个已知字段：如果 Provider 没有显式保存过，用文件当前值
+                        const knownKeys = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
+                        for (const key of knownKeys) {
+                            if (!(key in saved)) {
+                                merged[key] = fileState[key];
+                            }
+                        }
+                        return merged;
+                    });
+                }).catch(() => {});
             }
         }
     }, [isOpen, editingProvider, defaultAppType]);
@@ -119,7 +141,17 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 defaultReasoningModel: defaultReasoningModel.trim() || undefined,
                 description: description.trim() || undefined,
                 tags: tags.length > 0 ? tags : undefined,
-                settingsConfig: internalSettings // Submit raw config safely
+                settingsConfig: (() => {
+                    // 只保存白名单内的已知字段，排除历史残留
+                    const known = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
+                    const clean: Record<string, any> = {};
+                    if (internalSettings) {
+                        for (const k of known) {
+                            if (k in internalSettings) clean[k] = internalSettings[k];
+                        }
+                    }
+                    return Object.keys(clean).length > 0 ? clean : undefined;
+                })()
             };
 
             if (isEditing && editingProvider) {
@@ -164,25 +196,24 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     // 首次打开表单时的初始预览，作为 diff baseline（对比用户在表单中做的变更）
     const initialPreviewRef = useRef<Record<string, string>>({});
 
-    // 构建用于预览的 Provider 对象（仅包含用户主动修改的 settingsConfig 字段）
+    // 构建用于预览的 Provider 对象（仅包含已知配置字段，排除历史残留字段）
     const buildPreviewProvider = useCallback(() => {
-        // 过滤掉默认值字段，避免虚假 diff 高亮
-        const filteredSettings: Record<string, any> = {};
-        const defaults: Record<string, any> = {
+        // 白名单：只有这些字段可以写入 settingsConfig 传给后端
+        const knownFields: Record<string, any> = {
             alwaysThinkingEnabled: false,
-            enabledPlugins: {},
-            hideSignature: false,
             teammatesMode: false,
+            disableNonessentialTraffic: false,
+            disableAttributionHeader: false,
+            maxOutputTokens: '',
         };
+        const filteredSettings: Record<string, any> = {};
         if (internalSettings) {
             for (const [k, v] of Object.entries(internalSettings)) {
-                const def = defaults[k];
-                // 保留非默认值字段，或不在默认列表中的自定义字段
-                if (def === undefined) {
-                    filteredSettings[k] = v;
-                } else if (typeof def === 'boolean' && v !== def) {
-                    filteredSettings[k] = v;
-                } else if (typeof def === 'object' && v && Object.keys(v as object).length > 0) {
+                if (!(k in knownFields)) continue; // 跳过不在白名单中的字段（如历史残留的 enabledPlugins）
+                const def = knownFields[k];
+                if (typeof def === 'boolean') {
+                    filteredSettings[k] = v; // 布尔字段始终发送，确保 true/false 都能明确生效
+                } else if (typeof def === 'string' && v && (v as string).trim() !== '') {
                     filteredSettings[k] = v;
                 }
             }
@@ -249,7 +280,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             onCancel={onClose}
             onClose={onClose}
             confirmText={saving ? t('common.saving', '保存中...') : t('common.save', '保存')}
-            maxWidthClass="max-w-[1100px]"
+            maxWidthClass="max-w-[1400px]"
         >
             {/* 预设选择 */}
             {!isEditing && (
@@ -269,7 +300,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
 
             <div className="flex flex-col lg:flex-row gap-8 min-h-[500px]">
                 {/* 左侧：基本配置和模型 */}
-                <div className="flex-[1.1] space-y-5">
+                <div className="flex-[0.9] min-w-0 space-y-5">
                     {/* 名称和应用类型 */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -479,49 +510,72 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 </div>
 
                 {/* 右侧：生成预览 */}
-                <div className="flex-0.9 flex flex-col pt-2 lg:pt-0 pb-1 w-full lg:w-[45%]">
+                <div className="flex-[1.1] min-w-0 flex flex-col pt-2 lg:pt-0 pb-1">
                     <div className="flex items-center justify-between mb-4 mt-4 lg:mt-0">
                         <LabelText className="font-bold">配置预览 (切换后完整文件内容)</LabelText>
                     </div>
 
                     {/* 快捷配置按钮组 */}
                     {appType === 'claude' && (
-                        <div className="flex items-center gap-5 mb-4 px-4 py-3 bg-slate-800/50 rounded-md border border-slate-700/50">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 px-4 py-3 bg-slate-800/50 rounded-md border border-slate-700/50">
                             <label className="flex items-center gap-2 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" 
-                                    checked={!!internalSettings.hideSignature}
-                                    onChange={(e) => handleCheckboxChange('hideSignature', e.target.checked)}
-                                />
-                                <span className="text-xs text-slate-300 group-hover:text-slate-200 transition-colors">隐藏 AI 签名</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" 
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
                                     checked={!!internalSettings.alwaysThinkingEnabled}
                                     onChange={(e) => handleCheckboxChange('alwaysThinkingEnabled', e.target.checked)}
                                 />
                                 <span className="text-xs text-slate-300 group-hover:text-slate-200 transition-colors">扩展思考</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" 
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
                                     checked={!!internalSettings.teammatesMode}
                                     onChange={(e) => handleCheckboxChange('teammatesMode', e.target.checked)}
                                 />
                                 <span className="text-xs text-slate-300 group-hover:text-slate-200 transition-colors">Teammates 模式</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                                    checked={!!internalSettings.disableNonessentialTraffic}
+                                    onChange={(e) => handleCheckboxChange('disableNonessentialTraffic', e.target.checked)}
+                                />
+                                <span className="text-xs text-slate-300 group-hover:text-slate-200 transition-colors">禁用非必要流量</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                                    checked={!!internalSettings.disableAttributionHeader}
+                                    onChange={(e) => handleCheckboxChange('disableAttributionHeader', e.target.checked)}
+                                />
+                                <span className="text-xs text-slate-300 group-hover:text-slate-200 transition-colors">禁用归因头</span>
+                            </label>
+                            <label className="flex items-center gap-2 group">
+                                <span className="text-xs text-slate-300 whitespace-nowrap">最大输出 Tokens</span>
+                                <input
+                                    type="text"
+                                    className="h-7 w-24 rounded border border-slate-600 bg-slate-900/50 px-2 text-xs text-slate-200 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                                    placeholder="如 100000"
+                                    value={internalSettings.maxOutputTokens || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/[^0-9]/g, '');
+                                        setInternalSettings((prev: any) => ({ ...prev, maxOutputTokens: val }));
+                                    }}
+                                />
                             </label>
                         </div>
                     )}
 
                     <div className="flex flex-col gap-4">
                         {previewData.map((file, idx) => {
+                            const stripComma = (s: string) => s.replace(/,\s*$/, '');
                             const previewLines = file.content.split('\n');
-                            const originalSet = new Set(file.originalContent.split('\n'));
-                            const changedCount = previewLines.filter(line => !originalSet.has(line)).length;
+                            const originalSet = new Set(file.originalContent.split('\n').map(stripComma));
+                            const changedCount = previewLines.filter(line => !originalSet.has(stripComma(line))).length;
 
                             return (
                                 <div key={idx} className="relative rounded-md border border-slate-700 overflow-hidden bg-[#1e1e2e]">
@@ -535,7 +589,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                                     </div>
                                     <div className="p-0 overflow-x-auto">
                                         {previewLines.map((line, lineIdx) => {
-                                            const isNew = !originalSet.has(line);
+                                            const isNew = !originalSet.has(stripComma(line));
 
                                             return (
                                                 <div
