@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, FolderOpen, Terminal, FileText, RefreshCw, ChevronRight, Clock, MessageSquare, Copy, Hash, Play } from 'lucide-react';
+import { Search, FolderOpen, Terminal, FileText, RefreshCw, ChevronRight, Clock, MessageSquare, Copy, Hash, Play, List, X } from 'lucide-react';
 
 interface ProjectInfo {
     name: string;
@@ -72,6 +72,11 @@ function WorkspacesPage() {
     const [sessionSearch, setSessionSearch] = useState('');
     const [loadingProjects, setLoadingProjects] = useState(true);
     const [loadingSessions, setLoadingSessions] = useState(false);
+    const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
+    const [tocDialogOpen, setTocDialogOpen] = useState(false);
+    const [tocSearch, setTocSearch] = useState('');
+    const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
 
     const loadMessages = useCallback(async (session: SessionInfo) => {
         setLoadingMessages(true);
@@ -87,6 +92,9 @@ function WorkspacesPage() {
 
     const handleSelectSession = useCallback((session: SessionInfo) => {
         setSelectedSession(session);
+        messageRefs.current.clear();
+        setActiveMessageIndex(null);
+        setTocSearch('');
         loadMessages(session);
     }, [loadMessages]);
 
@@ -173,6 +181,33 @@ function WorkspacesPage() {
             s.session_id.toLowerCase().includes(q)
         );
     }, [sessions, sessionSearch]);
+
+    const userMessagesToc = useMemo(() => {
+        return messages
+            .map((msg, index) => ({ msg, index }))
+            .filter(({ msg }) => msg.role.toLowerCase() === 'user')
+            .map(({ msg, index }) => ({
+                index,
+                preview: msg.content.slice(0, 60) + (msg.content.length > 60 ? '...' : ''),
+                ts: msg.ts,
+            }));
+    }, [messages]);
+
+    const filteredToc = useMemo(() => {
+        if (!tocSearch.trim()) return userMessagesToc;
+        const q = tocSearch.toLowerCase();
+        return userMessagesToc.filter(item => item.preview.toLowerCase().includes(q));
+    }, [userMessagesToc, tocSearch]);
+
+    const scrollToMessage = useCallback((index: number) => {
+        const el = messageRefs.current.get(index);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setActiveMessageIndex(index);
+            setTocDialogOpen(false);
+            setTimeout(() => setActiveMessageIndex(null), 2000);
+        }
+    }, []);
 
     const formatSize = (bytes: number) => {
         if (bytes >= 1_048_576) return (bytes / 1_048_576).toFixed(1) + ' MB';
@@ -382,7 +417,8 @@ function WorkspacesPage() {
                     </div>
 
                     {/* Right Panel - Session Detail */}
-                    <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 flex min-w-0">
+                        <div className="flex-1 flex flex-col min-w-0">
                         {!selectedSession ? (
                             <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
                                 <FileText className="w-12 h-12 mb-3 opacity-20" />
@@ -479,7 +515,7 @@ function WorkspacesPage() {
                                 </div>
 
                                 {/* Messages Area */}
-                                <div className="flex-1 overflow-y-auto">
+                                <div className="flex-1 overflow-y-auto" ref={messagesContainerRef}>
                                     <div className="p-5">
                                         {/* Conversation History Header */}
                                         <div className="flex items-center gap-2 mb-4">
@@ -506,7 +542,15 @@ function WorkspacesPage() {
                                                 {messages.map((msg, index) => (
                                                     <div
                                                         key={`${msg.role}-${index}`}
+                                                        ref={(el) => {
+                                                            if (el) messageRefs.current.set(index, el);
+                                                            else messageRefs.current.delete(index);
+                                                        }}
                                                         className={`rounded-lg border px-4 py-3 relative group transition-all ${
+                                                            activeMessageIndex === index
+                                                                ? 'ring-2 ring-blue-500 ring-offset-1'
+                                                                : ''
+                                                        } ${
                                                             msg.role === 'user'
                                                                 ? 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20 ml-8'
                                                                 : 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/20 mr-8'
@@ -543,6 +587,111 @@ function WorkspacesPage() {
                                         )}
                                     </div>
                                 </div>
+                            </>
+                        )}
+                        </div>
+
+                        {/* TOC Sidebar - large screens */}
+                        {selectedSession && userMessagesToc.length > 2 && (
+                            <div className="w-56 shrink-0 flex-col border-l border-gray-200/50 dark:border-base-200 bg-gray-50/30 dark:bg-base-100/30 hidden xl:flex">
+                                <div className="p-3 border-b border-gray-200/50 dark:border-base-200">
+                                    <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        <List className="w-3.5 h-3.5" />
+                                        <span>{t('workspaces.toc_title', { defaultValue: '用户消息目录' })}</span>
+                                        <span className="ml-auto text-[10px] tabular-nums">{filteredToc.length}{tocSearch.trim() ? `/${userMessagesToc.length}` : ''}</span>
+                                    </div>
+                                </div>
+                                <div className="px-2 pt-2 pb-1">
+                                    <div className="relative">
+                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={tocSearch}
+                                            onChange={(e) => setTocSearch(e.target.value)}
+                                            placeholder={t('workspaces.search_toc', { defaultValue: '搜索目录...' })}
+                                            className="w-full pl-6 pr-2 py-1 text-xs rounded-md bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500 text-gray-900 dark:text-base-content placeholder-gray-400 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto">
+                                    <div className="p-2 pt-1 space-y-0.5">
+                                        {filteredToc.map((item, tocIndex) => (
+                                            <button
+                                                key={item.index}
+                                                type="button"
+                                                onClick={() => scrollToMessage(item.index)}
+                                                className="w-full text-left px-2 py-1.5 rounded text-xs transition-colors hover:bg-gray-100 dark:hover:bg-base-200 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-start gap-2"
+                                            >
+                                                <span className="shrink-0 w-4 h-4 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] flex items-center justify-center font-medium">
+                                                    {tocIndex + 1}
+                                                </span>
+                                                <span className="line-clamp-2 leading-snug">{item.preview}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TOC Floating Button + Dialog - small screens */}
+                        {selectedSession && userMessagesToc.length > 2 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setTocDialogOpen(true)}
+                                    className="xl:hidden fixed bottom-20 right-4 w-10 h-10 rounded-full shadow-lg z-30 bg-gradient-to-r from-blue-500 to-purple-500 text-white flex items-center justify-center hover:shadow-xl transition-all"
+                                >
+                                    <List className="w-4 h-4" />
+                                </button>
+
+                                {tocDialogOpen && (
+                                    <div className="xl:hidden fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+                                        <div className="fixed inset-0 bg-black/40" onClick={() => setTocDialogOpen(false)} />
+                                        <div className="relative w-full max-w-md max-h-[70vh] flex flex-col bg-white dark:bg-base-100 rounded-t-2xl sm:rounded-2xl shadow-2xl mx-4 mb-0 sm:mb-0">
+                                            <div className="px-4 py-3 border-b border-gray-200/50 dark:border-base-200 flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-base-content">
+                                                    <List className="w-4 h-4 text-blue-500" />
+                                                    {t('workspaces.toc_title', { defaultValue: '用户消息目录' })}
+                                                </div>
+                                                <button
+                                                    onClick={() => setTocDialogOpen(false)}
+                                                    className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
+                                                >
+                                                    <X className="w-4 h-4 text-gray-400" />
+                                                </button>
+                                            </div>
+                                            <div className="px-3 pt-3 pb-1">
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        value={tocSearch}
+                                                        onChange={(e) => setTocSearch(e.target.value)}
+                                                        placeholder={t('workspaces.search_toc', { defaultValue: '搜索目录...' })}
+                                                        className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-gray-900 dark:text-base-content placeholder-gray-400 transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="overflow-y-auto flex-1">
+                                                <div className="p-3 space-y-1">
+                                                    {filteredToc.map((item, tocIndex) => (
+                                                        <button
+                                                            key={item.index}
+                                                            type="button"
+                                                            onClick={() => scrollToMessage(item.index)}
+                                                            className="w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all hover:bg-blue-500/10 text-gray-700 dark:text-gray-300 flex items-start gap-3"
+                                                        >
+                                                            <span className="shrink-0 w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs flex items-center justify-center font-semibold">
+                                                                {tocIndex + 1}
+                                                            </span>
+                                                            <span className="line-clamp-2 leading-relaxed pt-0.5">{item.preview}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
