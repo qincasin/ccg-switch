@@ -9,6 +9,7 @@ export interface Provider {
     defaultSonnetModel?: string;
     defaultOpusModel?: string;
     defaultHaikuModel?: string;
+    defaultReasoningModel?: string;
     customParams?: Record<string, any>;
     settingsConfig?: any;
     meta?: Record<string, string>;

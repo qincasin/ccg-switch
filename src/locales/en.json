@@ -363,7 +363,8 @@
         "modelConfig": "Model Configuration",
         "tags": "Tags",
         "tagPlaceholder": "Type a tag and press Enter to add",
-        "openUrl": "Open in browser"
+        "openUrl": "Open in browser",
+        "reasoningModel": "Reasoning Model (Thinking)"
     },
     "settings": {
         "title": "Settings",

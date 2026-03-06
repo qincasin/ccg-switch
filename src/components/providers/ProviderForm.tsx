@@ -33,6 +33,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [defaultSonnetModel, setDefaultSonnetModel] = useState(editingProvider?.defaultSonnetModel || '');
     const [defaultOpusModel, setDefaultOpusModel] = useState(editingProvider?.defaultOpusModel || '');
     const [defaultHaikuModel, setDefaultHaikuModel] = useState(editingProvider?.defaultHaikuModel || '');
+    const [defaultReasoningModel, setDefaultReasoningModel] = useState(editingProvider?.defaultReasoningModel || '');
     const [description, setDescription] = useState(editingProvider?.description || '');
     const [tags, setTags] = useState<string[]>(editingProvider?.tags || []);
     const [tagInput, setTagInput] = useState('');
@@ -50,6 +51,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             setDefaultSonnetModel(editingProvider?.defaultSonnetModel || '');
             setDefaultOpusModel(editingProvider?.defaultOpusModel || '');
             setDefaultHaikuModel(editingProvider?.defaultHaikuModel || '');
+            setDefaultReasoningModel(editingProvider?.defaultReasoningModel || '');
             setDescription(editingProvider?.description || '');
             setTags(editingProvider?.tags || []);
             setTagInput('');
@@ -78,6 +80,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 defaultSonnetModel: defaultSonnetModel.trim() || undefined,
                 defaultOpusModel: defaultOpusModel.trim() || undefined,
                 defaultHaikuModel: defaultHaikuModel.trim() || undefined,
+                defaultReasoningModel: defaultReasoningModel.trim() || undefined,
                 description: description.trim() || undefined,
                 tags: tags.length > 0 ? tags : undefined,
             };
@@ -249,6 +252,13 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                         placeholder="claude-haiku-..."
                         value={defaultHaikuModel}
                         onChange={setDefaultHaikuModel}
+                        options={fetchedModels}
+                    />
+                    <ModelComboBox
+                        label={t('providers.reasoningModel', '推理模型 (Thinking)')}
+                        placeholder="claude-sonnet-4-..."
+                        value={defaultReasoningModel}
+                        onChange={setDefaultReasoningModel}
                         options={fetchedModels}
                     />
                 </div>
