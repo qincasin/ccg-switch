@@ -41,6 +41,85 @@ fn get_claude_home() -> Result<PathBuf, io::Error> {
     Ok(home.join(".claude"))
 }
 
+/// 递归统计目录下所有 .jsonl 文件数量和最新修改时间
+fn count_jsonl_recursive(dir: &Path) -> (usize, Option<std::time::SystemTime>) {
+    let mut count = 0usize;
+    let mut latest: Option<std::time::SystemTime> = None;
+    count_jsonl_inner(dir, &mut count, &mut latest);
+    (count, latest)
+}
+
+fn count_jsonl_inner(dir: &Path, count: &mut usize, latest: &mut Option<std::time::SystemTime>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            count_jsonl_inner(&path, count, latest);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+            *count += 1;
+            if let Ok(meta) = entry.metadata() {
+                if let Ok(modified) = meta.modified() {
+                    if latest.map_or(true, |l| modified > l) {
+                        *latest = Some(modified);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// 递归收集目录下所有 .jsonl 文件路径
+fn collect_jsonl_paths(dir: &Path, files: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_jsonl_paths(&path, files);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+            files.push(path);
+        }
+    }
+}
+
+/// 从项目目录中的 .jsonl 文件提取 cwd 字段（即真实项目路径）
+fn extract_cwd_from_project_dir(dir: &Path) -> Option<String> {
+    // 优先读取一级 .jsonl 文件（主会话），避免读取 subagent 文件
+    let entries = fs::read_dir(dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
+            continue;
+        }
+        if let Some(cwd) = extract_cwd_from_jsonl(&path) {
+            return Some(cwd);
+        }
+    }
+    None
+}
+
+/// 从单个 .jsonl 文件的前几行提取 cwd 字段
+fn extract_cwd_from_jsonl(path: &Path) -> Option<String> {
+    let file = fs::File::open(path).ok()?;
+    let reader = BufReader::new(file);
+    // 只扫描前 20 行，cwd 通常在首行
+    for line in reader.lines().take(20).flatten() {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+            if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                if !cwd.is_empty() {
+                    return Some(cwd.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 /// 获取项目列表
 pub fn list_projects() -> Result<Vec<ProjectInfo>, io::Error> {
     let projects_dir = get_claude_home()?.join("projects");
@@ -56,33 +135,17 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, io::Error> {
         }
 
         let dir_name = entry.file_name().to_string_lossy().to_string();
-        // 将目录名转换回路径: C--guodevelop-xxx -> C:\guodevelop\xxx
-        let project_path = decode_project_path(&dir_name);
+        // 优先从 .jsonl 内容读取 cwd（准确），fallback 到目录名解码
+        let project_path = extract_cwd_from_project_dir(&entry.path())
+            .unwrap_or_else(|| decode_project_path(&dir_name));
         let display_name = project_path
             .split(['/', '\\'])
             .last()
             .unwrap_or(&dir_name)
             .to_string();
 
-        // 统计 session 文件数量
-        let mut session_count = 0;
-        let mut latest_modified: Option<std::time::SystemTime> = None;
-
-        if let Ok(files) = fs::read_dir(entry.path()) {
-            for file in files.flatten() {
-                let fname = file.file_name().to_string_lossy().to_string();
-                if fname.ends_with(".jsonl") {
-                    session_count += 1;
-                    if let Ok(meta) = file.metadata() {
-                        if let Ok(modified) = meta.modified() {
-                            if latest_modified.is_none() || modified > latest_modified.unwrap() {
-                                latest_modified = Some(modified);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // 递归统计 session 文件数量（含 subagents 子目录）
+        let (session_count, latest_modified) = count_jsonl_recursive(&entry.path());
 
         let last_active = latest_modified.map(|t| {
             let duration = t
@@ -146,16 +209,8 @@ pub fn get_stats() -> Result<DashboardStats, io::Error> {
     if projects_dir.exists() {
         for entry in fs::read_dir(&projects_dir)?.flatten() {
             if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                if let Ok(files) = fs::read_dir(entry.path()) {
-                    total_sessions += files
-                        .flatten()
-                        .filter(|f| {
-                            f.file_name()
-                                .to_string_lossy()
-                                .ends_with(".jsonl")
-                        })
-                        .count();
-                }
+                let (count, _) = count_jsonl_recursive(&entry.path());
+                total_sessions += count;
             }
         }
     }
@@ -244,7 +299,8 @@ pub fn get_project_token_stats() -> Result<Vec<ProjectTokenStat>, io::Error> {
         }
 
         let encoded = entry.file_name().to_string_lossy().to_string();
-        let project_path = decode_project_path(&encoded);
+        let project_path = extract_cwd_from_project_dir(&entry.path())
+            .unwrap_or_else(|| decode_project_path(&encoded));
         let project_name = project_path
             .split(['/', '\\'])
             .last()
@@ -255,18 +311,13 @@ pub fn get_project_token_stats() -> Result<Vec<ProjectTokenStat>, io::Error> {
         let mut input_tokens = 0u64;
         let mut output_tokens = 0u64;
 
-        if let Ok(files) = fs::read_dir(entry.path()) {
-            for file in files.flatten() {
-                let fname = file.file_name().to_string_lossy().to_string();
-                if !fname.ends_with(".jsonl") {
-                    continue;
-                }
-
-                session_count += 1;
-                if let Ok((input, output)) = sum_session_tokens(&file.path()) {
-                    input_tokens = input_tokens.saturating_add(input);
-                    output_tokens = output_tokens.saturating_add(output);
-                }
+        let mut jsonl_files = Vec::new();
+        collect_jsonl_paths(&entry.path(), &mut jsonl_files);
+        for file_path in &jsonl_files {
+            session_count += 1;
+            if let Ok((input, output)) = sum_session_tokens(file_path) {
+                input_tokens = input_tokens.saturating_add(input);
+                output_tokens = output_tokens.saturating_add(output);
             }
         }
 
@@ -336,6 +387,30 @@ fn extract_usage_u64(usage: &serde_json::Value, key: &str) -> Option<u64> {
     value.as_f64().map(|v| if v < 0.0 { 0 } else { v as u64 })
 }
 
+/// 对 parts 尝试所有 `-` / `.` 分隔符组合，返回第一个匹配的目录。
+/// Claude Code 编码路径时将 `.` 也替换为 `-`，因此解码时需要尝试两种分隔符。
+fn try_join_with_separators(root: &Path, parts: &[&str]) -> Option<PathBuf> {
+    let n = parts.len();
+    if n == 1 {
+        let p = root.join(parts[0]);
+        return if p.is_dir() { Some(p) } else { None };
+    }
+    let seps = n - 1;
+    // 位掩码：bit=0 用 '-'，bit=1 用 '.'；mask=0 即全 '-'（优先）
+    for mask in 0..(1u32 << seps) {
+        let mut name = String::from(parts[0]);
+        for i in 0..seps {
+            name.push(if mask & (1 << i) != 0 { '.' } else { '-' });
+            name.push_str(parts[i + 1]);
+        }
+        let candidate = root.join(&name);
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
 fn resolve_encoded_parts(root: &Path, parts: &[&str]) -> Option<PathBuf> {
     if parts.is_empty() {
         return Some(root.to_path_buf());
@@ -349,10 +424,9 @@ fn resolve_encoded_parts(root: &Path, parts: &[&str]) -> Option<PathBuf> {
 
         // 贪心：优先尝试最长组合（例如 claude-switch-v1）。
         for end in (index + 1..=parts.len()).rev() {
-            let candidate_name = parts[index..end].join("-");
-            let candidate_path = current.join(&candidate_name);
-            if candidate_path.is_dir() {
-                matched_next = Some((end, candidate_path));
+            let segment = &parts[index..end];
+            if let Some(matched_path) = try_join_with_separators(&current, segment) {
+                matched_next = Some((end, matched_path));
                 break;
             }
         }
@@ -442,15 +516,21 @@ pub struct SessionInfo {
 }
 
 /// 将项目路径编码为目录名（decode_project_path 的反向操作）
+/// Claude Code 编码时将 `\`、`/`、`.` 等非字母数字字符替换为 `-`
 fn encode_project_path(path: &str) -> String {
-    // C:\guodevelop\claude-switch-v1 -> C--guodevelop-claude-switch-v1
+    // C:\guodevelop\claude-switch-v1\claude-switch-1.0 -> C--guodevelop-claude-switch-v1-claude-switch-1-0
     let path = path.replace('/', "\\"); // normalize
     if path.len() >= 3 && &path[1..3] == ":\\" {
         let drive = &path[0..1];
         let rest = &path[3..];
-        format!("{}--{}", drive, rest.replace('\\', "-"))
+        let encoded: String = rest.chars().map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' }
+        }).collect();
+        format!("{}--{}", drive, encoded)
     } else {
-        path.replace('\\', "-")
+        path.chars().map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' }
+        }).collect()
     }
 }
 
@@ -465,19 +545,21 @@ pub fn get_project_sessions(project_path: &str) -> Result<Vec<SessionInfo>, io::
     }
 
     let mut sessions = Vec::new();
+    let mut jsonl_files = Vec::new();
+    collect_jsonl_paths(&project_dir, &mut jsonl_files);
 
-    for entry in fs::read_dir(&project_dir)?.flatten() {
-        let fname = entry.file_name().to_string_lossy().to_string();
-        if !fname.ends_with(".jsonl") {
-            continue;
-        }
+    for path in jsonl_files {
+        let fname = match path.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
 
         let session_id = fname.trim_end_matches(".jsonl").to_string();
-        let file_path = entry.path().to_string_lossy().to_string();
-        let (session_title, session_preview, session_slug) = extract_session_hints(&entry.path());
-        let (last_message, last_message_role, last_message_at) = extract_last_message(&entry.path());
+        let file_path = path.to_string_lossy().to_string();
+        let (session_title, session_preview, session_slug) = extract_session_hints(&path);
+        let (last_message, last_message_role, last_message_at) = extract_last_message(&path);
 
-        let (last_modified, file_size) = if let Ok(meta) = entry.metadata() {
+        let (last_modified, file_size) = if let Ok(meta) = fs::metadata(&path) {
             let size = meta.len();
             let modified = meta.modified().ok().map(|t| {
                 let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();

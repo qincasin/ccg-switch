@@ -69,6 +69,7 @@ function WorkspacesPage() {
     const [messages, setMessages] = useState<SessionMessage[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [search, setSearch] = useState('');
+    const [sessionSearch, setSessionSearch] = useState('');
     const [loadingProjects, setLoadingProjects] = useState(true);
     const [loadingSessions, setLoadingSessions] = useState(false);
 
@@ -125,6 +126,7 @@ function WorkspacesPage() {
 
     const selectProject = (project: ProjectInfo) => {
         setSelectedProject(project);
+        setSessionSearch('');
         loadSessions(project);
     };
 
@@ -159,6 +161,18 @@ function WorkspacesPage() {
             p.path.toLowerCase().includes(search.toLowerCase())
         ), [projects, search]
     );
+
+    const filteredSessions = useMemo(() => {
+        if (!sessionSearch.trim()) return sessions;
+        const q = sessionSearch.toLowerCase();
+        return sessions.filter(s =>
+            (s.session_title || '').toLowerCase().includes(q) ||
+            (s.session_preview || '').toLowerCase().includes(q) ||
+            (s.session_slug || '').toLowerCase().includes(q) ||
+            (s.last_message || '').toLowerCase().includes(q) ||
+            s.session_id.toLowerCase().includes(q)
+        );
+    }, [sessions, sessionSearch]);
 
     const formatSize = (bytes: number) => {
         if (bytes >= 1_048_576) return (bytes / 1_048_576).toFixed(1) + ' MB';
@@ -283,7 +297,7 @@ function WorkspacesPage() {
                                             {t('workspaces.sessions_title', { defaultValue: '会话列表' })}
                                         </span>
                                         <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium">
-                                            {sessions.length}
+                                            {filteredSessions.length}{sessionSearch.trim() ? `/${sessions.length}` : ''}
                                         </span>
                                     </div>
                                     <button
@@ -294,20 +308,34 @@ function WorkspacesPage() {
                                     </button>
                                 </div>
 
+                                {/* Session Search */}
+                                <div className="px-3 py-2 border-b border-gray-200/50 dark:border-base-200">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={sessionSearch}
+                                            onChange={(e) => setSessionSearch(e.target.value)}
+                                            placeholder={t('workspaces.search_sessions', { defaultValue: '搜索会话...' })}
+                                            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-gray-900 dark:text-base-content placeholder-gray-400 transition-all"
+                                        />
+                                    </div>
+                                </div>
+
                                 {/* Session List */}
                                 <div className="flex-1 overflow-y-auto">
                                     {loadingSessions ? (
                                         <div className="flex items-center justify-center py-12">
                                             <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
                                         </div>
-                                    ) : sessions.length === 0 ? (
+                                    ) : filteredSessions.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
                                             <MessageSquare className="w-8 h-8 mb-2 opacity-40" />
-                                            <p>{t('workspaces.no_sessions')}</p>
+                                            <p>{sessionSearch.trim() ? t('workspaces.no_search_results', { defaultValue: '无匹配会话' }) : t('workspaces.no_sessions')}</p>
                                         </div>
                                     ) : (
                                         <div className="p-2 space-y-0.5">
-                                            {sessions.map((session) => {
+                                            {filteredSessions.map((session) => {
                                                 const isSelected = selectedSession?.session_id === session.session_id;
                                                 return (
                                                     <button
