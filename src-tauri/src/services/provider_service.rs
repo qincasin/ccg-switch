@@ -94,7 +94,16 @@ pub fn update_provider(id: &str, updated: Provider) -> Result<(), io::Error> {
     p.description = updated.description;
     p.tags = updated.tags;
 
-    save_providers(&all)
+    let is_active = p.is_active;
+    let synced_provider = p.clone();
+    save_providers(&all)?;
+
+    // If the provider is currently active, re-sync to the app config
+    if is_active {
+        sync_provider_to_app_config(&synced_provider)?;
+    }
+
+    Ok(())
 }
 
 /// 删除 provider
