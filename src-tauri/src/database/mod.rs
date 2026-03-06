@@ -52,26 +52,41 @@ impl Database {
         schema::create_tables(&conn)
     }
 
-    /// 首次启动时插入默认 skill 仓库
+    /// 首次启动时插入默认 skill 仓库，并修正已知仓库的分支名
     fn init_default_skill_repos(&self) -> Result<(), String> {
         let conn = lock_conn!(self.conn);
-        let count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM skill_repos", [], |row| row.get(0))
-            .map_err(|e| format!("Failed to count skill_repos: {e}"))?;
 
-        if count == 0 {
-            let defaults = [
-                ("anthropics", "skills", "main"),
-                ("ComposioHQ", "awesome-claude-skills", "main"),
-                ("cexll", "myclaude", "main"),
-                ("JimLiu", "baoyu-skills", "main"),
-            ];
-            for (owner, name, branch) in &defaults {
+        let defaults = [
+            ("anthropics", "skills", "main"),
+            ("ComposioHQ", "awesome-claude-skills", "master"),
+            ("cexll", "myclaude", "master"),
+            ("JimLiu", "baoyu-skills", "main"),
+        ];
+
+        for (owner, name, branch) in &defaults {
+            // 检查是否已存在
+            let exists: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM skill_repos WHERE owner = ?1 AND name = ?2",
+                    rusqlite::params![owner, name],
+                    |row| row.get(0),
+                )
+                .unwrap_or(false);
+
+            if !exists {
+                // 不存在则插入
                 conn.execute(
-                    "INSERT OR IGNORE INTO skill_repos (owner, name, branch, enabled) VALUES (?1, ?2, ?3, 1)",
+                    "INSERT INTO skill_repos (owner, name, branch, enabled) VALUES (?1, ?2, ?3, 1)",
                     rusqlite::params![owner, name, branch],
                 )
                 .map_err(|e| format!("Failed to insert default skill repo: {e}"))?;
+            } else {
+                // 已存在则更新分支名（修正历史错误，如 main -> master）
+                conn.execute(
+                    "UPDATE skill_repos SET branch = ?3 WHERE owner = ?1 AND name = ?2",
+                    rusqlite::params![owner, name, branch],
+                )
+                .map_err(|e| format!("Failed to update skill repo branch: {e}"))?;
             }
         }
 

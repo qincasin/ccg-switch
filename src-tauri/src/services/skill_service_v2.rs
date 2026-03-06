@@ -246,7 +246,14 @@ impl SkillServiceV2 {
 
     // ========== 扫描导入 ==========
 
-    /// 扫描 ~/.claude/skills/、~/.codex/skills/、~/.gemini/skills/ 目录并导入到数据库
+    /// 扫描所有 skill 目录并导入到数据库
+    ///
+    /// 扫描源（与 cc-switch 一致）：
+    /// 1. ~/.claude/skills/
+    /// 2. ~/.codex/skills/
+    /// 3. ~/.gemini/skills/
+    /// 4. ~/.agents/skills/ (Claude Code 原生安装位置)
+    /// 5. ~/.claude-switch/skills/ (SSOT 目录)
     ///
     /// 返回 (导入数量, 跳过数量, 导入的 skill 名称列表)
     pub fn scan_and_import(db: &Arc<Database>) -> Result<(usize, usize, Vec<String>), String> {
@@ -260,24 +267,44 @@ impl SkillServiceV2 {
         let mut imported = 0;
         let mut skipped = 0;
         let mut imported_names: Vec<String> = vec![];
+        // 已处理的 directory（防止同一 skill 在多个目录中被重复导入）
+        let mut seen_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-        // 扫描三个应用的目录
-        for (app_name, enabled_field) in [
-            ("claude", "claude"),
-            ("codex", "codex"),
-            ("gemini", "gemini"),
+        // 收集所有扫描源：(目录路径, 来源标签, 启用的应用列表)
+        let mut scan_sources: Vec<(PathBuf, String, Vec<&str>)> = Vec::new();
+
+        // 1-3. 三个应用目录
+        for (app_name, apps) in [
+            ("claude", vec!["claude"]),
+            ("codex", vec!["codex"]),
+            ("gemini", vec!["gemini"]),
         ] {
-            let app_dir = match get_app_skills_dir(app_name) {
-                Ok(dir) => dir,
-                Err(_) => continue,
-            };
+            if let Ok(dir) = get_app_skills_dir(app_name) {
+                scan_sources.push((dir, app_name.to_string(), apps));
+            }
+        }
 
-            if !app_dir.exists() {
+        // 4. ~/.agents/skills/ (Claude Code 原生安装位置)
+        if let Some(home) = dirs::home_dir() {
+            let agents_dir = home.join(".agents").join("skills");
+            if agents_dir.exists() {
+                scan_sources.push((agents_dir, "agents".to_string(), vec!["claude"]));
+            }
+        }
+
+        // 5. SSOT 目录 ~/.claude-switch/skills/
+        if let Ok(ssot) = get_ssot_dir() {
+            scan_sources.push((ssot, "ssot".to_string(), vec![]));
+        }
+
+        let ssot_dir = get_ssot_dir().ok();
+
+        for (scan_dir, _label, default_apps) in &scan_sources {
+            if !scan_dir.exists() {
                 continue;
             }
 
-            // 遍历目录
-            let entries = match fs::read_dir(&app_dir) {
+            let entries = match fs::read_dir(scan_dir) {
                 Ok(e) => e,
                 Err(_) => continue,
             };
@@ -296,11 +323,22 @@ impl SkillServiceV2 {
                     .unwrap_or("")
                     .to_string();
 
+                // 跳过隐藏目录
+                if directory.starts_with('.') {
+                    continue;
+                }
+
                 // 跳过已在数据库中的
                 if existing_dirs.contains(&directory.to_lowercase()) {
                     skipped += 1;
                     continue;
                 }
+
+                // 跳过已在本次扫描中处理过的
+                if seen_dirs.contains(&directory.to_lowercase()) {
+                    continue;
+                }
+                seen_dirs.insert(directory.to_lowercase());
 
                 // 查找 SKILL.md 文件
                 let skill_md = path.join("SKILL.md");
@@ -312,6 +350,14 @@ impl SkillServiceV2 {
                 } else {
                     (directory.clone(), None)
                 };
+
+                // 将 skill 复制到 SSOT 目录（如果不在 SSOT 中）
+                if let Some(ref ssot) = ssot_dir {
+                    let ssot_path = ssot.join(&directory);
+                    if !ssot_path.exists() && path != ssot_path {
+                        let _ = copy_dir(&path, &ssot_path);
+                    }
+                }
 
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -327,9 +373,9 @@ impl SkillServiceV2 {
                     repo_name: None,
                     repo_branch: None,
                     readme_url: None,
-                    enabled_claude: app_name == "claude",
-                    enabled_codex: app_name == "codex",
-                    enabled_gemini: app_name == "gemini",
+                    enabled_claude: default_apps.contains(&"claude"),
+                    enabled_codex: default_apps.contains(&"codex"),
+                    enabled_gemini: default_apps.contains(&"gemini"),
                     installed_at: now,
                 };
 

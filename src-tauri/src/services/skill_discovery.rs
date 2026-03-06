@@ -128,36 +128,25 @@ fn scan_extracted_dir(
 }
 
 /// 下载仓库 ZIP 并解压到临时目录，返回 (临时目录, 实际 branch)
+///
+/// 支持分支回退：依次尝试 配置分支 → main → master
 async fn download_repo(repo: &SkillRepo) -> Result<(PathBuf, String), String> {
-    let branch = repo.branch.clone();
-    let url = format!(
-        "https://github.com/{}/{}/archive/refs/heads/{}.zip",
-        repo.owner, repo.name, branch
-    );
+    // 构建候选分支列表（去重）
+    let mut branches: Vec<&str> = Vec::new();
+    if !repo.branch.is_empty() && !repo.branch.eq_ignore_ascii_case("HEAD") {
+        branches.push(repo.branch.as_str());
+    }
+    if !branches.contains(&"main") {
+        branches.push("main");
+    }
+    if !branches.contains(&"master") {
+        branches.push("master");
+    }
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .build()
         .map_err(|e| e.to_string())?;
-
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("下载仓库 {}/{} 失败: {}", repo.owner, repo.name, e))?;
-
-    if !resp.status().is_success() {
-        return Err(format!(
-            "下载 {}/{} 失败: HTTP {}",
-            repo.owner,
-            repo.name,
-            resp.status()
-        ));
-    }
-
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-    let cursor = Cursor::new(bytes);
-    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| e.to_string())?;
 
     let temp_dir = std::env::temp_dir().join(format!(
         "cc-switch-skill-{}-{}",
@@ -166,33 +155,91 @@ async fn download_repo(repo: &SkillRepo) -> Result<(PathBuf, String), String> {
     ));
     fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
 
-    // 解压 —— 剥除顶层目录 (owner-repo-branch/)
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-        let outpath = match file.enclosed_name() {
-            Some(p) => p.to_owned(),
-            None => continue,
+    let mut last_error = None;
+    for branch in &branches {
+        let url = format!(
+            "https://github.com/{}/{}/archive/refs/heads/{}.zip",
+            repo.owner, repo.name, branch
+        );
+
+        let resp = match client.get(&url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                last_error = Some(format!(
+                    "下载仓库 {}/{} (分支 {}) 失败: {}",
+                    repo.owner, repo.name, branch, e
+                ));
+                continue;
+            }
         };
 
-        // 剥除第一个路径组件
-        let stripped: PathBuf = outpath.components().skip(1).collect();
-        if stripped.as_os_str().is_empty() {
+        if !resp.status().is_success() {
+            last_error = Some(format!(
+                "下载 {}/{} (分支 {}) 失败: HTTP {}",
+                repo.owner, repo.name, branch, resp.status()
+            ));
             continue;
         }
-        let dest = temp_dir.join(&stripped);
 
-        if file.is_dir() {
-            fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
-        } else {
-            if let Some(parent) = dest.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let bytes = match resp.bytes().await {
+            Ok(b) => b,
+            Err(e) => {
+                last_error = Some(e.to_string());
+                continue;
             }
-            let mut outfile = fs::File::create(&dest).map_err(|e| e.to_string())?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+        };
+
+        let cursor = Cursor::new(bytes);
+        let mut archive = match zip::ZipArchive::new(cursor) {
+            Ok(a) => a,
+            Err(e) => {
+                last_error = Some(e.to_string());
+                continue;
+            }
+        };
+
+        // 解压 —— 剥除顶层目录 (owner-repo-branch/)
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let outpath = match file.enclosed_name() {
+                Some(p) => p.to_owned(),
+                None => continue,
+            };
+
+            // 剥除第一个路径组件
+            let stripped: PathBuf = outpath.components().skip(1).collect();
+            if stripped.as_os_str().is_empty() {
+                continue;
+            }
+            let dest = temp_dir.join(&stripped);
+
+            if file.is_dir() {
+                fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
+            } else {
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                let mut outfile = fs::File::create(&dest).map_err(|e| e.to_string())?;
+                std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+            }
         }
+
+        if *branch != repo.branch {
+            eprintln!(
+                "仓库 {}/{} 分支回退: {} -> {}",
+                repo.owner, repo.name, repo.branch, branch
+            );
+        }
+
+        return Ok((temp_dir, branch.to_string()));
     }
 
-    Ok((temp_dir, branch))
+    // 所有分支都失败
+    let _ = fs::remove_dir_all(&temp_dir);
+    Err(last_error.unwrap_or_else(|| format!(
+        "下载 {}/{} 所有分支均失败",
+        repo.owner, repo.name
+    )))
 }
 
 /// 从单个仓库发现技能

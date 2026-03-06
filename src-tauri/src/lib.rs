@@ -212,6 +212,21 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String) -> Result<(), Str
     Ok(())
 }
 
+// 打开外部链接
+#[tauri::command]
+async fn open_external(app: tauri::AppHandle, url: String) -> Result<bool, String> {
+    use tauri_plugin_opener::OpenerExt;
+    let url = if url.starts_with("http://") || url.starts_with("https://") {
+        url
+    } else {
+        format!("https://{url}")
+    };
+    app.opener()
+        .open_url(&url, None::<String>)
+        .map_err(|e| format!("打开链接失败: {e}"))?;
+    Ok(true)
+}
+
 // Universal Provider 命令
 #[tauri::command]
 fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<String>, String> {
@@ -265,6 +280,7 @@ pub fn run() {
             refresh_stats_cache,
             get_project_sessions,
             open_in_terminal,
+            open_external,
             // Provider 命令
             provider_commands::get_providers,
             provider_commands::get_all_providers,
