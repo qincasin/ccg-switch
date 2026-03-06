@@ -80,7 +80,7 @@ function AboutPanel() {
             {/* 关于 - 标题 */}
             <div>
                 <h2 className="font-semibold text-gray-900 dark:text-base-content">
-                    {t('settings.about', { defaultValue: '关于' })}
+                    {t('settings.about.title', { defaultValue: '关于' })}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
                     {t('settings.aboutHint', { defaultValue: '查看版本信息与更新状态。' })}
