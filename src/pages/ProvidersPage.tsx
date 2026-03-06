@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2, Tag, FileText, Copy, ExternalLink } from 'lucide-react';
+import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2, Tag, Copy, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useProviderStore } from '../stores/useProviderStore';
