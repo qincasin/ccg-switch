@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package, FolderInput } from 'lucide-react';
+import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package, FolderInput, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useSkillStore } from '../stores/useSkillStore';
 import { useSkillStoreV2 } from '../stores/useSkillStoreV2';
 import ModalDialog from '../components/common/ModalDialog';
@@ -31,7 +32,9 @@ function SkillsPage() {
     const [v2DeleteModal, setV2DeleteModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' });
     const [installLoading, setInstallLoading] = useState<string | null>(null);
     const [addRepoModal, setAddRepoModal] = useState(false);
-    const [newRepo, setNewRepo] = useState({ owner: '', name: '', branch: 'main' });
+    const [repoUrl, setRepoUrl] = useState('');
+    const [repoBranch, setRepoBranch] = useState('');
+    const [repoError, setRepoError] = useState('');
     const [scanning, setScanning] = useState(false);
 
     useEffect(() => {
@@ -203,7 +206,7 @@ function SkillsPage() {
                                     <RefreshCw className="w-4 h-4" />
                                     {t('common.refresh')}
                                 </button>
-                                <button onClick={() => { setNewRepo({ owner: '', name: '', branch: 'main' }); setAddRepoModal(true); }} className="px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5">
+                                <button onClick={() => { setRepoUrl(''); setRepoBranch(''); setRepoError(''); setAddRepoModal(true); }} className="px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5">
                                     <Plus className="w-4 h-4" />
                                     添加仓库
                                 </button>
@@ -321,26 +324,33 @@ function SkillsPage() {
                                                 </div>
                                                 {skill.description && <p className="text-sm text-gray-500 dark:text-gray-400">{skill.description}</p>}
                                             </div>
-                                            {!isInstalled && (
-                                                <button
-                                                    disabled={installLoading === skill.key}
-                                                    onClick={async () => {
-                                                        setInstallLoading(skill.key);
-                                                        try {
-                                                            await installSkill(skill, 'claude');
-                                                            showToast(`已安装 ${skill.name}`, 'success');
-                                                        } catch (e) {
-                                                            showToast(String(e), 'error');
-                                                        } finally {
-                                                            setInstallLoading(null);
-                                                        }
-                                                    }}
-                                                    className="px-3 py-1.5 bg-purple-500 text-white text-xs font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5 ml-4 disabled:opacity-50"
-                                                >
-                                                    {installLoading === skill.key ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                                                    安装
-                                                </button>
-                                            )}
+                                            <div className="flex items-center gap-2 ml-4">
+                                                {skill.readmeUrl && (
+                                                    <button onClick={() => invoke('open_external', { url: skill.readmeUrl! })} className="p-2 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="在 GitHub 中查看">
+                                                        <ExternalLink className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {!isInstalled && (
+                                                    <button
+                                                        disabled={installLoading === skill.key}
+                                                        onClick={async () => {
+                                                            setInstallLoading(skill.key);
+                                                            try {
+                                                                await installSkill(skill, 'claude');
+                                                                showToast(`已安装 ${skill.name}`, 'success');
+                                                            } catch (e) {
+                                                                showToast(String(e), 'error');
+                                                            } finally {
+                                                                setInstallLoading(null);
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1.5 bg-purple-500 text-white text-xs font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                    >
+                                                        {installLoading === skill.key ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                                                        安装
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -381,6 +391,9 @@ function SkillsPage() {
                                                 <input type="checkbox" className="toggle toggle-sm toggle-primary" checked={repo.enabled} onChange={(e) => saveRepo({ ...repo, enabled: e.target.checked })} />
                                                 <span className="text-xs text-gray-600 dark:text-gray-400">{repo.enabled ? '启用' : '禁用'}</span>
                                             </label>
+                                            <button onClick={() => invoke('open_external', { url: `https://github.com/${repo.owner}/${repo.name}` })} className="p-2 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="在 GitHub 中查看">
+                                                <ExternalLink className="w-4 h-4" />
+                                            </button>
                                             <button onClick={() => deleteRepo(repo.owner, repo.name)} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -487,9 +500,20 @@ function SkillsPage() {
                     title="添加技能仓库"
                     type="confirm"
                     onConfirm={async () => {
-                        if (!newRepo.owner.trim() || !newRepo.name.trim()) return;
+                        setRepoError('');
+                        // 解析 URL: 支持 https://github.com/owner/repo、github.com/owner/repo、owner/repo
+                        let cleaned = repoUrl.trim();
+                        cleaned = cleaned.replace(/^https?:\/\/github\.com\//, '');
+                        cleaned = cleaned.replace(/^github\.com\//, '');
+                        cleaned = cleaned.replace(/\.git$/, '');
+                        cleaned = cleaned.replace(/\/$/, '');
+                        const parts = cleaned.split('/');
+                        if (parts.length !== 2 || !parts[0] || !parts[1]) {
+                            setRepoError('无效的仓库地址，请输入 GitHub 仓库链接或 owner/repo 格式');
+                            return;
+                        }
                         try {
-                            await saveRepo({ owner: newRepo.owner.trim(), name: newRepo.name.trim(), branch: newRepo.branch.trim() || 'main', enabled: true });
+                            await saveRepo({ owner: parts[0], name: parts[1], branch: repoBranch.trim() || 'main', enabled: true });
                             showToast('仓库添加成功', 'success');
                             setAddRepoModal(false);
                         } catch (e) { showToast(String(e), 'error'); }
@@ -498,17 +522,14 @@ function SkillsPage() {
                 >
                     <div className="space-y-3">
                         <div>
-                            <label className="text-sm text-gray-600 dark:text-gray-400">Owner</label>
-                            <input type="text" value={newRepo.owner} onChange={(e) => setNewRepo({ ...newRepo, owner: e.target.value })} placeholder="e.g. anthropics" className="w-full mt-1 px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content text-sm" />
+                            <label className="text-sm text-gray-600 dark:text-gray-400">仓库地址</label>
+                            <input type="text" value={repoUrl} onChange={(e) => { setRepoUrl(e.target.value); setRepoError(''); }} placeholder="https://github.com/owner/repo 或 owner/repo" className="w-full mt-1 px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content text-sm" />
                         </div>
                         <div>
-                            <label className="text-sm text-gray-600 dark:text-gray-400">Name</label>
-                            <input type="text" value={newRepo.name} onChange={(e) => setNewRepo({ ...newRepo, name: e.target.value })} placeholder="e.g. skills" className="w-full mt-1 px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content text-sm" />
+                            <label className="text-sm text-gray-600 dark:text-gray-400">分支（可选）</label>
+                            <input type="text" value={repoBranch} onChange={(e) => setRepoBranch(e.target.value)} placeholder="默认 main" className="w-full mt-1 px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content text-sm" />
                         </div>
-                        <div>
-                            <label className="text-sm text-gray-600 dark:text-gray-400">Branch</label>
-                            <input type="text" value={newRepo.branch} onChange={(e) => setNewRepo({ ...newRepo, branch: e.target.value })} placeholder="main" className="w-full mt-1 px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content text-sm" />
-                        </div>
+                        {repoError && <p className="text-sm text-red-500">{repoError}</p>}
                     </div>
                 </ModalDialog>
             </div>
