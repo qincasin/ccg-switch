@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2, Tag, Copy, ExternalLink } from 'lucide-react';
+import { Plus, RefreshCw, LayoutGrid, List, GripVertical, Zap, Edit2, Trash2, Eye, EyeOff, Search, Layers, Download, Upload, Loader2, Tag, Copy, ExternalLink, Terminal } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useProviderStore } from '../stores/useProviderStore';
@@ -149,6 +149,17 @@ function ProvidersPage() {
             showToast(t('providers.delete_success'), 'success');
         } catch (error) {
             showToast(t('providers.delete_failed', { error: String(error) }), 'error');
+        }
+    };
+
+    const handleLaunchTerminal = async (command: string) => {
+        try {
+            const { homeDir } = await import('@tauri-apps/api/path');
+            const home = await homeDir();
+            await invoke('launch_resume_session', { command, cwd: home });
+            showToast(`已启动 ${command} 终端`, 'success');
+        } catch (error) {
+            showToast('启动终端失败: ' + error, 'error');
         }
     };
 
@@ -320,18 +331,18 @@ function ProvidersPage() {
                     </select>
                 </div>
 
-                {/* 快捷打开配置文件 */}
+                {/* 快捷打开配置文件 + 启动终端 */}
                 <div className="flex items-center gap-4 flex-wrap text-xs">
                     {[
-                        { app: 'Claude', dot: 'bg-orange-400', files: [
+                        { app: 'Claude', cli: 'claude', dot: 'bg-orange-400', termClass: 'text-orange-500 hover:bg-orange-500/10', files: [
                             { label: 'settings.json', path: '~/.claude/settings.json' },
                             { label: '.claude.json', path: '~/.claude.json' },
                         ]},
-                        { app: 'Codex', dot: 'bg-emerald-400', files: [
+                        { app: 'Codex', cli: 'codex', dot: 'bg-emerald-400', termClass: 'text-emerald-500 hover:bg-emerald-500/10', files: [
                             { label: 'auth.json', path: '~/.codex/auth.json' },
                             { label: 'config.toml', path: '~/.codex/config.toml' },
                         ]},
-                        { app: 'Gemini', dot: 'bg-blue-400', files: [
+                        { app: 'Gemini', cli: 'gemini', dot: 'bg-blue-400', termClass: 'text-blue-500 hover:bg-blue-500/10', files: [
                             { label: '.env', path: '~/.gemini/.env' },
                             { label: 'settings.json', path: '~/.gemini/settings.json' },
                         ]},
@@ -351,6 +362,13 @@ function ProvidersPage() {
                                     {file.label}
                                 </button>
                             ))}
+                            <button
+                                onClick={() => handleLaunchTerminal(group.cli)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${group.termClass}`}
+                                title={`启动 ${group.cli} 终端`}
+                            >
+                                <Terminal className="w-3 h-3" />
+                            </button>
                         </div>
                     ))}
                 </div>
