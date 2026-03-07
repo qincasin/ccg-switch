@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Loader2, RefreshCw, ChevronDown, ExternalLink, X, Plus } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -41,7 +41,6 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [defaultReasoningModel, setDefaultReasoningModel] = useState(editingProvider?.defaultReasoningModel || '');
     const [description, setDescription] = useState(editingProvider?.description || '');
     const [tags, setTags] = useState<string[]>(editingProvider?.tags || []);
-    const [tagInput, setTagInput] = useState('');
     const [showKey, setShowKey] = useState(false);
     const [saving, setSaving] = useState(false);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -73,7 +72,6 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             setDefaultReasoningModel(editingProvider?.defaultReasoningModel || '');
             setDescription(editingProvider?.description || '');
             setTags(editingProvider?.tags || []);
-            setTagInput('');
             setShowKey(false);
             setFetchedModels([]);
             
@@ -444,56 +442,11 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                     {/* 标签 */}
                     <div className="space-y-2 pt-2">
                         <LabelText>{t('providers.tags', '标签')}</LabelText>
-                        <div className="flex gap-2">
-                            <TextInput
-                                type="text"
-                                placeholder={t('providers.tagPlaceholder', '输入标签后回车添加')}
-                                value={tagInput}
-                                onChange={(e: any) => setTagInput(e.target.value)}
-                                onKeyDown={(e: any) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        const v = tagInput.trim();
-                                        if (v && !tags.includes(v)) {
-                                            setTags([...tags, v]);
-                                        }
-                                        setTagInput('');
-                                    }
-                                }}
-                            />
-                            <button
-                                type="button"
-                                className="inline-flex items-center justify-center rounded-md border border-slate-700 bg-slate-900/50 px-3 hover:bg-slate-800 transition-colors"
-                                onClick={() => {
-                                    const v = tagInput.trim();
-                                    if (v && !tags.includes(v)) {
-                                        setTags([...tags, v]);
-                                    }
-                                    setTagInput('');
-                                }}
-                            >
-                                <Plus className="w-4 h-4 text-slate-300" />
-                            </button>
-                        </div>
-                        {tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                {tags.map((tag) => (
-                                    <span
-                                        key={tag}
-                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                    >
-                                        {tag}
-                                        <button
-                                            type="button"
-                                            onClick={() => setTags(tags.filter(t => t !== tag))}
-                                            className="hover:text-blue-300 focus:outline-none"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                        )}
+                        <TagInput
+                            tags={tags}
+                            onChange={setTags}
+                            placeholder={t('providers.tagPlaceholder', '输入标签后回车添加')}
+                        />
                     </div>
 
                     {/* 描述 */}
@@ -706,6 +659,133 @@ function ModelComboBox({ label, placeholder, value, onChange, options }: {
                     </ul>
                 </div>
             )}
+        </div>
+    );
+}
+
+/** 标签输入组件：支持历史标签建议、输入过滤、回车/点击添加 */
+function TagInput({ tags, onChange, placeholder }: {
+    tags: string[];
+    onChange: (tags: string[]) => void;
+    placeholder: string;
+}) {
+    const { providers } = useProviderStore();
+    const [input, setInput] = useState('');
+    const [focused, setFocused] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    // 收集所有 Provider 中使用过的标签（去重 + 排序）
+    const allHistoryTags = useMemo(() => {
+        const set = new Set<string>();
+        providers.forEach(p => p.tags?.forEach(t => set.add(t)));
+        return Array.from(set).sort();
+    }, [providers]);
+
+    // 根据输入过滤建议（排除已选中的）
+    const suggestions = useMemo(() => {
+        const available = allHistoryTags.filter(t => !tags.includes(t));
+        const q = input.trim().toLowerCase();
+        if (!q) return available;
+        return available.filter(t => t.toLowerCase().includes(q));
+    }, [allHistoryTags, tags, input]);
+
+    const addTag = (tag: string) => {
+        const v = tag.trim();
+        if (v && !tags.includes(v)) {
+            onChange([...tags, v]);
+        }
+        setInput('');
+    };
+
+    const removeTag = (tag: string) => {
+        onChange(tags.filter(t => t !== tag));
+    };
+
+    // 点击外部关闭建议
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+                setFocused(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const showSuggestions = focused && suggestions.length > 0;
+
+    return (
+        <div ref={wrapperRef} className="space-y-2">
+            {/* 输入框 */}
+            <div className="relative">
+                <input
+                    type="text"
+                    className="flex h-9 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-1 text-sm text-slate-200 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                    placeholder={placeholder}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onFocus={() => setFocused(true)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addTag(input);
+                        }
+                    }}
+                />
+                {/* 建议下拉 */}
+                {showSuggestions && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-700 bg-slate-800 shadow-lg overflow-hidden">
+                        <ul className="max-h-36 overflow-y-auto py-1">
+                            {suggestions.map((tag) => (
+                                <li
+                                    key={tag}
+                                    className="px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-slate-100 cursor-pointer transition-colors"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        addTag(tag);
+                                    }}
+                                >
+                                    {tag}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+
+            {/* 已选标签 + 快捷历史标签 */}
+            <div className="flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                    <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/15 text-blue-400 border border-blue-500/25"
+                    >
+                        {tag}
+                        <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="hover:text-blue-300 focus:outline-none"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </span>
+                ))}
+                {/* 未选中的历史标签，作为快捷添加 */}
+                {allHistoryTags
+                    .filter(t => !tags.includes(t))
+                    .map((tag) => (
+                        <button
+                            key={tag}
+                            type="button"
+                            onClick={() => addTag(tag)}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-700/40 text-slate-500 border border-slate-600/30 hover:bg-slate-700/70 hover:text-slate-300 hover:border-slate-500/50 transition-colors"
+                        >
+                            <Plus className="w-2.5 h-2.5" />
+                            {tag}
+                        </button>
+                    ))
+                }
+            </div>
         </div>
     );
 }
