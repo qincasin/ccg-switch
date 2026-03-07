@@ -6,12 +6,12 @@ use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
 
-/// 获取日志目录路径：`~/.claude-switch/proxy/logs`
+/// 获取日志目录路径：`~/.ccg-switch/proxy/logs`
 fn get_log_dir() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "无法获取用户主目录")
     })?;
-    Ok(home.join(".claude-switch").join("proxy").join("logs"))
+    Ok(home.join(".ccg-switch").join("proxy").join("logs"))
 }
 
 /// 读取指定日期的原始请求日志（JSONL 格式）

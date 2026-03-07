@@ -19,7 +19,7 @@ interface ProxyStoreState {
     startProxy: (host: string, port: number) => Promise<void>;
     stopProxy: () => Promise<void>;
     loadConfig: () => Promise<void>;
-    updateConfig: (config: Partial<ProxyConfig>) => void;
+    updateConfig: (config: Partial<ProxyConfig>) => Promise<void>;
 }
 
 export const useProxyStore = create<ProxyStoreState>((set, get) => {
@@ -109,8 +109,15 @@ export const useProxyStore = create<ProxyStoreState>((set, get) => {
             }
         },
 
-        updateConfig: (partial) => {
-            set((s) => ({ config: { ...s.config, ...partial } }));
+        updateConfig: async (partial) => {
+            const newConfig = { ...get().config, ...partial };
+            set({ config: newConfig });
+            try {
+                await invoke('save_proxy_config', { config: newConfig });
+            } catch (error) {
+                console.error('Failed to save proxy config:', error);
+                throw error;
+            }
         },
     };
 });

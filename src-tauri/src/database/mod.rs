@@ -17,7 +17,7 @@ macro_rules! lock_conn {
 pub(crate) use lock_conn;
 
 impl Database {
-    /// 生产环境初始化，数据库在 ~/.claude-switch/cc-switch.db
+    /// 生产环境初始化，数据库在 ~/.ccg-switch/cc-switch.db
     pub fn init() -> Result<Self, String> {
         let db_path = Self::get_db_path()?;
         if let Some(parent) = db_path.parent() {
@@ -44,7 +44,7 @@ impl Database {
     fn get_db_path() -> Result<PathBuf, String> {
         let home = dirs::home_dir()
             .ok_or_else(|| "Home directory not found".to_string())?;
-        Ok(home.join(".claude-switch").join("cc-switch.db"))
+        Ok(home.join(".ccg-switch").join("cc-switch.db"))
     }
 
     fn create_tables(&self) -> Result<(), String> {

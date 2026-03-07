@@ -27,14 +27,18 @@ export default function ProxyConfig() {
     const hostValid = localHost.trim().length > 0;
     const canSave = portValid && hostValid && !running;
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!canSave) return;
-        updateConfig({
-            host: localHost.trim(),
-            port: portNum,
-            takeoverMode: localTakeover,
-        });
-        showToast('配置已保存', 'success');
+        try {
+            await updateConfig({
+                host: localHost.trim(),
+                port: portNum,
+                takeoverMode: localTakeover,
+            });
+            showToast('配置已保存', 'success');
+        } catch (error) {
+            showToast('保存配置失败: ' + error, 'error');
+        }
     };
 
     return (

@@ -20,12 +20,12 @@ pub struct WebDavConfig {
     pub last_sync_at: Option<String>,
 }
 
-/// 获取 WebDAV 配置文件路径：`~/.claude-switch/webdav.json`
+/// 获取 WebDAV 配置文件路径：`~/.ccg-switch/webdav.json`
 fn get_webdav_config_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir().ok_or_else(|| {
         io::Error::new(io::ErrorKind::NotFound, "Home not found")
     })?;
-    Ok(home.join(".claude-switch").join("webdav.json"))
+    Ok(home.join(".ccg-switch").join("webdav.json"))
 }
 
 /// 读取 WebDAV 配置，文件不存在时返回默认值

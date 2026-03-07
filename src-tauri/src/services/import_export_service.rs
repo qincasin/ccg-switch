@@ -6,7 +6,7 @@ use chrono::Utc;
 fn get_data_dir() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
-    Ok(home.join(".claude-switch"))
+    Ok(home.join(".ccg-switch"))
 }
 
 /// 导出所有配置为单个 JSON

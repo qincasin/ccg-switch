@@ -6,7 +6,7 @@ use std::path::PathBuf;
 fn get_prompts_dir() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
-    Ok(home.join(".claude-switch").join("prompts"))
+    Ok(home.join(".ccg-switch").join("prompts"))
 }
 
 /// 获取指定应用 prompts 目录路径

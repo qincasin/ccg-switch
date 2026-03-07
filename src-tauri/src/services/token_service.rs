@@ -31,7 +31,7 @@ struct ModelsResponse {
 fn get_tokens_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
-    Ok(home.join(".claude-switch").join("tokens.json"))
+    Ok(home.join(".ccg-switch").join("tokens.json"))
 }
 
 fn get_claude_settings_path() -> Result<PathBuf, io::Error> {

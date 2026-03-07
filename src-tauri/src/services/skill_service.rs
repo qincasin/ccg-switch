@@ -14,7 +14,7 @@ fn get_user_skills_dir() -> Result<PathBuf, io::Error> {
 fn get_skill_apps_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
-    Ok(home.join(".claude-switch").join("skill-apps.json"))
+    Ok(home.join(".ccg-switch").join("skill-apps.json"))
 }
 
 fn load_skill_apps() -> Result<HashMap<String, SkillApps>, io::Error> {
@@ -146,7 +146,7 @@ pub fn list_skills_for_app(project_dir: Option<&str>, app: &str) -> Result<Vec<S
     Ok(filtered)
 }
 
-/// 更新 Skill 的 per-app 开关，存储到 ~/.claude-switch/skill-apps.json
+/// 更新 Skill 的 per-app 开关，存储到 ~/.ccg-switch/skill-apps.json
 pub fn update_skill_apps(name: &str, apps: SkillApps) -> Result<(), io::Error> {
     let mut skill_apps = load_skill_apps().unwrap_or_default();
     skill_apps.insert(name.to_string(), apps);
