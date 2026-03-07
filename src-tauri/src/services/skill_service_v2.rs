@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 //! Skills 数据库版服务层 (v2)
 //!
-//! SSOT 目录: ~/.claude-switch/skills/<directory>/
+//! SSOT 目录: ~/.ccg-switch/skills/<directory>/
 //! 应用目录: ~/.claude/skills/ / ~/.codex/skills/ / ~/.gemini/skills/
 
 use crate::database::dao::skills::{InstalledSkillRow, SkillRepo};
@@ -24,7 +24,7 @@ struct SkillFrontmatter {
 
 fn get_ssot_dir() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or("无法获取 HOME 目录")?;
-    let dir = home.join(".claude-switch").join("skills");
+    let dir = home.join(".ccg-switch").join("skills");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
@@ -254,7 +254,7 @@ impl SkillServiceV2 {
     /// 2. ~/.codex/skills/
     /// 3. ~/.gemini/skills/
     /// 4. ~/.agents/skills/ (Claude Code 原生安装位置)
-    /// 5. ~/.claude-switch/skills/ (SSOT 目录)
+    /// 5. ~/.ccg-switch/skills/ (SSOT 目录)
     ///
     /// 返回 (导入数量, 跳过数量, 导入的 skill 名称列表)
     pub fn scan_and_import(db: &Arc<Database>) -> Result<(usize, usize, Vec<String>), String> {
@@ -293,7 +293,7 @@ impl SkillServiceV2 {
             }
         }
 
-        // 5. SSOT 目录 ~/.claude-switch/skills/
+        // 5. SSOT 目录 ~/.ccg-switch/skills/
         if let Ok(ssot) = get_ssot_dir() {
             scan_sources.push((ssot, "ssot".to_string(), vec![]));
         }

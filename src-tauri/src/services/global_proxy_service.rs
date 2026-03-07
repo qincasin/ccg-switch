@@ -20,7 +20,7 @@ pub struct GlobalProxyConfig {
 fn get_proxy_config_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
-    Ok(home.join(".claude-switch").join("global-proxy.json"))
+    Ok(home.join(".ccg-switch").join("global-proxy.json"))
 }
 
 /// 获取全局代理配置

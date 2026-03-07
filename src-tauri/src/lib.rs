@@ -24,7 +24,7 @@ use models::subagent::Subagent;
 use models::token::ApiToken;
 use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat, SessionInfo, SessionMessage};
 use services::stats_service::StatsCache;
-use services::{config_service, dashboard_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
+use services::{config_service, dashboard_service, migration_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
 use services::universal_provider_service::UniversalProviderConfig;
 use services::tool_version_service::ToolVersion;
 
@@ -390,6 +390,8 @@ pub fn run() {
             provider_commands::preview_provider_sync,
             provider_commands::get_claude_settings_state,
             // Proxy 命令
+            proxy_commands::get_proxy_config,
+            proxy_commands::save_proxy_config,
             proxy_commands::start_proxy,
             proxy_commands::stop_proxy,
             proxy_commands::get_proxy_status,
@@ -444,6 +446,11 @@ pub fn run() {
             prompt_commands::get_prompt_live_content,
         ])
         .setup(|app| {
+            // 执行数据目录迁移 (.claude-switch → .ccg-switch)
+            if let Err(e) = migration_service::check_and_run_migration() {
+                eprintln!("Migration warning: {e}");
+            }
+
             // 初始化数据库
             let db = database::Database::init()
                 .expect("Failed to initialize database");

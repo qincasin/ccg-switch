@@ -21,11 +21,49 @@ impl Default for MigrationConfig {
     }
 }
 
-/// 数据目录 ~/.claude-switch/
+/// 数据目录 ~/.ccg-switch/
 fn get_data_dir() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
+    Ok(home.join(".ccg-switch"))
+}
+
+/// 旧数据目录 ~/.claude-switch/ （用于迁移）
+fn get_legacy_data_dir() -> Result<PathBuf, io::Error> {
+    let home = dirs::home_dir()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
     Ok(home.join(".claude-switch"))
+}
+
+/// 将 ~/.claude-switch/ 迁移到 ~/.ccg-switch/（增量合并，不覆盖已有文件）
+fn migrate_directory() -> Result<bool, io::Error> {
+    let old_dir = get_legacy_data_dir()?;
+    let new_dir = get_data_dir()?;
+
+    // 旧目录不存在，无需迁移
+    if !old_dir.exists() {
+        return Ok(false);
+    }
+
+    // 增量合并：将旧目录中不存在于新目录的文件复制过去
+    merge_dir_recursive(&old_dir, &new_dir)?;
+    Ok(true)
+}
+
+/// 递归合并目录：仅复制目标中不存在的文件
+fn merge_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<(), io::Error> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            merge_dir_recursive(&src_path, &dst_path)?;
+        } else if !dst_path.exists() {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
 }
 
 /// providers.json 路径
@@ -43,7 +81,7 @@ fn get_config_path() -> Result<PathBuf, io::Error> {
     Ok(get_data_dir()?.join("config.json"))
 }
 
-/// 迁移前备份旧文件到 ~/.claude-switch/backups/
+/// 迁移前备份旧文件到 ~/.ccg-switch/backups/
 fn backup_legacy_files() -> Result<(), io::Error> {
     let tokens_path = get_legacy_tokens_path()?;
     if !tokens_path.exists() {
@@ -108,6 +146,9 @@ fn migrate_v1_tokens_to_providers() -> Result<(), io::Error> {
 
 /// 启动时调用：检查 schemaVersion 并执行必要的迁移（幂等）
 pub fn check_and_run_migration() -> Result<(), io::Error> {
+    // 先执行目录迁移：~/.claude-switch/ → ~/.ccg-switch/
+    migrate_directory()?;
+
     let config_path = get_config_path()?;
 
     // 读取当前 config，不存在则用默认值（schemaVersion = 1）
