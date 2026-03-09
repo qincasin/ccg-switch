@@ -14,6 +14,23 @@ export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+function LabelText({ children, className }: { children: React.ReactNode, className?: string }) {
+    return (
+        <label className={cn("text-sm font-medium leading-none text-slate-200", className)}>
+            {children}
+        </label>
+    );
+}
+
+function TextInput({ className, ...props }: any) {
+    return (
+        <input
+            className={cn("flex h-9 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-1 text-sm text-slate-200 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50", className)}
+            {...props}
+        />
+    );
+}
+
 interface ProviderFormProps {
     isOpen: boolean;
     editingProvider?: Provider | null;
@@ -173,19 +190,6 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             [field]: checked
         }));
     };
-
-    const LabelText = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-        <label className={cn("text-sm font-medium leading-none text-slate-200", className)}>
-            {children}
-        </label>
-    );
-
-    const TextInput = ({ className, ...props }: any) => (
-        <input 
-            className={cn("flex h-9 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-1 text-sm text-slate-200 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50", className)} 
-            {...props} 
-        />
-    );
 
     // ============================================
     // 实时配置预览 - 调用后端获取原始 + 预览内容，逐行 diff 高亮
