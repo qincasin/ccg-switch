@@ -317,14 +317,26 @@ async fn get_tool_versions(tools: Option<Vec<String>>) -> Result<Vec<ToolVersion
     Ok(services::tool_version_service::get_tool_versions(tools).await)
 }
 
-// 检查更新（打开 GitHub releases 页面）
+// 检查更新
 #[tauri::command]
-async fn check_for_updates(app: tauri::AppHandle) -> Result<bool, String> {
-    use tauri_plugin_opener::OpenerExt;
-    app.opener()
-        .open_url("https://github.com/cus45/ccg-switch/releases/latest", None::<String>)
-        .map_err(|e| format!("打开更新页面失败: {e}"))?;
-    Ok(true)
+async fn check_for_updates(app: tauri::AppHandle) -> Result<services::updater_service::UpdateInfo, String> {
+    let version = app.package_info().version.to_string();
+    services::updater_service::check_update(&version).await
+}
+
+// 下载更新安装包
+#[tauri::command]
+async fn download_update(app: tauri::AppHandle, url: String) -> Result<String, String> {
+    services::updater_service::download_update(&app, &url).await
+}
+
+// 安装更新并退出
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle, file_path: String) -> Result<(), String> {
+    services::updater_service::install_update(&file_path)?;
+    // 退出当前应用，让安装程序接管
+    app.exit(0);
+    Ok(())
 }
 
 // Prompt 同步命令
@@ -410,6 +422,8 @@ pub fn run() {
             // 工具版本 & 更新
             get_tool_versions,
             check_for_updates,
+            download_update,
+            install_update,
             // Utility 命令
             utility_commands::export_config,
             utility_commands::import_config,
