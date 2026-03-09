@@ -1,5 +1,7 @@
 
 import { useEffect } from 'react';
+import { setTheme as setAppTheme } from '@tauri-apps/api/app';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useConfigStore } from '../../stores/useConfigStore';
 
 export default function ThemeManager() {
@@ -30,6 +32,11 @@ export default function ThemeManager() {
         } else {
             root.classList.remove('dark');
         }
+
+        // Sync native window title bar theme (app-level + window-level)
+        const tauriTheme = isDark ? 'dark' as const : 'light' as const;
+        setAppTheme(tauriTheme).catch(() => {});
+        getCurrentWindow().setTheme(tauriTheme).catch(() => {});
 
         // Sync to localStorage for early boot check
         localStorage.setItem('app-theme-preference', theme);
