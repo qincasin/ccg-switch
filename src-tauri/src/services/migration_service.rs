@@ -165,6 +165,10 @@ pub fn check_and_run_migration() -> Result<(), io::Error> {
         backup_legacy_files()?;
         migrate_v1_tokens_to_providers()?;
 
+        // 迁移成功后重命名 tokens.json，防止重装后重复迁移导致已删除配置复活
+        let migrated_path = tokens_path.with_extension("json.migrated");
+        let _ = fs::rename(&tokens_path, &migrated_path);
+
         // config.json 可能包含其他字段（theme/language），需要合并写入
         let mut config_value: serde_json::Value = if config_path.exists() {
             json_store::read_json(&config_path).unwrap_or(serde_json::json!({}))
