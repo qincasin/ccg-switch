@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Loader2, RefreshCw, ChevronDown, ExternalLink, X, Plus, HeartPulse } from 'lucide-react';
+import { Eye, EyeOff, Loader2, RefreshCw, ExternalLink, HeartPulse, ChevronDown, X, Plus } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import ModalDialog from '../common/ModalDialog';
 import { showToast } from '../common/ToastContainer';
@@ -8,12 +8,9 @@ import { useProviderStore } from '../../stores/useProviderStore';
 import { Provider, ProviderProxyConfig } from '../../types/provider';
 import { AppType, VISIBLE_APP_TYPES, APP_LABELS } from '../../types/app';
 import ProviderProxyConfigInput from './ProviderProxyConfig';
-import clsx from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../utils/cn';
 
-export function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
+// ── 基础 UI 组件 ──────────────────────────────────────────────
 
 function LabelText({ children, className }: { children: React.ReactNode, className?: string }) {
     return (
@@ -23,7 +20,7 @@ function LabelText({ children, className }: { children: React.ReactNode, classNa
     );
 }
 
-function TextInput({ className, ...props }: any) {
+function TextInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
     return (
         <input
             className={cn("flex h-9 w-full rounded-md border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 px-3 py-1 text-sm text-gray-900 dark:text-slate-200 shadow-sm transition-colors placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50", className)}
@@ -39,24 +36,43 @@ interface ProviderFormProps {
     defaultAppType?: AppType;
 }
 
+// ── 内部 SettingsConfig 类型 ──────────────────────────────────────────────
+
+interface InternalSettings {
+    alwaysThinkingEnabled?: boolean;
+    teammatesMode?: boolean;
+    disableNonessentialTraffic?: boolean;
+    disableAttributionHeader?: boolean;
+    maxOutputTokens?: string;
+}
+
+// ── 预设配置 ──────────────────────────────────────────────
+
 const PRESETS = [
     { label: 'Claude Official', url: 'https://api.anthropic.com', appType: 'claude' as AppType },
     { label: 'OpenRouter', url: 'https://openrouter.ai/api', appType: 'claude' as AppType },
 ];
+
+// ── 白名单配置 ──────────────────────────────────────────────
 
 export default function ProviderForm({ isOpen, editingProvider, onClose, defaultAppType = 'claude' }: ProviderFormProps) {
     const { t } = useTranslation();
     const { addProvider, updateProvider } = useProviderStore();
     const isEditing = !!editingProvider;
 
+    // 基本配置
     const [name, setName] = useState(editingProvider?.name || '');
     const [appType, setAppType] = useState<AppType>(editingProvider?.appType || defaultAppType);
     const [apiKey, setApiKey] = useState(editingProvider?.apiKey || '');
     const [url, setUrl] = useState(editingProvider?.url || 'https://api.anthropic.com');
+
+    // 模型配置
     const [defaultSonnetModel, setDefaultSonnetModel] = useState(editingProvider?.defaultSonnetModel || '');
     const [defaultOpusModel, setDefaultOpusModel] = useState(editingProvider?.defaultOpusModel || '');
     const [defaultHaikuModel, setDefaultHaikuModel] = useState(editingProvider?.defaultHaikuModel || '');
     const [defaultReasoningModel, setDefaultReasoningModel] = useState(editingProvider?.defaultReasoningModel || '');
+
+    // 其他配置
     const [description, setDescription] = useState(editingProvider?.description || '');
     const [tags, setTags] = useState<string[]>(editingProvider?.tags || []);
     const [proxyConfig, setProxyConfig] = useState<ProviderProxyConfig>(() => {
@@ -65,6 +81,8 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
         }
         return { enabled: false };
     });
+
+    // UI 状态
     const [showKey, setShowKey] = useState(false);
     const [saving, setSaving] = useState(false);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -72,8 +90,8 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; latencyMs?: number; error?: string } | null>(null);
 
-    // This state actually holds the true internal settingsConfig object for the database.
-    const [internalSettings, setInternalSettings] = useState<any>(() => {
+    // Internal settings (settingsConfig)
+    const [internalSettings, setInternalSettings] = useState<InternalSettings>(() => {
         if (editingProvider?.settingsConfig) {
             return JSON.parse(JSON.stringify(editingProvider.settingsConfig));
         }
@@ -206,7 +224,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 tags: tags.length > 0 ? tags : undefined,
                 settingsConfig: (() => {
                     // 只保存白名单内的已知字段，排除历史残留
-                    const known = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
+                    const known: (keyof InternalSettings)[] = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
                     const clean: Record<string, any> = {};
                     if (internalSettings) {
                         for (const k of known) {

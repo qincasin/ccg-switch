@@ -1,7 +1,9 @@
 use std::fs;
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use crate::database::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GlobalProxyConfig {
@@ -23,6 +25,27 @@ fn get_proxy_config_path() -> Result<PathBuf, io::Error> {
     Ok(home.join(".ccg-switch").join("global-proxy.json"))
 }
 
+/// 从数据库加载全局代理配置（v3+，失败时回退到 JSON）
+pub fn get_global_proxy_from_db(db: &Arc<Database>) -> Result<GlobalProxyConfig, String> {
+    match db.get_global_proxy()? {
+        Some(config) => Ok(config),
+        None => {
+            // 数据库为空时，从 JSON 文件回退加载
+            if let Ok(config) = get_global_proxy() {
+                // 将 JSON 数据迁移到数据库
+                let _ = db.upsert_global_proxy(&config);
+                return Ok(config);
+            }
+            Ok(GlobalProxyConfig::default())
+        }
+    }
+}
+
+/// 保存全局代理配置到数据库（v3+）
+pub fn set_global_proxy_to_db(db: &Arc<Database>, config: &GlobalProxyConfig) -> Result<(), String> {
+    db.upsert_global_proxy(config)
+}
+
 /// 获取全局代理配置
 pub fn get_global_proxy() -> Result<GlobalProxyConfig, io::Error> {
     let path = get_proxy_config_path()?;
@@ -34,7 +57,8 @@ pub fn get_global_proxy() -> Result<GlobalProxyConfig, io::Error> {
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-/// 保存全局代理配置
+/// 保存全局代理配置（保留兼容）
+#[allow(dead_code)]
 pub fn set_global_proxy(config: &GlobalProxyConfig) -> Result<(), io::Error> {
     let path = get_proxy_config_path()?;
     if let Some(parent) = path.parent() {

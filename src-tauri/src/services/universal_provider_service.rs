@@ -3,7 +3,6 @@ use crate::models::app_type::AppType;
 use crate::models::provider::Provider;
 use crate::services::provider_service;
 use chrono::Utc;
-use std::io;
 use std::str::FromStr;
 
 /// Universal Provider 配置请求
@@ -21,15 +20,13 @@ pub struct UniversalProviderConfig {
 /// 为多个应用批量添加相同配置的 Provider
 /// 每个应用都会新增一个 Provider 条目
 /// 返回值：成功添加的 provider id 列表
-pub fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<String>, io::Error> {
+pub fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<String>, String> {
     let now = Utc::now();
     let timestamp = now.timestamp_millis();
     let mut added_ids: Vec<String> = Vec::new();
 
     for app_str in &config.target_apps {
-        let app_type = AppType::from_str(app_str).map_err(|e| {
-            io::Error::new(io::ErrorKind::InvalidInput, format!("无效的应用类型 '{}': {}", app_str, e))
-        })?;
+        let app_type = AppType::from_str(app_str).map_err(|e: String| e)?;
 
         let provider_id = format!("universal-{}-{}", app_str, timestamp);
 
@@ -65,7 +62,7 @@ pub fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<S
 
 /// 为多个应用批量切换到名称相同的 Provider
 /// 如果该应用下存在同名 provider 则切换，否则创建后再切换
-pub fn switch_universal_provider(provider_name: &str) -> Result<(), io::Error> {
+pub fn switch_universal_provider(provider_name: &str) -> Result<(), String> {
     let all_providers = provider_service::list_all_providers()?;
 
     for app_type in AppType::all() {

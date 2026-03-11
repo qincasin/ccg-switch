@@ -41,15 +41,19 @@ fn get_claude_home() -> Result<PathBuf, io::Error> {
     Ok(home.join(".claude"))
 }
 
-/// 递归统计目录下所有 .jsonl 文件数量和最新修改时间
-fn count_jsonl_recursive(dir: &Path) -> (usize, Option<std::time::SystemTime>) {
-    let mut count = 0usize;
+/// 扫描目录下所有 .jsonl 文件，返回文件列表和最新修改时间
+fn scan_jsonl_files(dir: &Path) -> (Vec<PathBuf>, Option<std::time::SystemTime>) {
+    let mut files = Vec::new();
     let mut latest: Option<std::time::SystemTime> = None;
-    count_jsonl_inner(dir, &mut count, &mut latest);
-    (count, latest)
+    scan_jsonl_inner(dir, &mut files, &mut latest);
+    (files, latest)
 }
 
-fn count_jsonl_inner(dir: &Path, count: &mut usize, latest: &mut Option<std::time::SystemTime>) {
+fn scan_jsonl_inner(
+    dir: &Path,
+    files: &mut Vec<PathBuf>,
+    latest: &mut Option<std::time::SystemTime>,
+) {
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -57,9 +61,9 @@ fn count_jsonl_inner(dir: &Path, count: &mut usize, latest: &mut Option<std::tim
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            count_jsonl_inner(&path, count, latest);
+            scan_jsonl_inner(&path, files, latest);
         } else if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
-            *count += 1;
+            // 更新最新修改时间
             if let Ok(meta) = entry.metadata() {
                 if let Ok(modified) = meta.modified() {
                     if latest.map_or(true, |l| modified > l) {
@@ -67,21 +71,6 @@ fn count_jsonl_inner(dir: &Path, count: &mut usize, latest: &mut Option<std::tim
                     }
                 }
             }
-        }
-    }
-}
-
-/// 递归收集目录下所有 .jsonl 文件路径
-fn collect_jsonl_paths(dir: &Path, files: &mut Vec<PathBuf>) {
-    let entries = match fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return,
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            collect_jsonl_paths(&path, files);
-        } else if path.extension().and_then(|e| e.to_str()) == Some("jsonl") {
             files.push(path);
         }
     }
@@ -145,7 +134,8 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, io::Error> {
             .to_string();
 
         // 递归统计 session 文件数量（含 subagents 子目录）
-        let (session_count, latest_modified) = count_jsonl_recursive(&entry.path());
+        let (jsonl_files, latest_modified) = scan_jsonl_files(&entry.path());
+        let session_count = jsonl_files.len();
 
         let last_active = latest_modified.map(|t| {
             let duration = t
@@ -209,8 +199,8 @@ pub fn get_stats() -> Result<DashboardStats, io::Error> {
     if projects_dir.exists() {
         for entry in fs::read_dir(&projects_dir)?.flatten() {
             if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                let (count, _) = count_jsonl_recursive(&entry.path());
-                total_sessions += count;
+                let (count, _) = scan_jsonl_files(&entry.path());
+                total_sessions += count.len();
             }
         }
     }
@@ -311,8 +301,7 @@ pub fn get_project_token_stats() -> Result<Vec<ProjectTokenStat>, io::Error> {
         let mut input_tokens = 0u64;
         let mut output_tokens = 0u64;
 
-        let mut jsonl_files = Vec::new();
-        collect_jsonl_paths(&entry.path(), &mut jsonl_files);
+        let (jsonl_files, _) = scan_jsonl_files(&entry.path());
         for file_path in &jsonl_files {
             session_count += 1;
             if let Ok((input, output)) = sum_session_tokens(file_path) {
@@ -545,8 +534,7 @@ pub fn get_project_sessions(project_path: &str) -> Result<Vec<SessionInfo>, io::
     }
 
     let mut sessions = Vec::new();
-    let mut jsonl_files = Vec::new();
-    collect_jsonl_paths(&project_dir, &mut jsonl_files);
+    let (jsonl_files, _) = scan_jsonl_files(&project_dir);
 
     for path in jsonl_files {
         let fname = match path.file_name().and_then(|n| n.to_str()) {

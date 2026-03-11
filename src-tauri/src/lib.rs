@@ -16,6 +16,8 @@ use commands::advanced_commands;
 use commands::mcp_commands;
 use commands::skill_commands;
 use commands::prompt_commands;
+use tauri::State;
+use store::AppState;
 
 use models::config::Config;
 use models::prompt::PromptPreset;
@@ -30,13 +32,13 @@ use services::tool_version_service::ToolVersion;
 
 // 配置管理命令
 #[tauri::command]
-fn get_config() -> Result<Config, String> {
-    config_service::load_config().map_err(|e| e.to_string())
+fn get_config(state: tauri::State<store::AppState>) -> Result<Config, String> {
+    config_service::load_config_from_db(&state.db)
 }
 
 #[tauri::command]
-fn save_config(config: Config) -> Result<(), String> {
-    config_service::save_config(&config).map_err(|e| e.to_string())
+fn save_config(config: Config, state: tauri::State<store::AppState>) -> Result<(), String> {
+    config_service::save_config_to_db(&state.db, &config)
 }
 
 // Prompt 预设管理命令
@@ -62,8 +64,8 @@ fn delete_prompt(name: String) -> Result<(), String> {
 
 // Skill 技能管理命令
 #[tauri::command]
-fn list_skills(project_dir: Option<String>) -> Result<Vec<Skill>, String> {
-    skill_service::list_skills(project_dir.as_deref()).map_err(|e| e.to_string())
+fn list_skills(project_dir: Option<String>, state: State<'_, AppState>) -> Result<Vec<Skill>, String> {
+    skill_service::list_skills_from_db(&state.db, project_dir.as_deref())
 }
 
 #[tauri::command]
@@ -82,8 +84,8 @@ fn delete_skill(name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn update_skill_apps(name: String, apps: SkillApps) -> Result<(), String> {
-    skill_service::update_skill_apps(&name, apps).map_err(|e| e.to_string())
+fn update_skill_apps(name: String, apps: SkillApps, state: State<'_, AppState>) -> Result<(), String> {
+    skill_service::update_skill_apps_to_db(&state.db, &name, apps)
 }
 
 // Subagent 子代理管理命令
@@ -468,15 +470,22 @@ pub fn run() {
             prompt_commands::get_prompt_live_content,
         ])
         .setup(|app| {
+            // 初始化数据库
+            let db = database::Database::init()
+                .expect("Failed to initialize database");
+            let db_arc = std::sync::Arc::new(db);
+
             // 执行数据目录迁移 (.claude-switch → .ccg-switch)
             if let Err(e) = migration_service::check_and_run_migration() {
                 eprintln!("Migration warning: {e}");
             }
 
-            // 初始化数据库
-            let db = database::Database::init()
-                .expect("Failed to initialize database");
-            let state = store::AppState::new(std::sync::Arc::new(db));
+            // 执行 v2 → v3 数据库迁移（JSON → SQLite）
+            if let Err(e) = migration_service::migrate_v2_to_v3(&db_arc) {
+                eprintln!("Migration v2→v3 warning: {e}");
+            }
+
+            let state = store::AppState::new(db_arc);
             app.manage(state);
 
             let _ = tray::setup_tray(app);

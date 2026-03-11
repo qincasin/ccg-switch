@@ -1,6 +1,8 @@
 use std::io;
+use std::sync::Arc;
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use crate::database::Database;
 use crate::models::provider::ProviderProxyConfig;
 use futures::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
@@ -250,15 +252,16 @@ pub async fn check_stream(
     }
 }
 
-/// 根据 Provider ID 检测健康状态
+/// 根据 Provider ID 检测健康状态（数据库版本）
 pub async fn check_provider_health(
     provider_id: String,
-) -> Result<ProviderHealthResult, io::Error> {
-    let providers = crate::services::provider_service::list_all_providers()?;
+    db: &Arc<Database>,
+) -> Result<ProviderHealthResult, String> {
+    let providers = crate::services::provider_service::list_all_providers_from_db(db)?;
     let provider = providers
         .into_iter()
         .find(|p| p.id == provider_id)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Provider not found"))?;
+        .ok_or_else(|| "Provider not found".to_string())?;
 
     let app_type_str = provider.app_type.as_str().to_string();
 
@@ -299,7 +302,8 @@ pub async fn check_provider_health(
         Some(app_type_str.clone()),
         provider.proxy_config.clone(),
     )
-    .await?;
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok(ProviderHealthResult {
         provider_id,

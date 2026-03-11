@@ -48,6 +48,48 @@ pub fn create_tables(conn: &Connection) -> Result<(), String> {
             updated_at INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (id, app_type)
         );
+
+        -- 应用配置表（key-value 存储）
+        CREATE TABLE IF NOT EXISTS app_configs (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+
+        -- Provider 表
+        CREATE TABLE IF NOT EXISTS providers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            app_type TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            url TEXT,
+            default_sonnet_model TEXT,
+            default_opus_model TEXT,
+            default_haiku_model TEXT,
+            default_reasoning_model TEXT,
+            custom_params TEXT,
+            settings_config TEXT,
+            meta TEXT,
+            icon TEXT,
+            in_failover_queue BOOLEAN NOT NULL DEFAULT 0,
+            description TEXT,
+            tags TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            last_used INTEGER,
+            proxy_config TEXT
+        );
+
+        -- 全局代理配置表（单行表）
+        CREATE TABLE IF NOT EXISTS global_proxies (
+            id TEXT PRIMARY KEY,
+            enabled BOOLEAN NOT NULL DEFAULT 0,
+            http_proxy TEXT,
+            https_proxy TEXT,
+            socks5_proxy TEXT,
+            no_proxy TEXT,
+            updated_at INTEGER NOT NULL
+        );
         ",
     )
     .map_err(|e| format!("Failed to create tables: {e}"))
