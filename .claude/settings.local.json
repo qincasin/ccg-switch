@@ -38,7 +38,11 @@
       "Read(//c/guodevelop/claude-switch-v1/claude-switch-1.0/$LOCALAPPDATA/tauri/**)",
       "Read(//c/guodevelop/claude-switch-v1/claude-switch-1.0/$HOME/.tauri/**)",
       "Bash(wc:*)",
-      "Bash(openspec list:*)"
+      "Bash(openspec list:*)",
+      "Bash(netstat:*)",
+      "Bash(kill 25344:*)",
+      "Bash(Stop-Process:*)",
+      "mcp__ace-tool__enhance_prompt"
     ]
   }
 }
