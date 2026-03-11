@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { ApiToken } from '../types/token';
 
+// ── 类型定义 ──────────────────────────────────────────────
+
 interface TokenState {
     tokens: ApiToken[];
     hasLoaded: boolean;
@@ -18,6 +20,8 @@ interface TokenState {
     fetchModels: (baseUrl: string, apiKey: string) => Promise<string[]>;
 }
 
+// ── Store 实现 ──────────────────────────────────────────────
+
 export const useTokenStore = create<TokenState>((set, get) => ({
     tokens: [],
     hasLoaded: false,
@@ -25,9 +29,7 @@ export const useTokenStore = create<TokenState>((set, get) => ({
     error: null,
 
     loadTokens: async (force = false) => {
-        if (!force && get().hasLoaded) {
-            return;
-        }
+        if (!force && get().hasLoaded) return;
         set({ loading: true, error: null });
         try {
             const tokens = await invoke<ApiToken[]>('get_tokens');
@@ -57,7 +59,6 @@ export const useTokenStore = create<TokenState>((set, get) => ({
     updateToken: async (id: string, tokenData) => {
         set({ loading: true, error: null });
         try {
-            // 获取原有 token 的完整数据
             const existingToken = get().tokens.find(t => t.id === id);
             if (!existingToken) {
                 throw new Error('Token not found');

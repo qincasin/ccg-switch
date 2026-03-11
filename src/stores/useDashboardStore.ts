@@ -1,19 +1,21 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 
-interface DashboardStats {
+// ── 类型定义 ──────────────────────────────────────────────
+
+export interface DashboardStats {
     num_startups: number;
     total_projects: number;
     total_sessions: number;
     total_history: number;
 }
 
-interface HistoryEntry {
+export interface HistoryEntry {
     date: string;
     count: number;
 }
 
-interface ModelUsage {
+export interface ModelUsage {
     inputTokens: number;
     outputTokens: number;
     cacheReadInputTokens: number;
@@ -21,12 +23,12 @@ interface ModelUsage {
     costUsd: number;
 }
 
-interface DailyModelTokens {
+export interface DailyModelTokens {
     date: string;
     tokensByModel: Record<string, number>;
 }
 
-interface StatsCache {
+export interface StatsCache {
     modelUsage: Record<string, ModelUsage>;
     dailyModelTokens: DailyModelTokens[];
     hourCounts: Record<string, number>;
@@ -34,7 +36,7 @@ interface StatsCache {
     totalMessages: number;
 }
 
-interface ProjectTokenStat {
+export interface ProjectTokenStat {
     name: string;
     path: string;
     session_count: number;
@@ -42,6 +44,8 @@ interface ProjectTokenStat {
     output_tokens: number;
     total_tokens: number;
 }
+
+// ── Store 状态 ──────────────────────────────────────────────
 
 interface DashboardState {
     stats: DashboardStats | null;
@@ -56,6 +60,8 @@ interface DashboardState {
     refreshStatsCache: () => Promise<void>;
 }
 
+// ── Store 实现 ──────────────────────────────────────────────
+
 export const useDashboardStore = create<DashboardState>((set, get) => ({
     stats: null,
     activity: [],
@@ -66,9 +72,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     refreshingStats: false,
 
     loadData: async (force = false) => {
-        if (!force && get().hasLoaded) {
-            return;
-        }
+        if (!force && get().hasLoaded) return;
         set({ loading: true });
 
         const [statsResult, activityResult, tokenResult, projectResult] = await Promise.allSettled([
@@ -80,11 +84,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
         let tokenStats = tokenResult.status === 'fulfilled' ? tokenResult.value : get().tokenStats;
 
-        // 缓存为空或 modelUsage 无数据时，自动触发重新计算
+        // 缓存为空时自动刷新
         if (!tokenStats || Object.keys(tokenStats.modelUsage || {}).length === 0) {
             try {
                 tokenStats = await invoke<StatsCache>('refresh_stats_cache');
-            } catch { /* 静默失败，使用空缓存 */ }
+            } catch { /* 静默失败 */ }
         }
 
         set({

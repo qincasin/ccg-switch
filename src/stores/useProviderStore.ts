@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { Provider } from '../types/provider';
 import { AppType } from '../types/app';
 
+// ── 类型定义 ──────────────────────────────────────────────
+
 interface ProviderState {
     providers: Provider[];
     hasLoaded: boolean;
@@ -17,6 +19,8 @@ interface ProviderState {
     deleteProvider: (providerId: string) => Promise<void>;
     moveProvider: (providerId: string, targetIndex: number) => Promise<void>;
 }
+
+// ── Store 实现 ──────────────────────────────────────────────
 
 export const useProviderStore = create<ProviderState>((set, get) => ({
     providers: [],
@@ -71,12 +75,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
             if (!existing) {
                 throw new Error('Provider not found');
             }
-            const provider: Provider = {
-                ...existing,
-                ...data,
-                id: existing.id,
-                createdAt: existing.createdAt,
-            };
+            const provider: Provider = { ...existing, ...data, id: existing.id, createdAt: existing.createdAt };
             await invoke('update_provider', { providerId: id, provider });
             await get().loadAllProviders(true);
         } catch (error) {

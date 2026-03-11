@@ -6,6 +6,7 @@ use crate::services::{
     env_checker_service,
     model_api_service,
 };
+use crate::services::global_proxy_service::GlobalProxyConfig;
 
 #[tauri::command]
 pub fn export_config() -> Result<serde_json::Value, String> {
@@ -45,13 +46,13 @@ pub async fn check_stream_connectivity(
 }
 
 #[tauri::command]
-pub fn get_global_proxy() -> Result<global_proxy_service::GlobalProxyConfig, String> {
-    global_proxy_service::get_global_proxy().map_err(|e| e.to_string())
+pub fn get_global_proxy(state: tauri::State<crate::store::AppState>) -> Result<GlobalProxyConfig, String> {
+    global_proxy_service::get_global_proxy_from_db(&state.db)
 }
 
 #[tauri::command]
-pub fn set_global_proxy(config: global_proxy_service::GlobalProxyConfig) -> Result<(), String> {
-    global_proxy_service::set_global_proxy(&config).map_err(|e| e.to_string())
+pub fn set_global_proxy(config: GlobalProxyConfig, state: tauri::State<crate::store::AppState>) -> Result<(), String> {
+    global_proxy_service::set_global_proxy_to_db(&state.db, &config)
 }
 
 #[tauri::command]

@@ -19,6 +19,7 @@ fn global_client() -> &'static Client {
 }
 
 /// 根据 Provider 代理配置构建代理 URL
+#[allow(dead_code)]
 fn build_proxy_url_from_config(config: &ProviderProxyConfig) -> Option<String> {
     if !config.enabled {
         return None;
@@ -45,6 +46,7 @@ fn build_proxy_url_from_config(config: &ProviderProxyConfig) -> Option<String> {
 ///
 /// 如果 Provider 配置了单独代理（enabled = true），则使用该代理构建客户端；
 /// 否则返回 None，调用方应使用全局客户端。
+#[allow(dead_code)]
 pub fn build_client_for_provider(proxy_config: Option<&ProviderProxyConfig>) -> Option<Client> {
     let config = proxy_config.filter(|c| c.enabled)?;
 
@@ -91,6 +93,7 @@ pub fn build_client_for_provider(proxy_config: Option<&ProviderProxyConfig>) -> 
 /// 获取 Provider 专用的 HTTP 客户端
 ///
 /// 优先使用 Provider 单独代理配置，如果未启用则返回全局客户端。
+#[allow(dead_code)]
 pub fn get_for_provider(proxy_config: Option<&ProviderProxyConfig>) -> Client {
     // 优先使用 Provider 单独代理
     if let Some(client) = build_client_for_provider(proxy_config) {
@@ -102,6 +105,7 @@ pub fn get_for_provider(proxy_config: Option<&ProviderProxyConfig>) -> Client {
 }
 
 /// 隐藏 URL 中的敏感信息（用于日志）
+#[allow(dead_code)]
 fn mask_url(url: &str) -> String {
     if let Ok(parsed) = url::Url::parse(url) {
         // 隐藏用户名和密码，保留 scheme、host 和端口
@@ -135,6 +139,7 @@ pub async fn forward_request(
 }
 
 /// 使用指定代理配置转发请求
+#[allow(dead_code)]
 pub async fn forward_request_with_proxy(
     method: reqwest::Method,
     url: &str,
