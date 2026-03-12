@@ -13,6 +13,30 @@ interface Version {
 
 const versions: Version[] = [
   {
+    version: 'v1.2.14',
+    date: '2025-03-12',
+    type: 'minor',
+    changes: [
+      { type: 'feature', text: '新增：macOS 更新自动安装功能' },
+      { type: 'feature', text: '新增：安装进度实时跟踪（挂载→复制→验证→清理→完成）' },
+      { type: 'feature', text: '新增：权限不足时显示详细引导提示' },
+      { type: 'improvement', text: '优化：更新安装界面交互体验' },
+      { type: 'improvement', text: '新增：安装失败时提供重新下载按钮' }
+    ]
+  },
+  {
+    version: 'v1.2.13',
+    date: '2025-03-12',
+    type: 'minor',
+    changes: [
+      { type: 'feature', text: '新增：macOS 更新自动安装功能' },
+      { type: 'feature', text: '新增：安装进度实时跟踪（挂载→复制→验证→清理→完成）' },
+      { type: 'feature', text: '新增：权限不足时显示详细引导提示' },
+      { type: 'improvement', text: '优化：更新安装界面交互体验' },
+      { type: 'improvement', text: '新增：安装失败时提供重新下载按钮' }
+    ]
+  },
+  {
     version: 'v1.2.12',
     date: '2025-01-13',
     type: 'patch',
