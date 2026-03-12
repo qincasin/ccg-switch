@@ -360,5 +360,32 @@
         "open_terminal_error": "打开终端失败",
         "resume_success": "已启动 Claude 终端",
         "resume_error": "启动终端失败"
+    },
+    "deeplink": {
+        "confirmImport": "确认导入",
+        "confirmImportDescription": "以下配置将被导入到应用中，请确认信息无误。",
+        "app": "应用类型",
+        "providerName": "服务商名称",
+        "homepage": "首页",
+        "endpoint": "接口地址",
+        "primaryEndpoint": "主要",
+        "apiKey": "API Key",
+        "model": "模型",
+        "haikuModel": "Haiku 模型",
+        "sonnetModel": "Sonnet 模型",
+        "opusModel": "Opus 模型",
+        "multiModel": "多模型",
+        "notes": "备注",
+        "warning": "请确认上述信息来自可信来源。导入后可在服务商管理中查看和修改。",
+        "import": "导入",
+        "importing": "导入中...",
+        "importSuccess": "导入成功",
+        "importSuccessDescription": "服务商 \"{{name}}\" 已成功导入",
+        "importError": "导入失败",
+        "parseError": "链接解析失败",
+        "configSource": "配置来源",
+        "configEmbedded": "内嵌配置",
+        "configRemote": "远程配置",
+        "configDetails": "配置详情"
     }
 }
