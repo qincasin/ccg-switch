@@ -11,6 +11,7 @@ mod tray;
 mod utils;
 
 use tauri::Manager;
+use std::process::Command;
 use commands::provider_commands;
 use commands::proxy_commands;
 use commands::utility_commands;

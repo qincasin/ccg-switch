@@ -202,6 +202,7 @@ pub async fn download_update(app: &AppHandle, url: &str) -> Result<String, Strin
 }
 
 /// 启动安装程序
+#[allow(unused_variables)]
 pub fn install_update(app: &tauri::AppHandle, file_path: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
