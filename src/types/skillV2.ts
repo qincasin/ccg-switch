@@ -32,6 +32,7 @@ export interface DiscoverableSkill {
     repoOwner: string;
     repoName: string;
     repoBranch: string;
+    stars?: number;
 }
 
 export const SKILL_APPS: { key: keyof Pick<InstalledSkillRow, 'enabledClaude' | 'enabledCodex' | 'enabledGemini'>; label: string; app: string }[] = [

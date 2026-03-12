@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 
 export type ModalType = 'confirm' | 'success' | 'error' | 'info';
 
@@ -39,6 +40,20 @@ export default function ModalDialog({
     const finalConfirmText = confirmText || t('common.confirm');
     const finalCancelText = cancelText || t('common.cancel');
 
+    // ESC 键关闭
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                const closer = onCancel || onClose;
+                if (closer) closer();
+                else onConfirm();
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [isOpen, onCancel, onClose, onConfirm]);
+
     if (!isOpen) return null;
 
     const getIcon = () => {
@@ -60,11 +75,12 @@ export default function ModalDialog({
             case 'success': return 'bg-green-50 dark:bg-green-900/20';
             case 'error': return 'bg-red-50 dark:bg-red-900/20';
             case 'info': return 'bg-blue-50 dark:bg-blue-900/20';
-            case 'confirm': default: return isDestructive ? 'bg-red-50 dark:bg-red-900/20' : 'bg-blue-50 dark:bg-blue-900/20';
+            case 'confirm':
+            default: return isDestructive ? 'bg-red-50 dark:bg-red-900/20' : 'bg-blue-50 dark:bg-blue-900/20';
         }
     };
 
-    const showCancel = type === 'confirm' && (onCancel || onClose);
+    const showCancel = (onCancel || onClose) !== undefined;
     const handleCancel = onCancel || onClose;
 
     return createPortal(
