@@ -5,13 +5,14 @@
 
   **Claude · Codex · Gemini 统一配置管理与增强工具**
 
+  [![Website](https://img.shields.io/badge/🌐-Website-orange?logo=github-pages)](https://qincasin.github.io/ccg-switch/)
   [![Tauri App](https://img.shields.io/badge/Tauri-v2-active?logo=tauri&color=FFC131)](#)
   [![React](https://img.shields.io/badge/React-19-blue?logo=react)](#)
   [![Rust](https://img.shields.io/badge/Rust-Backend-orange?logo=rust)](#)
   [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
   [English](#english) | [简体中文](#简体中文)
-  
+
 </div>
 
 ---
@@ -94,3 +95,9 @@ npm run tauri build
 - **Cross-Platform**: Near-native performance on Windows, macOS, and Linux thanks to Tauri v2.
 
 [Download the latest release here](https://github.com/cus45/ccg-switch/releases).
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=qincasin/ccg-switch&type=Date)](https://star-history.com/#qincasin/ccg-switch&Date)

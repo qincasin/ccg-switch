@@ -1,0 +1,52 @@
+# CCG Switch 官网自动部署工作流
+# 适用于 fork 仓库：当 website/ 目录有变更时自动部署到 GitHub Pages
+
+name: Deploy Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/deploy-website.yml'
+  # 允许手动触发部署
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './website/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./website
+        run: npm ci
+
+      - name: Build website
+        working-directory: ./website
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./website/dist
+          # 部署到 gh-pages 分支
+          destination_dir: .  # 根目录
+          # 保持 .nojekyll 文件（Jekyll 兼容）
+          keep_files: ['.nojekyll']
+          # 完整提交信息
+          commit_message: 'Deploy website from ${{ github.sha }}'

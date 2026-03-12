@@ -1,0 +1,340 @@
+{
+  "nav": {
+    "home": "Home",
+    "install": "Installation",
+    "usage": "Documentation",
+    "changelog": "Changelog"
+  },
+  "home": {
+    "badge": "Supports Claude · Codex · Gemini",
+    "title": "CCG Switch",
+    "subtitle": "Unified Configuration Manager for AI CLI Tools",
+    "description": "Seamlessly switch between API key environments. Say goodbye to manually editing terminal environment variables.",
+    "downloadBtn": "Download Now",
+    "githubBtn": "Star on GitHub",
+    "features": {
+      "title": "Powerful Features",
+      "zeroConfig": {
+        "title": "Zero-Config Switching",
+        "description": "One-click switching between Anthropic, Azure, and custom proxies without manual environment variable edits"
+      },
+      "proxy": {
+        "title": "Built-in Local Proxy",
+        "description": "High-performance HTTP proxy written in Rust with automatic interception, replacement, and speed testing for restricted networks"
+      },
+      "mcp": {
+        "title": "MCP Server Management",
+        "description": "Graphical configuration of Model Context Protocol plugins with visual AI context management"
+      },
+      "prompts": {
+        "title": "Prompt Presets",
+        "description": "Pre-configured role-specific prompt templates with workspace-level quick distribution"
+      },
+      "dashboard": {
+        "title": "Visual Dashboard",
+        "description": "Unified monitoring of token consumption, tool call counts, and API response latency"
+      },
+      "sandbox": {
+        "title": "Sandbox Isolation",
+        "description": "Create isolated configuration environments for different projects to avoid conflicts"
+      }
+    },
+    "platforms": {
+      "title": "Deep Platform Integration",
+      "description": "Leveraging native capabilities of each operating system"
+    },
+    "quickStart": {
+      "title": "Quick Start",
+      "step1": "Download and install CCG Switch",
+      "step2": "Add your Claude/Codex/Gemini API Token",
+      "step3": "Configure MCP servers (optional)",
+      "step4": "Start your efficient AI development workflow"
+    },
+    "techStack": {
+      "title": "Modern Tech Stack",
+      "description": "Built with cutting-edge cross-platform technologies",
+      "backend": "High-Performance Backend",
+      "size": "Minimal Install Size",
+      "native": "Native Cross-Platform"
+    },
+    "cta": {
+      "title": "Ready to Get Started?",
+      "description": "Download CCG Switch now and experience seamless AI CLI configuration management",
+      "download": "Free Download",
+      "docs": "View Docs"
+    }
+  },
+  "install": {
+    "title": "Installation Guide",
+    "subtitle": "Choose the installation method for your operating system. Setup takes just a few minutes.",
+    "download": "Download Latest Version",
+    "platforms": {
+      "windows": {
+        "name": "Windows",
+        "desc": "Choose the installer that's right for you",
+        "nsis": "NSIS Installer",
+        "nsisDesc": "Recommended: Graphical installation wizard",
+        "msi": "MSI Package",
+        "msiDesc": "Suitable for enterprise deployment",
+        "steps": "Download .exe installer → Double-click to run wizard → Choose installation path (optional) → Complete installation and launch"
+      },
+      "macos": {
+        "name": "macOS",
+        "desc": "Choose the installer that's right for you",
+        "dmg": "DMG Image",
+        "dmgDesc": "Supports Apple Silicon & Intel",
+        "brew": "Brew Install",
+        "brewDesc": "Quick command-line installation",
+        "steps": "Download .dmg file → Double-click and drag to Applications → Allow in System Settings on first launch → Enjoy native macOS experience"
+      },
+      "linux": {
+        "name": "Linux",
+        "desc": "Choose the installer that's right for you",
+        "deb": "Debian Package",
+        "debDesc": "For Debian/Ubuntu systems",
+        "appimage": "AppImage",
+        "appimageDesc": "Universal portable version",
+        "steps": "Download platform-specific package → Debian: sudo dpkg -i cc-switch_*.deb → AppImage: chmod +x cc-switch-*.AppImage → Launch from application menu"
+      }
+    },
+    "systemRequirements": {
+      "title": "System Requirements",
+      "os": "Operating System",
+      "osValues": "Windows 10+, macOS 11+, Major Linux distributions",
+      "memory": "Memory",
+      "memoryValues": "Minimum 4GB RAM, 8GB+ recommended",
+      "storage": "Storage",
+      "storageValues": "Approximately 50MB disk space",
+      "network": "Network",
+      "networkValues": "Internet connection required (local proxy can alleviate restrictions)"
+    },
+    "faq": {
+      "title": "FAQ",
+      "q1": {
+        "question": "Is CCG Switch secure?",
+        "answer": "Yes. All API tokens are encrypted and stored locally, only used for communication with AI providers. Nothing is uploaded to third-party servers. The code is fully open source for audit."
+      },
+      "q2": {
+        "question": "Does it require internet?",
+        "answer": "Basic configuration features work offline, but token switching, fetching available models, and syncing MCP servers require network connection. The built-in local proxy helps with network restrictions."
+      },
+      "q3": {
+        "question": "Which AI providers are supported?",
+        "answer": "Supports Anthropic official API, Azure OpenAI, and any third-party API compatible with OpenAI format. Custom proxy configuration allows easy switching between providers."
+      },
+      "q4": {
+        "question": "How to uninstall?",
+        "answer": "Windows: Uninstall via \"Settings > Apps\"; macOS: Delete app from Applications and clean up ~/Library/Application Support/ccg-switch; Linux: Use package manager or delete AppImage."
+      }
+    },
+    "needHelp": {
+      "title": "Need Help?",
+      "description": "Having trouble or have questions? We're here to support you",
+      "submitIssue": "Submit Issue"
+    }
+  },
+  "usage": {
+    "title": "Documentation",
+    "subtitle": "Learn how to use CCG Switch to manage AI CLI tool configurations and boost your productivity",
+    "quickStart": {
+      "title": "Quick Start",
+      "description": "Get up and running in five steps",
+      "step1": {
+        "title": "Install & Launch",
+        "description": "Download and install CCG Switch, first launch will auto-initialize configuration"
+      },
+      "step2": {
+        "title": "Add API Token",
+        "description": "Add your Claude/Codex/Gemini API keys in Token management page"
+      },
+      "step3": {
+        "title": "Configure Proxy (Optional)",
+        "description": "If you have network issues, configure local proxy or use built-in proxy service"
+      },
+      "step4": {
+        "title": "Add MCP Servers",
+        "description": "Add required servers in MCP management page to extend AI capabilities"
+      },
+      "step5": {
+        "title": "Start Using",
+        "description": "Use Claude Code in terminal and enjoy seamless switching experience"
+      }
+    },
+    "features": {
+      "tokens": {
+        "title": "API Token Management",
+        "description": "Easily manage multiple Claude/Codex/Gemini API tokens with one-click switching",
+        "add": "Add Token",
+        "addDesc": "Enter name, API Key, and related settings",
+        "switch": "Quick Switch",
+        "switchDesc": "Click \"Set Active\" to switch current token",
+        "models": "Model Mapping",
+        "modelsDesc": "Configure default models for Sonnet, Opus, Haiku",
+        "endpoint": "Custom Endpoint",
+        "endpointDesc": "Supports Azure, custom proxies, etc."
+      },
+      "mcp": {
+        "title": "MCP Server Management",
+        "description": "Graphical configuration of Model Context Protocol plugins to extend AI capabilities",
+        "global": "Global Servers",
+        "globalDesc": "Apply to all Claude Code projects",
+        "project": "Project Servers",
+        "projectDesc": "Apply only to specific projects",
+        "sort": "Drag & Drop",
+        "sortDesc": "Intuitive priority management",
+        "monitor": "Status Monitor",
+        "monitorDesc": "Real-time server connection status"
+      },
+      "prompts": {
+        "title": "Prompt Presets",
+        "description": "Save common CLAUDE.md content and quickly apply to projects",
+        "template": "Template Creation",
+        "templateDesc": "Save role settings and instruction templates",
+        "apply": "Quick Apply",
+        "applyDesc": "One-click apply preset to project",
+        "category": "Category Management",
+        "categoryDesc": "Organize presets by purpose",
+        "variable": "Variable Support",
+        "variableDesc": "Support dynamic variable replacement"
+      },
+      "dashboard": {
+        "title": "Analytics Dashboard",
+        "description": "Unified monitoring of usage and AI tool consumption",
+        "tokens": "Token Consumption",
+        "tokensDesc": "Track API calls and token usage",
+        "latency": "Response Latency",
+        "latencyDesc": "Monitor API response times",
+        "activity": "Activity Charts",
+        "activityDesc": "Daily session activity statistics",
+        "projects": "Project Overview",
+        "projectsDesc": "View all configured projects"
+      },
+      "proxy": {
+        "title": "Local Proxy Service",
+        "description": "Built-in Rust HTTP proxy to solve network access issues",
+        "intercept": "Auto Intercept",
+        "interceptDesc": "Automatically intercept and forward API requests",
+        "replace": "Smart Replacement",
+        "replaceDesc": "Automatically replace API endpoint addresses",
+        "speedtest": "Speed Test",
+        "speedtestDesc": "Test response speed of different proxies",
+        "system": "System-level Proxy",
+        "systemDesc": "Provide proxy service for entire system"
+      },
+      "sandbox": {
+        "title": "Sandbox Isolation",
+        "description": "Create isolated configuration environments for different projects",
+        "isolate": "Project Isolation",
+        "isolateDesc": "Independent configuration for each project",
+        "switch": "Environment Switch",
+        "switchDesc": "Quickly switch between project environments",
+        "inherit": "Config Inheritance",
+        "inheritDesc": "Support inheritance from global config",
+        "avoid": "Conflict Avoidance",
+        "avoidDesc": "Avoid interference between projects"
+      }
+    },
+    "tips": {
+      "title": "Pro Tips",
+      "tip1": "Create separate token configurations for different projects to avoid confusion",
+      "tip2": "Use MCP servers to extend AI capabilities, such as file system operations",
+      "tip3": "Regularly check the dashboard to monitor token consumption",
+      "tip4": "Use presets to quickly deploy project configuration templates"
+    },
+    "needHelp": {
+      "title": "Still Have Questions?",
+      "description": "Check out more documentation or submit an issue",
+      "submitIssue": "Submit Issue"
+    }
+  },
+  "changelog": {
+    "title": "Changelog",
+    "subtitle": "Track version updates and improvements to CCG Switch",
+    "badge": "Version History",
+    "latest": "Latest Version",
+    "viewRelease": "View Release",
+    "viewAll": "View Full History",
+    "viewAllDesc": "Visit GitHub Releases page to see detailed changes for all versions",
+    "type": {
+      "major": "Major",
+      "minor": "Minor",
+      "patch": "Patch"
+    },
+    "changeType": {
+      "feature": "Feature",
+      "fix": "Fix",
+      "improvement": "Improvement",
+      "breaking": "Breaking"
+    },
+    "versions": {
+      "v1.2.12": {
+        "date": "2025-01-13",
+        "changes": [
+          { "type": "fix", "text": "Fixed compilation errors, optimized build process" },
+          { "type": "improvement", "text": "Improved skills page card layout for better visual experience" },
+          { "type": "fix", "text": "Fixed several known issues" }
+        ]
+      },
+      "v1.2.11": {
+        "date": "2025-01-10",
+        "changes": [
+          { "type": "feature", "text": "Added: Card view mode for skills page" },
+          { "type": "feature", "text": "Added: Prompt preset management" },
+          { "type": "improvement", "text": "Improved: MCP server configuration UI" },
+          { "type": "fix", "text": "Fixed: Token switching configuration write issue" }
+        ]
+      },
+      "v1.2.10": {
+        "date": "2024-12-28",
+        "changes": [
+          { "type": "feature", "text": "Added: Dashboard statistics feature" },
+          { "type": "feature", "text": "Added: Activity history chart" },
+          { "type": "improvement", "text": "Improved: Application startup performance" },
+          { "type": "fix", "text": "Fixed: Language switch not taking effect" }
+        ]
+      },
+      "v1.2.0": {
+        "date": "2024-12-15",
+        "changes": [
+          { "type": "feature", "text": "Major update: Brand new UI design" },
+          { "type": "feature", "text": "Added: Dark mode support" },
+          { "type": "feature", "text": "Added: Chinese and English internationalization" },
+          { "type": "improvement", "text": "Refactored: State management migrated to Zustand" },
+          { "type": "improvement", "text": "Improved: Responsive layout for mobile devices" }
+        ]
+      },
+      "v1.1.0": {
+        "date": "2024-11-20",
+        "changes": [
+          { "type": "feature", "text": "Added: MCP server management" },
+          { "type": "feature", "text": "Added: Project-level MCP configuration support" },
+          { "type": "improvement", "text": "Improved: Token management UI" },
+          { "type": "fix", "text": "Fixed: Config file read/write permissions" }
+        ]
+      },
+      "v1.0.0": {
+        "date": "2024-11-01",
+        "changes": [
+          { "type": "feature", "text": "First stable release" },
+          { "type": "feature", "text": "Support for multiple API token management" },
+          { "type": "feature", "text": "Support for custom API endpoints" },
+          { "type": "feature", "text": "Support for model configuration mapping" },
+          { "type": "feature", "text": "Basic CLAUDE.md management features" }
+        ]
+      }
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 CCG Switch. MIT License.",
+    "madeWith": "Made with love for AI developers",
+    "github": "GitHub",
+    "techStack": "Tech Stack"
+  },
+  "deployInfo": {
+    "title": "Deploy Info",
+    "owner": "Repository Owner",
+    "repo": "Repository Name",
+    "visitRepo": "Visit Repository",
+    "forkNotice": "This is a fork by {{owner}}"
+  }
+}
