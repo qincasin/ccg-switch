@@ -100,4 +100,4 @@ npm run tauri build
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=qincasin/ccg-switch&type=Date)](https://star-history.com/#qincasin/ccg-switch&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=cus45/ccg-switch&type=Date)](https://star-history.com/#cus45/ccg-switch&Date)
