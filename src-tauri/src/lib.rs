@@ -247,6 +247,8 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
 
     #[cfg(target_os = "macos")]
     {
+        use std::process::Command;
+
         // 转义 AppleScript 中的特殊字符
         let escape_apple_script = |s: &str| -> String {
             s.replace('\\', "\\\\")
@@ -280,7 +282,7 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
                 Command::new("osascript")
                     .args(["-e", &script])
                     .spawn()
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e: std::io::Error| e.to_string())?;
             }
             "warp" => {
                 let escaped_path = escape_apple_script(&path);
@@ -299,7 +301,7 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
                 Command::new("osascript")
                     .args(["-e", &script])
                     .spawn()
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e: std::io::Error| e.to_string())?;
             }
             _ => { // Terminal (默认)
                 let escaped_path = escape_apple_script(&path);
@@ -313,7 +315,7 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
                 Command::new("osascript")
                     .args(["-e", &script])
                     .spawn()
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e: std::io::Error| e.to_string())?;
             }
         }
     }

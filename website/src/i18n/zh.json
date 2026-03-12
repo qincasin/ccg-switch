@@ -1,0 +1,340 @@
+{
+  "nav": {
+    "home": "首页",
+    "install": "安装指南",
+    "usage": "使用文档",
+    "changelog": "更新日志"
+  },
+  "home": {
+    "badge": "支持 Claude · Codex · Gemini",
+    "title": "CCG Switch",
+    "subtitle": "AI CLI 工具的统一配置管理器",
+    "description": "无缝切换 API 密钥环境，彻底告别频繁手动修改终端环境变量的痛苦",
+    "downloadBtn": "立即下载",
+    "githubBtn": "Star on GitHub",
+    "features": {
+      "title": "强大功能",
+      "zeroConfig": {
+        "title": "零配置切换",
+        "description": "一键在 Anthropic、Azure、自定义代理之间切换，无需手动修改环境变量"
+      },
+      "proxy": {
+        "title": "内置本地代理",
+        "description": "Rust 编写的高性能 HTTP 代理，自动拦截、替换和测速 API 请求，专为国内网络设计"
+      },
+      "mcp": {
+        "title": "MCP 服务器管理",
+        "description": "图形化配置 Model Context Protocol 插件，可视化管理 AI 上下文能力"
+      },
+      "prompts": {
+        "title": "Prompt 预设池",
+        "description": "预置多种角色 Prompt 模板，支持工作区级快速分发与应用"
+      },
+      "dashboard": {
+        "title": "可视化数据面板",
+        "description": "统一监控 Tokens 消耗、工具调用次数与接口响应延迟"
+      },
+      "sandbox": {
+        "title": "沙箱环境隔离",
+        "description": "为不同项目创建独立的配置环境，避免冲突与干扰"
+      }
+    },
+    "platforms": {
+      "title": "各平台深度适配",
+      "description": "充分发挥每个操作系统的原生能力"
+    },
+    "quickStart": {
+      "title": "快速开始",
+      "step1": "下载并安装 CCG Switch",
+      "step2": "添加你的 Claude/Codex/Gemini API Token",
+      "step3": "配置 MCP 服务器（可选）",
+      "step4": "开始高效的 AI 开发体验"
+    },
+    "techStack": {
+      "title": "现代技术栈",
+      "description": "业内最前沿的跨平台开发技术",
+      "backend": "高性能后端",
+      "size": "极小的安装包",
+      "native": "跨平台体验"
+    },
+    "cta": {
+      "title": "准备好了吗？",
+      "description": "立即下载 CCG Switch，体验流畅的 AI CLI 配置管理",
+      "download": "免费下载",
+      "docs": "查看文档"
+    }
+  },
+  "install": {
+    "title": "安装指南",
+    "subtitle": "选择适合你操作系统的安装方式，几分钟内即可完成 CCG Switch 的安装",
+    "download": "下载最新版本",
+    "platforms": {
+      "windows": {
+        "name": "Windows",
+        "desc": "选择适合你的安装包",
+        "nsis": "NSIS 安装包",
+        "nsisDesc": "推荐：图形化安装向导",
+        "msi": "MSI 包",
+        "msiDesc": "适合企业部署",
+        "steps": "下载 .exe 安装程序 → 双击运行安装向导 → 选择安装路径（可选） → 完成安装并启动应用"
+      },
+      "macos": {
+        "name": "macOS",
+        "desc": "选择适合你的安装包",
+        "dmg": "DMG 镜像",
+        "dmgDesc": "支持 Apple Silicon & Intel",
+        "brew": "Brew 安装",
+        "brewDesc": "命令行快速安装",
+        "steps": "下载 .dmg 文件 → 双击打开并拖拽到 Applications → 首次启动在系统设置中允许 → 享受原生 macOS 体验"
+      },
+      "linux": {
+        "name": "Linux",
+        "desc": "选择适合你的安装包",
+        "deb": "Debian 包",
+        "debDesc": "Debian/Ubuntu 系统",
+        "appimage": "AppImage",
+        "appimageDesc": "通用便携版",
+        "steps": "下载对应平台的安装包 → Debian: sudo dpkg -i cc-switch_*.deb → AppImage: chmod +x cc-switch-*.AppImage → 从应用菜单启动"
+      }
+    },
+    "systemRequirements": {
+      "title": "系统要求",
+      "os": "操作系统",
+      "osValues": "Windows 10+, macOS 11+, 主流 Linux 发行版",
+      "memory": "内存",
+      "memoryValues": "至少 4GB RAM，推荐 8GB+",
+      "storage": "存储",
+      "storageValues": "约 50MB 磁盘空间",
+      "network": "网络",
+      "networkValues": "需要互联网连接（使用本地代理可缓解）"
+    },
+    "faq": {
+      "title": "常见问题",
+      "q1": {
+        "question": "CCG Switch 是否安全？",
+        "answer": "是的。所有 API Token 都加密存储在本地，仅用于与 AI 服务商通信。不会上传到任何第三方服务器。代码完全开源，可自行审计。"
+      },
+      "q2": {
+        "question": "需要联网才能使用吗？",
+        "answer": "基本配置功能可以离线使用，但切换 Token、获取可用模型列表和同步 MCP 服务器需要网络连接。内置的本地代理可帮助解决网络限制问题。"
+      },
+      "q3": {
+        "question": "支持哪些 AI 服务商？",
+        "answer": "支持 Anthropic 官方 API、Azure OpenAI、以及任何兼容 OpenAI 格式的第三方 API。通过自定义代理配置，可以轻松切换不同服务商。"
+      },
+      "q4": {
+        "question": "如何卸载？",
+        "answer": "Windows: 通过「设置 > 应用」卸载；macOS: 删除 Applications 中的应用并清理 ~/Library/Application Support/ccg-switch；Linux: 使用包管理器卸载或删除 AppImage。"
+      }
+    },
+    "needHelp": {
+      "title": "需要帮助？",
+      "description": "遇到问题或有疑问？我们在这里提供支持",
+      "submitIssue": "提交 Issue"
+    }
+  },
+  "usage": {
+    "title": "使用文档",
+    "subtitle": "了解如何使用 CCG Switch 管理 AI CLI 工具配置，提升开发效率",
+    "quickStart": {
+      "title": "快速上手",
+      "description": "五步完成配置，立即开始使用",
+      "step1": {
+        "title": "安装并启动",
+        "description": "下载并安装 CCG Switch，首次启动会自动初始化配置环境"
+      },
+      "step2": {
+        "title": "添加 API Token",
+        "description": "在 Token 管理页面添加你的 Claude/Codex/Gemini API 密钥"
+      },
+      "step3": {
+        "title": "配置代理（可选）",
+        "description": "如遇网络问题，可配置本地代理或使用内置代理服务"
+      },
+      "step4": {
+        "title": "添加 MCP 服务器",
+        "description": "在 MCP 管理页面添加需要的服务器扩展 AI 能力"
+      },
+      "step5": {
+        "title": "开始使用",
+        "description": "在终端中使用 Claude Code，享受无缝切换体验"
+      }
+    },
+    "features": {
+      "tokens": {
+        "title": "API Token 管理",
+        "description": "轻松管理多个 Claude/Codex/Gemini API Token，一键切换使用",
+        "add": "添加 Token",
+        "addDesc": "填写名称、API Key 和相关配置",
+        "switch": "快速切换",
+        "switchDesc": "点击「设为活跃」即可切换当前 Token",
+        "models": "模型映射",
+        "modelsDesc": "为 Sonnet、Opus、Haiku 配置默认模型",
+        "endpoint": "自定义端点",
+        "endpointDesc": "支持 Azure、自定义代理等"
+      },
+      "mcp": {
+        "title": "MCP 服务器管理",
+        "description": "图形化配置 Model Context Protocol 插件，扩展 AI 能力",
+        "global": "全局服务器",
+        "globalDesc": "对所有 Claude Code 项目生效",
+        "project": "项目服务器",
+        "projectDesc": "仅对特定项目生效",
+        "sort": "拖拽排序",
+        "sortDesc": "直观的配置优先级管理",
+        "monitor": "状态监控",
+        "monitorDesc": "实时查看服务器连接状态"
+      },
+      "prompts": {
+        "title": "Prompt 预设管理",
+        "description": "保存常用的 CLAUDE.md 内容，快速应用到项目中",
+        "template": "模板创建",
+        "templateDesc": "保存角色设定和指令模板",
+        "apply": "快速应用",
+        "applyDesc": "一键将预设应用到项目",
+        "category": "分类管理",
+        "categoryDesc": "按用途组织预设模板",
+        "variable": "变量支持",
+        "variableDesc": "支持动态变量替换"
+      },
+      "dashboard": {
+        "title": "数据统计面板",
+        "description": "统一监控使用情况，了解 AI 工具消耗",
+        "tokens": "Token 消耗",
+        "tokensDesc": "追踪 API 调用和 Token 使用量",
+        "latency": "响应延迟",
+        "latencyDesc": "监控接口响应时间",
+        "activity": "活跃度图表",
+        "activityDesc": "按天统计会话活跃度",
+        "projects": "项目概览",
+        "projectsDesc": "查看所有已配置的项目"
+      },
+      "proxy": {
+        "title": "本地代理服务",
+        "description": "内置 Rust 编写的 HTTP 代理，解决网络访问问题",
+        "intercept": "自动拦截",
+        "interceptDesc": "自动拦截并转发 API 请求",
+        "replace": "智能替换",
+        "replaceDesc": "自动替换 API 端点地址",
+        "speedtest": "测速功能",
+        "speedtestDesc": "测试不同代理的响应速度",
+        "system": "系统级代理",
+        "systemDesc": "为整个系统提供代理服务"
+      },
+      "sandbox": {
+        "title": "沙箱环境隔离",
+        "description": "为不同项目创建独立的配置环境，避免冲突",
+        "isolate": "项目隔离",
+        "isolateDesc": "每个项目独立配置",
+        "switch": "环境切换",
+        "switchDesc": "快速在不同项目环境间切换",
+        "inherit": "配置继承",
+        "inheritDesc": "支持从全局配置继承",
+        "avoid": "冲突避免",
+        "avoidDesc": "避免不同项目配置干扰"
+      }
+    },
+    "tips": {
+      "title": "使用技巧",
+      "tip1": "为不同项目创建独立的 Token 配置，避免混淆",
+      "tip2": "使用 MCP 服务器扩展 AI 能力，如文件系统操作",
+      "tip3": "定期查看数据面板，了解 Token 消耗情况",
+      "tip4": "利用预设功能快速部署项目配置模板"
+    },
+    "needHelp": {
+      "title": "还有疑问？",
+      "description": "查看更多文档或提交问题",
+      "submitIssue": "提交 Issue"
+    }
+  },
+  "changelog": {
+    "title": "更新日志",
+    "subtitle": "跟踪 CCG Switch 的版本更新和改进记录",
+    "badge": "版本历史",
+    "latest": "最新版本",
+    "viewRelease": "查看 Release",
+    "viewAll": "查看完整历史",
+    "viewAllDesc": "访问 GitHub Releases 页面查看所有版本的详细变更",
+    "type": {
+      "major": "Major",
+      "minor": "Minor",
+      "patch": "Patch"
+    },
+    "changeType": {
+      "feature": "新功能",
+      "fix": "修复",
+      "improvement": "优化",
+      "breaking": "重大变更"
+    },
+    "versions": {
+      "v1.2.12": {
+        "date": "2025-01-13",
+        "changes": [
+          { "type": "fix", "text": "修复编译错误，优化构建流程" },
+          { "type": "improvement", "text": "优化技能页卡片排版，提升视觉体验" },
+          { "type": "fix", "text": "修复若干已知问题" }
+        ]
+      },
+      "v1.2.11": {
+        "date": "2025-01-10",
+        "changes": [
+          { "type": "feature", "text": "新增：技能页面卡片展示模式" },
+          { "type": "feature", "text": "新增：Prompt 预设管理功能" },
+          { "type": "improvement", "text": "优化：MCP 服务器配置界面" },
+          { "type": "fix", "text": "修复：Token 切换时的配置写入问题" }
+        ]
+      },
+      "v1.2.10": {
+        "date": "2024-12-28",
+        "changes": [
+          { "type": "feature", "text": "新增：仪表盘数据统计功能" },
+          { "type": "feature", "text": "新增：活跃度历史图表" },
+          { "type": "improvement", "text": "优化：应用启动性能" },
+          { "type": "fix", "text": "修复：语言切换不生效的问题" }
+        ]
+      },
+      "v1.2.0": {
+        "date": "2024-12-15",
+        "changes": [
+          { "type": "feature", "text": "重大更新：全新的 UI 设计" },
+          { "type": "feature", "text": "新增：暗色模式支持" },
+          { "type": "feature", "text": "新增：中英文国际化" },
+          { "type": "improvement", "text": "重构：状态管理迁移至 Zustand" },
+          { "type": "improvement", "text": "优化：响应式布局适配移动端" }
+        ]
+      },
+      "v1.1.0": {
+        "date": "2024-11-20",
+        "changes": [
+          { "type": "feature", "text": "新增：MCP 服务器管理功能" },
+          { "type": "feature", "text": "新增：项目级 MCP 配置支持" },
+          { "type": "improvement", "text": "优化：Token 管理界面" },
+          { "type": "fix", "text": "修复：配置文件读写权限问题" }
+        ]
+      },
+      "v1.0.0": {
+        "date": "2024-11-01",
+        "changes": [
+          { "type": "feature", "text": "首个稳定版本发布" },
+          { "type": "feature", "text": "支持多 API Token 管理" },
+          { "type": "feature", "text": "支持自定义 API 端点" },
+          { "type": "feature", "text": "支持模型配置映射" },
+          { "type": "feature", "text": "基础 CLAUDE.md 管理功能" }
+        ]
+      }
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 CCG Switch. MIT License.",
+    "madeWith": "Made with love for AI developers",
+    "github": "GitHub",
+    "techStack": "技术栈"
+  },
+  "deployInfo": {
+    "title": "部署信息",
+    "owner": "仓库所有者",
+    "repo": "仓库名称",
+    "visitRepo": "访问仓库",
+    "forkNotice": "这是 {{owner}} 的 fork 版本"
+  }
+}
