@@ -1,6 +1,8 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -23,6 +25,13 @@ const VALID_TOOLS: [&str; 4] = ["claude", "codex", "gemini", "opencode"];
 static VERSION_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\d+\.\d+\.\d+(-[\w.]+)?").expect("Invalid version regex"));
 
+/// 缓存：(结果, 缓存时间)
+static CACHE: Lazy<Arc<RwLock<Option<(Vec<ToolVersion>, std::time::Instant)>>>> =
+    Lazy::new(|| Arc::new(RwLock::new(None)));
+
+/// 缓存有效期：5分钟
+const CACHE_TTL: std::time::Duration = std::time::Duration::from_secs(300);
+
 fn extract_version(raw: &str) -> String {
     VERSION_RE
         .find(raw)
@@ -30,25 +39,66 @@ fn extract_version(raw: &str) -> String {
         .unwrap_or_else(|| raw.to_string())
 }
 
-/// 获取多个工具的本地版本和远程最新版本
-pub async fn get_tool_versions(tools: Option<Vec<String>>) -> Vec<ToolVersion> {
-    let requested: Vec<&str> = if let Some(ref tools) = tools {
+/// 获取多个工具的本地版本和远程最新版本（支持缓存和强制刷新）
+pub async fn get_tool_versions(tools: Option<Vec<String>>, force: bool) -> Vec<ToolVersion> {
+    // 非强制刷新时检查缓存
+    if !force {
+        let cache = CACHE.read().await;
+        if let Some((ref cached, ref cached_at)) = *cache {
+            if cached_at.elapsed() < CACHE_TTL {
+                if let Some(ref tools) = tools {
+                    let set: std::collections::HashSet<&str> =
+                        tools.iter().map(|s| s.as_str()).collect();
+                    return cached
+                        .iter()
+                        .filter(|t| set.contains(t.name.as_str()))
+                        .cloned()
+                        .collect();
+                }
+                return cached.clone();
+            }
+        }
+    }
+
+    let requested: Vec<String> = if let Some(ref tools) = tools {
         let set: std::collections::HashSet<&str> = tools.iter().map(|s| s.as_str()).collect();
-        VALID_TOOLS.iter().copied().filter(|t| set.contains(t)).collect()
+        VALID_TOOLS
+            .iter()
+            .copied()
+            .filter(|t| set.contains(t))
+            .map(|s| s.to_string())
+            .collect()
     } else {
-        VALID_TOOLS.to_vec()
+        VALID_TOOLS.iter().map(|s| s.to_string()).collect()
     };
 
-    let mut results = Vec::new();
-    for tool in requested {
-        results.push(get_single_tool_version(tool).await);
+    // 并行检查所有工具
+    let futures: Vec<_> = requested
+        .into_iter()
+        .map(|tool| async move { get_single_tool_version(&tool).await })
+        .collect();
+
+    let results = futures::future::join_all(futures).await;
+
+    // 请求全部工具时更新缓存
+    if tools.is_none() {
+        let mut cache = CACHE.write().await;
+        *cache = Some((results.clone(), std::time::Instant::now()));
     }
+
     results
 }
 
 async fn get_single_tool_version(tool: &str) -> ToolVersion {
-    // 1. 获取本地版本
-    let (local_version, local_error) = try_get_version(tool);
+    let tool_name = tool.to_string();
+
+    // 1. 用 spawn_blocking 非阻塞获取本地版本
+    let tool_for_local = tool_name.clone();
+    let (local_version, local_error) = tokio::task::spawn_blocking(move || {
+        try_get_version(&tool_for_local)
+    })
+    .await
+    .unwrap_or((None, Some("检测超时".to_string())));
 
     // 2. 获取远程最新版本
     let client = reqwest::Client::builder()
@@ -56,7 +106,7 @@ async fn get_single_tool_version(tool: &str) -> ToolVersion {
         .build()
         .unwrap_or_default();
 
-    let latest_version = match tool {
+    let latest_version = match tool_name.as_str() {
         "claude" => fetch_npm_latest(&client, "@anthropic-ai/claude-code").await,
         "codex" => fetch_npm_latest(&client, "@openai/codex").await,
         "gemini" => fetch_npm_latest(&client, "@google/gemini-cli").await,
@@ -65,7 +115,7 @@ async fn get_single_tool_version(tool: &str) -> ToolVersion {
     };
 
     ToolVersion {
-        name: tool.to_string(),
+        name: tool_name,
         version: local_version,
         latest_version,
         error: local_error,
