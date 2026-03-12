@@ -64,10 +64,10 @@ function AboutPanel() {
     const [installing, setInstalling] = useState(false);
     const [installStage, setInstallStage] = useState<string>('idle');
 
-    const loadToolVersions = useCallback(async () => {
+    const loadToolVersions = useCallback(async (force = false) => {
         setLoadingTools(true);
         try {
-            const data = await invoke<ToolVersion[]>('get_tool_versions', { tools: null });
+            const data = await invoke<ToolVersion[]>('get_tool_versions', { tools: null, force });
             setToolVersions(data);
         } catch (e) {
             console.error('Failed to load tool versions:', e);
@@ -372,7 +372,7 @@ function AboutPanel() {
                         {t('settings.localEnvCheck', { defaultValue: '本地环境检查' })}
                     </h2>
                     <button
-                        onClick={loadToolVersions}
+                        onClick={() => loadToolVersions(true)}
                         disabled={loadingTools}
                         className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-base-300 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-base-300 transition-colors disabled:opacity-60"
                     >

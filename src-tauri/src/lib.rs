@@ -225,7 +225,6 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
     #[cfg(target_os = "windows")]
     {
         use tauri_plugin_shell::ShellExt;
-        use tauri_plugin_shell::ShellExt;
         let shell = app.shell();
         match terminal_app.as_str() {
             "powershell" => {
@@ -585,8 +584,8 @@ fn apply_universal_provider(config: UniversalProviderConfig) -> Result<Vec<Strin
 
 // 工具版本检测
 #[tauri::command]
-async fn get_tool_versions(tools: Option<Vec<String>>) -> Result<Vec<ToolVersion>, String> {
-    Ok(services::tool_version_service::get_tool_versions(tools).await)
+async fn get_tool_versions(tools: Option<Vec<String>>, force: Option<bool>) -> Result<Vec<ToolVersion>, String> {
+    Ok(services::tool_version_service::get_tool_versions(tools, force.unwrap_or(false)).await)
 }
 
 // 检查更新
