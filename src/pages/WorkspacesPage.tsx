@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Search, FolderOpen, Terminal, FileText, RefreshCw, ChevronRight, Clock, MessageSquare, Copy, Hash, Play, List, X } from 'lucide-react';
+import { showToast } from '../components/common/ToastContainer';
 
 interface ProjectInfo {
     name: string;
@@ -140,7 +141,8 @@ function WorkspacesPage() {
 
     const openTerminal = async (path: string) => {
         try {
-            await invoke('open_in_terminal', { path });
+            const config = await invoke<any>('get_config');
+            await invoke('open_in_terminal', { path, terminal: config.preferredTerminal || null });
         } catch (e) {
             console.error(t('workspaces.open_terminal_error'), e);
         }
@@ -150,8 +152,11 @@ function WorkspacesPage() {
         try {
             const command = `claude --resume ${sessionId}`;
             await invoke('launch_resume_session', { command, cwd: projectPath || null });
+            showToast(t('workspaces.resume_success', '已启动 Claude 终端'), 'success');
         } catch (e) {
             console.error('Failed to resume session:', e);
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            showToast(t('workspaces.resume_error', '启动终端失败') + ': ' + errorMsg, 'error');
         }
     };
 

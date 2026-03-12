@@ -16,9 +16,14 @@ interface SkillStoreV2State {
     installSkill: (skill: DiscoverableSkill, currentApp?: string) => Promise<void>;
     uninstallSkill: (id: string) => Promise<void>;
     toggleApp: (id: string, app: string, enabled: boolean) => Promise<void>;
+    scanAndImport: () => Promise<{ imported: number; skipped: number; names: string[] }>;
+    exportSkill: (id: string) => Promise<string>;
+    importSkill: (payload: string) => Promise<void>;
+    runSkillSandbox: (request: { provider_id: string; system_prompt: string; user_input: string; model: string; compare_mode?: boolean }) => Promise<{ content: string; compare_content?: string }>;
+    checkSkillUpdate: (id: string) => Promise<{ has_update: boolean; remote_content: string; local_content: string }>;
+    applySkillUpdate: (id: string, newContent: string) => Promise<void>;
     saveRepo: (repo: SkillRepo) => Promise<void>;
     deleteRepo: (owner: string, name: string) => Promise<void>;
-    scanAndImport: () => Promise<{ imported: number; skipped: number; names: string[] }>;
 }
 
 export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
@@ -63,6 +68,7 @@ export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
         try {
             await invoke('install_skill', { skill, currentApp });
             await get().loadInstalled();
+            set({ loading: false });
         } catch (error) {
             set({ error: String(error), loading: false });
             throw error;
@@ -74,6 +80,7 @@ export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
         try {
             await invoke('uninstall_skill', { id });
             await get().loadInstalled();
+            set({ loading: false });
         } catch (error) {
             set({ error: String(error), loading: false });
             throw error;
@@ -85,6 +92,7 @@ export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
         try {
             await invoke('toggle_skill_app', { id, app, enabled });
             await get().loadInstalled();
+            set({ loading: false });
         } catch (error) {
             set({ error: String(error), loading: false });
             throw error;
@@ -118,6 +126,53 @@ export const useSkillStoreV2 = create<SkillStoreV2State>((set, get) => ({
             await get().loadInstalled();
             set({ loading: false });
             return { imported, skipped, names };
+        } catch (error) {
+            set({ error: String(error), loading: false });
+            throw error;
+        }
+    },
+
+    exportSkill: async (id: string) => {
+        try {
+            return await invoke<string>('export_skill', { id });
+        } catch (error) {
+            set({ error: String(error) });
+            throw error;
+        }
+    },
+
+    importSkill: async (payload: string) => {
+        set({ loading: true, error: null });
+        try {
+            await invoke('import_skill', { payload });
+            await get().loadInstalled();
+        } catch (error) {
+            set({ error: String(error), loading: false });
+            throw error;
+        }
+    },
+
+    runSkillSandbox: async (request: { provider_id: string; system_prompt: string; user_input: string; model: string }) => {
+        try {
+            return await invoke<{ content: string }>('run_skill_sandbox', { request });
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    checkSkillUpdate: async (id: string) => {
+        try {
+            return await invoke<{ has_update: boolean; remote_content: string; local_content: string }>('check_skill_update', { id });
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    applySkillUpdate: async (id: string, newContent: string) => {
+        set({ loading: true, error: null });
+        try {
+            await invoke('apply_skill_update', { id, newContent });
+            await get().loadInstalled();
         } catch (error) {
             set({ error: String(error), loading: false });
             throw error;

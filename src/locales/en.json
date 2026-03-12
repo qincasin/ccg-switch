@@ -882,6 +882,8 @@
         "role_assistant": "Assistant",
         "no_sessions": "No sessions found",
         "session_preview_empty": "No readable session summary",
-        "open_terminal_error": "Failed to open terminal"
+        "open_terminal_error": "Failed to open terminal",
+        "resume_success": "Claude terminal launched",
+        "resume_error": "Failed to launch terminal"
     }
 }

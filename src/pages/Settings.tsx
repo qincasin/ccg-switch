@@ -26,6 +26,38 @@ function Settings() {
             .catch((e) => setAutoLaunchError(String(e)));
     }, []);
 
+    // 根据平台自动修正终端配置
+    useEffect(() => {
+        if (!config) return;
+
+        const platform = navigator.platform.toLowerCase();
+        const isMac = platform.includes('mac');
+        const isWindows = platform.includes('win');
+        const isLinux = !isMac && !isWindows;
+
+        const macTerminals: TerminalType[] = ['terminal', 'iterm', 'warp'];
+        const windowsTerminals: TerminalType[] = ['cmd', 'powershell', 'wt'];
+        const linuxTerminals: TerminalType[] = ['xterm', 'gnome-terminal', 'konsole'];
+
+        let needsFix = false;
+        let correctTerminal: TerminalType = 'terminal';
+
+        if (isMac && !macTerminals.includes(config.preferredTerminal)) {
+            correctTerminal = 'terminal';
+            needsFix = true;
+        } else if (isWindows && !windowsTerminals.includes(config.preferredTerminal)) {
+            correctTerminal = 'powershell';
+            needsFix = true;
+        } else if (isLinux && !linuxTerminals.includes(config.preferredTerminal)) {
+            correctTerminal = 'xterm';
+            needsFix = true;
+        }
+
+        if (needsFix) {
+            saveConfig({ ...config, preferredTerminal: correctTerminal });
+        }
+    }, [config]);
+
     const handleThemeChange = async (theme: 'light' | 'dark') => {
         if (!config) return;
         await saveConfig({ ...config, theme });
@@ -61,12 +93,6 @@ function Settings() {
         { value: 'left', label: t('settings.sidebarLeft', '左侧'), icon: PanelLeft },
         { value: 'right', label: t('settings.sidebarRight', '右侧'), icon: PanelRight },
         { value: 'top', label: t('settings.sidebarTop', '顶部'), icon: PanelTop },
-    ];
-
-    const terminalOptions: { value: TerminalType; label: string }[] = [
-        { value: 'cmd', label: t('settings.terminal_cmd', '命令提示符') },
-        { value: 'powershell', label: 'PowerShell' },
-        { value: 'wt', label: 'Windows Terminal' },
     ];
 
     return (
@@ -173,32 +199,35 @@ function Settings() {
                             </div>
 
                             {/* 启动终端 */}
-                            <div className="flex items-center justify-between py-3">
+                            <div className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-base-200">
                                 <div className="flex items-center gap-3">
                                     <Terminal className="w-5 h-5 text-orange-500" />
                                     <div>
-                                        <span className="text-gray-700 dark:text-gray-300">{t('settings.preferredTerminal', '启动终端')}</span>
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.preferredTerminal', '启动终端')}</span>
                                         <p className="text-xs text-gray-400 mt-0.5">{t('settings.preferredTerminalHint', '恢复会话时使用的终端')}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    {terminalOptions.map(opt => {
-                                        const active = (config?.preferredTerminal || 'powershell') === opt.value;
-                                        return (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => handleTerminalChange(opt.value)}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                    active
-                                                        ? 'bg-blue-500 text-white'
-                                                        : 'bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300'
-                                                }`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                <select
+                                    value={config?.preferredTerminal || 'terminal'}
+                                    onChange={(e) => handleTerminalChange(e.target.value as TerminalType)}
+                                    className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+                                >
+                                    <optgroup label="Windows">
+                                        <option value="cmd">命令提示符</option>
+                                        <option value="powershell">PowerShell</option>
+                                        <option value="wt">Windows Terminal</option>
+                                    </optgroup>
+                                    <optgroup label="macOS">
+                                        <option value="terminal">Terminal (系统默认)</option>
+                                        <option value="iterm">iTerm2</option>
+                                        <option value="warp">Warp</option>
+                                    </optgroup>
+                                    <optgroup label="Linux">
+                                        <option value="xterm">XTerm</option>
+                                        <option value="gnome-terminal">GNOME Terminal</option>
+                                        <option value="konsole">Konsole</option>
+                                    </optgroup>
+                                </select>
                             </div>
                         </div>
 

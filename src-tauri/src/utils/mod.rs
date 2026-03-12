@@ -1,1 +1,1 @@
-// Utility modules placeholder
+pub mod base64;
