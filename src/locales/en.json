@@ -885,5 +885,32 @@
         "open_terminal_error": "Failed to open terminal",
         "resume_success": "Claude terminal launched",
         "resume_error": "Failed to launch terminal"
+    },
+    "deeplink": {
+        "confirmImport": "Confirm Import",
+        "confirmImportDescription": "The following configuration will be imported. Please verify the information.",
+        "app": "App Type",
+        "providerName": "Provider Name",
+        "homepage": "Homepage",
+        "endpoint": "Endpoint",
+        "primaryEndpoint": "Primary",
+        "apiKey": "API Key",
+        "model": "Model",
+        "haikuModel": "Haiku Model",
+        "sonnetModel": "Sonnet Model",
+        "opusModel": "Opus Model",
+        "multiModel": "Multi Model",
+        "notes": "Notes",
+        "warning": "Please verify this information is from a trusted source. After import, you can view and modify it in Provider management.",
+        "import": "Import",
+        "importing": "Importing...",
+        "importSuccess": "Import Successful",
+        "importSuccessDescription": "Provider \"{{name}}\" has been imported successfully",
+        "importError": "Import Failed",
+        "parseError": "Failed to parse link",
+        "configSource": "Config Source",
+        "configEmbedded": "Embedded",
+        "configRemote": "Remote",
+        "configDetails": "Config Details"
     }
 }

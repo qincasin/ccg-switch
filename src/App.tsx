@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import { lazy, Suspense } from 'react';
 import ThemeManager from './components/common/ThemeManager';
+import { DeepLinkImportDialog } from './components/providers/DeepLinkImportDialog';
 import { useEffect } from 'react';
 import { useConfigStore } from './stores/useConfigStore';
 import { useTokenStore } from './stores/useTokenStore';
@@ -111,6 +112,7 @@ function App() {
   return (
     <>
       <ThemeManager />
+      <DeepLinkImportDialog />
       <RouterProvider router={router} />
     </>
   );
