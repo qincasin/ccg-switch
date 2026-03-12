@@ -145,3 +145,82 @@ pub struct ApiToken {
 - 国际化: 新增文案需同时更新 `zh.json` 和 `en.json`
 - 页面组件导出为 `default export`
 - 新增 Tauri 命令需在 `lib.rs` 的 `generate_handler!` 中注册
+
+## 发布流程
+
+### 版本号更新
+
+使用版本号更新脚本（带审批确认）：
+
+```bash
+# 基本用法
+npm run bump <版本号> [类型] [描述]
+
+# 示例
+npm run bump 1.2.15 minor "新增 macOS 自动更新功能"
+npm run bump 1.2.15 patch "修复权限问题"
+npm run bump 1.2.16 major "重大更新"
+```
+
+**脚本会自动更新：**
+- `package.json` (根目录)
+- `website/package.json`
+- `src-tauri/tauri.conf.json` ⬅️ **决定安装包版本**
+- `website/src/pages/Changelog.tsx` (新增版本条目)
+
+**更新类型：**
+- `major` - 重大更新 (不兼容的 API 变更)
+- `minor` - 新增功能 (向后兼容的新功能)
+- `patch` - 补丁修复 (向后兼容的问题修复)
+
+### 发布到 GitHub
+
+```bash
+# 1. 运行版本更新脚本
+npm run bump 1.2.15 minor "更新描述"
+
+# 2. 检查修改
+git diff
+
+# 3. 提交更改
+git add .
+git commit -m "chore: bump version to 1.2.15"
+
+# 4. 创建 tag (使用脚本生成的消息模板)
+git tag -a v1.2.15 -m "$(cat <<'EOF'
+v1.2.15
+
+发布日期: 2025-03-12
+
+### 新增功能
+- 新增 macOS 自动更新功能
+
+### 下载说明
+- **Windows**: 下载 `.exe` (NSIS安装包) 或 `.msi`
+- **macOS**: 下载 `.dmg`
+- **Linux**: 下载 `.deb` 或 `.AppImage`
+EOF
+)"
+
+# 5. 推送 (触发 GitHub Actions 自动构建)
+git push origin main
+git push origin v1.2.15
+```
+
+### 重要说明
+
+⚠️ **版本号必须先于 tag 更新**
+
+```bash
+# ❌ 错误顺序 - 会导致安装包版本号错误
+git tag v1.2.15
+# 然后修改 package.json 版本...
+
+# ✅ 正确顺序
+# 1. 先更新所有配置文件中的版本号
+# 2. 提交版本更改
+# 3. 创建 tag (指向版本更新提交)
+# 4. 推送触发构建
+```
+
+**原因：** GitHub Actions 构建时使用 `tauri.conf.json` 中的版本号，而非 tag 名称。
