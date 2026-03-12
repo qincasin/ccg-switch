@@ -1,15 +1,17 @@
 import { useTranslation } from 'react-i18next';
-import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package, FolderInput, ExternalLink } from 'lucide-react';
+import { Zap, Plus, RefreshCw, Trash2, Edit, Eye, FolderOpen, User, Search, Download, Package, FolderInput, ExternalLink, Share2, Import, Star, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useSkillStore } from '../stores/useSkillStore';
 import { useSkillStoreV2 } from '../stores/useSkillStoreV2';
+import { useProviderStore } from '../stores/useProviderStore';
 import ModalDialog from '../components/common/ModalDialog';
 import { showToast } from '../components/common/ToastContainer';
 import { APP_TYPES, APP_LABELS } from '../types/app';
 import { SKILL_APPS } from '../types/skillV2';
 
 const ALL_TAB = 'all';
+
 
 function SkillsPage() {
     const { t } = useTranslation();
@@ -36,10 +38,38 @@ function SkillsPage() {
     const [repoBranch, setRepoBranch] = useState('');
     const [repoError, setRepoError] = useState('');
     const [scanning, setScanning] = useState(false);
+    
+    // Import/Export States
+    const [importModal, setImportModal] = useState(false);
+    const [importPayload, setImportPayload] = useState('');
+    const [importLoading, setImportLoading] = useState(false);
+    const { exportSkill, importSkill, runSkillSandbox, checkSkillUpdate, applySkillUpdate } = useSkillStoreV2();
+
+    // Sandbox States
+    const { providers, loadAllProviders } = useProviderStore();
+    const [sandboxModal, setSandboxModal] = useState<{ isOpen: boolean; skillId: string; name: string; content: string }>({ isOpen: false, skillId: '', name: '', content: '' });
+    const [sandboxProvider, setSandboxProvider] = useState('');
+    const [sandboxModel, setSandboxModel] = useState('');
+    const [sandboxInput, setSandboxInput] = useState('');
+    const [sandboxOutput, setSandboxOutput] = useState('');
+    const [sandboxCompareOutput, setSandboxCompareOutput] = useState('');
+    const [sandboxLoading, setSandboxLoading] = useState(false);
+    const [sandboxCompareMode, setSandboxCompareMode] = useState(false);
+
+    // Update States
+    const [updateModal, setUpdateModal] = useState<{ isOpen: boolean; skillId: string; name: string; remoteContent: string; localContent: string }>({ isOpen: false, skillId: '', name: '', remoteContent: '', localContent: '' });
+    const [checkingUpdate, setCheckingUpdate] = useState<string | null>(null);
+    const [applyingUpdate, setApplyingUpdate] = useState(false);
+
+    // Sorting 
+    const [discoverSort, setDiscoverSort] = useState<'stars' | 'name'>('stars');
 
     useEffect(() => {
         if (pageTab === 'legacy') loadSkills();
-        else if (pageTab === 'installed') loadInstalled();
+        else if (pageTab === 'installed') {
+            loadInstalled();
+            loadAllProviders();
+        }
         else if (pageTab === 'repos') loadRepos();
     }, [pageTab]);
 
@@ -155,7 +185,7 @@ function SkillsPage() {
                         </div>
                         {/* 操作按钮 */}
                         {pageTab === 'legacy' && (
-                            <>
+                            <div className="contents">
                                 <button onClick={() => loadSkills()} disabled={loading} className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-100 transition-colors flex items-center gap-1.5 disabled:opacity-50">
                                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                     {t('common.refresh')}
@@ -164,10 +194,14 @@ function SkillsPage() {
                                     <Plus className="w-4 h-4" />
                                     {t('common.add')}
                                 </button>
-                            </>
+                            </div>
                         )}
                         {pageTab === 'installed' && (
-                            <>
+                            <div className="contents">
+                                <button onClick={() => { setImportPayload(''); setImportModal(true); }} className="px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1.5">
+                                    <Import className="w-4 h-4" />
+                                    从分享码导入
+                                </button>
                                 <button onClick={async () => {
                                     setScanning(true);
                                     try {
@@ -188,11 +222,23 @@ function SkillsPage() {
                                     <FolderInput className={`w-4 h-4 ${scanning ? 'animate-pulse' : ''}`} />
                                     {scanning ? '扫描中...' : '扫描导入'}
                                 </button>
+                                <button onClick={async () => {
+                                    const names = installed.map(s => s.name).join('\n');
+                                    try {
+                                        await invoke('write_clipboard', { text: names });
+                                        showToast(`已复制 ${installed.length} 个技能名称`, 'success');
+                                    } catch {
+                                        showToast('复制失败', 'error');
+                                    }
+                                }} className="px-3 py-1.5 bg-orange-400 text-white text-sm font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-1.5">
+                                    <Copy className="w-4 h-4" />
+                                    复制清单
+                                </button>
                                 <button onClick={() => loadInstalled()} disabled={v2Loading} className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-100 transition-colors flex items-center gap-1.5 disabled:opacity-50">
                                     <RefreshCw className={`w-4 h-4 ${v2Loading ? 'animate-spin' : ''}`} />
                                     {t('common.refresh')}
                                 </button>
-                            </>
+                            </div>
                         )}
                         {pageTab === 'discover' && (
                             <button onClick={() => discoverSkills()} disabled={discovering} className="px-3 py-1.5 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1.5 disabled:opacity-50">
@@ -201,7 +247,7 @@ function SkillsPage() {
                             </button>
                         )}
                         {pageTab === 'repos' && (
-                            <>
+                            <div className="contents">
                                 <button onClick={() => loadRepos()} className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-100 transition-colors flex items-center gap-1.5">
                                     <RefreshCw className="w-4 h-4" />
                                     {t('common.refresh')}
@@ -210,27 +256,41 @@ function SkillsPage() {
                                     <Plus className="w-4 h-4" />
                                     添加仓库
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* 页面标签 */}
-                <div className="flex gap-2 border-b border-gray-200 dark:border-base-300">
-                    <button onClick={() => setPageTab('installed')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'installed' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                        <Package className="w-4 h-4 inline mr-1.5" />
-                        已安装 ({installed.length})
-                    </button>
-                    <button onClick={() => setPageTab('discover')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'discover' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                        <Search className="w-4 h-4 inline mr-1.5" />
-                        发现
-                    </button>
-                    <button onClick={() => setPageTab('repos')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'repos' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                        仓库管理 ({repos.length})
-                    </button>
-                    <button onClick={() => setPageTab('legacy')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'legacy' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
-                        本地文件
-                    </button>
+                <div className="flex items-end justify-between border-b border-gray-200 dark:border-base-300">
+                    <div className="flex gap-2">
+                        <button onClick={() => setPageTab('installed')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'installed' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                            <Package className="w-4 h-4 inline mr-1.5" />
+                            已安装 ({installed.length})
+                        </button>
+                        <button onClick={() => setPageTab('discover')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'discover' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                            <Search className="w-4 h-4 inline mr-1.5" />
+                            发现
+                        </button>
+                        <button onClick={() => setPageTab('repos')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'repos' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                            仓库管理 ({repos.length})
+                        </button>
+                        <button onClick={() => setPageTab('legacy')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${pageTab === 'legacy' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                            本地文件
+                        </button>
+                    </div>
+                    {pageTab === 'discover' && (
+                        <div className="pb-2">
+                            <select 
+                                value={discoverSort}
+                                onChange={(e) => setDiscoverSort(e.target.value as 'stars' | 'name')}
+                                className="px-3 py-1 bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                                <option value="stars">按 Star 数推荐</option>
+                                <option value="name">按名称排序</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 {/* ===== 已安装 (v2) ===== */}
@@ -276,9 +336,93 @@ function SkillsPage() {
                                                 ))}
                                             </div>
                                         </div>
-                                        <button onClick={() => setV2DeleteModal({ isOpen: true, id: skill.id })} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ml-4">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex flex-col gap-2 ml-4">
+                                            {skill.repoOwner && skill.repoName && (
+                                                <button 
+                                                    onClick={async () => {
+                                                        setCheckingUpdate(skill.id);
+                                                        try {
+                                                            const res = await checkSkillUpdate(skill.id);
+                                                            if (res.has_update) {
+                                                                setUpdateModal({
+                                                                    isOpen: true,
+                                                                    skillId: skill.id,
+                                                                    name: skill.name,
+                                                                    remoteContent: res.remote_content,
+                                                                    localContent: res.local_content
+                                                                });
+                                                            } else {
+                                                                showToast('当前已是最新版本', 'success');
+                                                            }
+                                                        } catch (e) {
+                                                            showToast(String(e), 'error');
+                                                        } finally {
+                                                            setCheckingUpdate(null);
+                                                        }
+                                                    }}
+                                                    disabled={checkingUpdate === skill.id}
+                                                    className="p-2 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="检查更新"
+                                                >
+                                                    <RefreshCw className={`w-4 h-4 ${checkingUpdate === skill.id ? "animate-spin" : ""}`} />
+                                                </button>
+                                            )}
+                                            <button 
+                                                onClick={async () => {
+                                                    try {
+                                                        const content = await invoke<string>('read_skill_content_by_id', { id: skill.id });
+                                                        await invoke('write_clipboard', { text: content });
+                                                        showToast('技能系统提示词已复制', 'success');
+                                                    } catch (e) {
+                                                        showToast(String(e), 'error');
+                                                    }
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                                title="复制 Prompt"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const content = await invoke<string>('read_skill_content_by_id', { id: skill.id }).catch(() => "未能加载技能内容");
+                                                        setSandboxModal({ isOpen: true, skillId: skill.id, name: skill.name, content });
+                                                        setSandboxInput('');
+                                                        setSandboxOutput('');
+                                                        setSandboxCompareOutput('');
+                                                        setSandboxCompareMode(false);
+                                                        if (providers.length > 0 && !sandboxProvider) {
+                                                            setSandboxProvider(providers[0].id);
+                                                            setSandboxModel(providers[0].defaultSonnetModel || providers[0].defaultOpusModel || providers[0].defaultHaikuModel || '');
+                                                        }
+                                                    } catch (e) {
+                                                        showToast(String(e), "error");
+                                                    }
+                                                }}
+                                                className="p-2 text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                                title="沙盒测试"
+                                            >
+                                                <Zap className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    try {
+                                                        const code = await exportSkill(skill.id);
+                                                        await invoke('write_clipboard', { text: code });
+                                                        showToast('分享码已复制到剪贴板', 'success');
+                                                    } catch (e) {
+                                                        showToast(String(e), 'error');
+                                                    }
+                                                }} 
+                                                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                                title="分享技能"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => setV2DeleteModal({ isOpen: true, id: skill.id })} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="卸载技能">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -304,23 +448,39 @@ function SkillsPage() {
                                 (s.repoName?.toLowerCase().includes(query))
                             )
                             : discoverable;
-                        return filtered.length === 0 ? (
+                            
+                        const sortedDiscoverable = [...filtered].sort((a, b) => {
+                            if (discoverSort === 'stars') {
+                                const aStars = a.stars ?? -1;
+                                const bStars = b.stars ?? -1;
+                                if (bStars !== aStars) return bStars - aStars;
+                            }
+                            return a.name.localeCompare(b.name);
+                        });
+
+                        return sortedDiscoverable.length === 0 ? (
                             <div className="bg-white dark:bg-base-100 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-base-200 text-center">
                                 <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                                 <p className="text-gray-500 dark:text-gray-400">{query ? '未找到匹配的技能' : '点击"发现技能"从 GitHub 仓库获取可安装的技能'}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {filtered.map((skill) => {
+                                {sortedDiscoverable.map((skill) => {
                                 const isInstalled = installed.some((s) => s.directory === skill.directory);
                                 return (
                                     <div key={skill.key} className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200">
                                         <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-1.5 mb-1">
                                                     <h3 className="font-semibold text-gray-900 dark:text-base-content">{skill.name}</h3>
                                                     <span className="text-xs text-gray-400">{skill.repoOwner}/{skill.repoName}</span>
-                                                    {isInstalled && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">已安装</span>}
+                                                    {skill.stars !== undefined && skill.stars !== null && (
+                                                        <span className="flex items-center gap-0.5 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                                            <Star className="w-3 h-3 fill-current" />
+                                                            {skill.stars >= 1000 ? `${(skill.stars / 1000).toFixed(1)}k` : skill.stars}
+                                                        </span>
+                                                    )}
+                                                    {isInstalled && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full whitespace-nowrap">已安装</span>}
                                                 </div>
                                                 {skill.description && <p className="text-sm text-gray-500 dark:text-gray-400">{skill.description}</p>}
                                             </div>
@@ -378,24 +538,23 @@ function SkillsPage() {
                         ) : (
                             <div className="space-y-3">
                                 {filtered.map((repo) => (
-                                <div key={`${repo.owner}/${repo.name}`} className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200">
+                                <div key={`${repo.owner}/${repo.name}`} className="bg-white dark:bg-base-100 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-base-200">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-base-content">{repo.owner}/{repo.name}</h3>
-                                                <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-base-200 text-gray-500 dark:text-gray-400 rounded">{repo.branch}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold text-gray-900 dark:text-base-content truncate">{repo.owner}/{repo.name}</h3>
+                                                <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-base-200 text-gray-500 dark:text-gray-400 rounded whitespace-nowrap">{repo.branch}</span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                                <input type="checkbox" className="toggle toggle-sm toggle-primary" checked={repo.enabled} onChange={(e) => saveRepo({ ...repo, enabled: e.target.checked })} />
-                                                <span className="text-xs text-gray-600 dark:text-gray-400">{repo.enabled ? '启用' : '禁用'}</span>
+                                        <div className="flex items-center gap-1">
+                                            <label className="flex items-center cursor-pointer" title={repo.enabled ? '已启用' : '已禁用'}>
+                                                <input type="checkbox" className="toggle toggle-xs toggle-primary" checked={repo.enabled} onChange={(e) => saveRepo({ ...repo, enabled: e.target.checked })} />
                                             </label>
-                                            <button onClick={() => invoke('open_external', { url: `https://github.com/${repo.owner}/${repo.name}` })} className="p-2 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="在 GitHub 中查看">
-                                                <ExternalLink className="w-4 h-4" />
+                                            <button onClick={() => invoke('open_external', { url: `https://github.com/${repo.owner}/${repo.name}` })} className="p-1.5 text-gray-500 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="在 GitHub 中查看">
+                                                <ExternalLink className="w-3.5 h-3.5" />
                                             </button>
-                                            <button onClick={() => deleteRepo(repo.owner, repo.name)} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                                                <Trash2 className="w-4 h-4" />
+                                            <button onClick={() => deleteRepo(repo.owner, repo.name)} className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="删除仓库">
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -484,6 +643,266 @@ function SkillsPage() {
 
                 {/* 删除确认（v1）*/}
                 <ModalDialog isOpen={deleteModal.isOpen} title={t('skills.delete_title')} message={t('skills.confirm_delete')} type="confirm" isDestructive={true} onConfirm={confirmDelete} onCancel={() => setDeleteModal({ isOpen: false, name: '' })} />
+
+                {/* 导入技能分享码 */}
+                <ModalDialog
+                    isOpen={importModal}
+                    title="从分享码导入技能"
+                    type="confirm"
+                    onConfirm={async () => {
+                        const code = importPayload.trim();
+                        if (!code) {
+                            showToast('请粘贴有效的分享码', 'error');
+                            return;
+                        }
+                        setImportLoading(true);
+                        try {
+                            await importSkill(code);
+                            showToast('导入成功', 'success');
+                            setImportModal(false);
+                            setImportPayload('');
+                        } catch (e) {
+                            showToast(String(e), 'error');
+                        } finally {
+                            setImportLoading(false);
+                        }
+                    }}
+                    onCancel={() => {
+                        if (!importLoading) {
+                            setImportModal(false);
+                            setImportPayload('');
+                        }
+                    }}
+                >
+                    <div className="space-y-2">
+                        <textarea
+                            disabled={importLoading}
+                            value={importPayload}
+                            onChange={(e) => setImportPayload(e.target.value)}
+                            placeholder="粘贴以 ccg-skill:// 开头的分享码..."
+                            rows={8}
+                            className="w-full px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-base-content font-mono text-xs resize-none disabled:opacity-50"
+                        />
+                        {importLoading && <p className="text-sm text-blue-500 flex items-center gap-1.5"><RefreshCw className="w-3 h-3 animate-spin"/>正在解析写入中...</p>}
+                    </div>
+                </ModalDialog>
+
+                {/* 沙盒测试弹窗 */}
+                <ModalDialog
+                    isOpen={sandboxModal.isOpen}
+                    title={`沙盒测试 - ${sandboxModal.name}`}
+                    type="info"
+                    maxWidthClass="max-w-4xl"
+                    onConfirm={async () => {
+                        if (sandboxLoading || !sandboxProvider || !sandboxModel || !sandboxInput.trim()) return;
+                        setSandboxLoading(true);
+                        setSandboxOutput('');
+                        setSandboxCompareOutput('');
+                        try {
+                            const res = await runSkillSandbox({
+                                provider_id: sandboxProvider,
+                                model: sandboxModel,
+                                system_prompt: sandboxModal.content,
+                                user_input: sandboxInput,
+                                compare_mode: sandboxCompareMode
+                            });
+                            setSandboxOutput(res.content);
+                            if (res.compare_content) {
+                                setSandboxCompareOutput(res.compare_content);
+                            }
+                        } catch (e) {
+                            setSandboxOutput(`请求失败: \n${e}`);
+                            setSandboxCompareOutput('');
+                        } finally {
+                            setSandboxLoading(false);
+                        }
+                    }}
+                    onCancel={() => {
+                        if (!sandboxLoading) {
+                            setSandboxModal({ ...sandboxModal, isOpen: false });
+                            setSandboxCompareMode(false);
+                            setSandboxCompareOutput('');
+                        }
+                    }}
+                >
+                    <div className="space-y-3 max-h-[80vh] overflow-y-auto">
+                        {/* 对比模式开关 */}
+                        <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                            <div>
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-200">对比模式</label>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">同时显示使用技能和不使用技能的输出对比</p>
+                            </div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-sm toggle-primary"
+                                    checked={sandboxCompareMode}
+                                    onChange={(e) => setSandboxCompareMode(e.target.checked)}
+                                    disabled={sandboxLoading}
+                                />
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    {sandboxCompareMode ? '已启用' : '未启用'}
+                                </span>
+                            </label>
+                        </div>
+                        <div className="flex gap-2">
+                            <select 
+                                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-sm"
+                                value={sandboxProvider}
+                                onChange={(e) => {
+                                    setSandboxProvider(e.target.value);
+                                    const p = providers.find(x => x.id === e.target.value);
+                                    if (p) {
+                                        setSandboxModel(p.defaultSonnetModel || p.defaultOpusModel || p.defaultHaikuModel || '');
+                                    }
+                                }}
+                            >
+                                <option value="" disabled>选择 API 渠道</option>
+                                {providers.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name} ({p.appType})</option>
+                                ))}
+                            </select>
+                            <input 
+                                type="text"
+                                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-sm"
+                                placeholder="输入模型名称 e.g. gpt-4o"
+                                value={sandboxModel}
+                                onChange={(e) => setSandboxModel(e.target.value)}
+                            />
+                        </div>
+
+                        {/* 结果显示区域 */}
+                        {sandboxCompareMode ? (
+                            // 对比模式：三个区域（提示词、有技能、无技能）
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500">技能系统提示词</label>
+                                    <div className="p-2.5 bg-gray-50 dark:bg-base-300 rounded-lg text-xs font-mono text-gray-600 dark:text-gray-400 h-32 overflow-y-auto whitespace-pre-wrap">
+                                        {sandboxModal.content}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                            🔧 使用技能的输出
+                                        </label>
+                                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/10 rounded-lg text-sm text-gray-800 dark:text-gray-200 h-48 overflow-y-auto whitespace-pre-wrap border border-blue-100 dark:border-blue-800/30">
+                                            {sandboxLoading ? (
+                                                <div className="flex items-center justify-center h-full text-blue-500">
+                                                    <RefreshCw className="w-5 h-5 animate-spin mr-2"/> 请求中...
+                                                </div>
+                                            ) : (sandboxOutput || <span className="text-gray-400 italic">暂无输出...</span>)}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                            ⚪ 不使用技能的输出
+                                        </label>
+                                        <div className="p-2.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300 h-48 overflow-y-auto whitespace-pre-wrap border border-gray-300 dark:border-gray-600">
+                                            {sandboxLoading ? (
+                                                <div className="flex items-center justify-center h-full text-gray-400">
+                                                    <RefreshCw className="w-5 h-5 animate-spin mr-2"/> 请求中...
+                                                </div>
+                                            ) : (sandboxCompareOutput || <span className="text-gray-400 italic">暂无输出...</span>)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            // 普通模式：两个区域（提示词、输出）
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500">技能系统提示词</label>
+                                    <div className="p-2.5 bg-gray-50 dark:bg-base-300 rounded-lg text-xs font-mono text-gray-600 dark:text-gray-400 h-48 overflow-y-auto whitespace-pre-wrap">
+                                        {sandboxModal.content}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-gray-500">模型输出结果</label>
+                                    <div className="p-2.5 bg-blue-50 dark:bg-blue-900/10 rounded-lg text-sm text-gray-800 dark:text-gray-200 h-48 overflow-y-auto whitespace-pre-wrap border border-blue-100 dark:border-blue-800/30">
+                                        {sandboxLoading ? (
+                                            <div className="flex items-center justify-center h-full text-blue-500">
+                                                <RefreshCw className="w-5 h-5 animate-spin mr-2"/> 请求中...
+                                            </div>
+                                        ) : (sandboxOutput || <span className="text-gray-400 italic">暂无输出...</span>)}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-500">模拟用户输入 (User Input)</label>
+                            <textarea
+                                disabled={sandboxLoading}
+                                value={sandboxInput}
+                                onChange={(e) => setSandboxInput(e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-base-200 border border-gray-300 dark:border-base-200 rounded-lg text-sm"
+                                rows={3}
+                                placeholder="在这里输入要测试的消息..."
+                            />
+                        </div>
+
+                    </div>
+                </ModalDialog>
+
+                {/* 更新和 Diff 确认弹窗 */}
+                <ModalDialog
+                    isOpen={updateModal.isOpen}
+                    title={`更新提示 - ${updateModal.name}`}
+                    type="info"
+                    maxWidthClass="max-w-4xl"
+                    onConfirm={() => {
+                        if (!applyingUpdate) setUpdateModal({ ...updateModal, isOpen: false });
+                    }}
+                    onCancel={() => {
+                        if (!applyingUpdate) setUpdateModal({ ...updateModal, isOpen: false });
+                    }}
+                >
+                    <div className="space-y-4">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-100 dark:border-yellow-800/30">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">发现该技能（SKILL.md）在远程仓库有新版本。是否覆盖本地版本？</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-500">本地版本 (Local)</label>
+                                <div className="p-3 bg-gray-50 dark:bg-base-300 border border-gray-200 dark:border-base-200 rounded-lg text-xs font-mono text-gray-500 h-96 overflow-y-auto whitespace-pre-wrap opacity-80">
+                                    {updateModal.localContent}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-500 text-green-600 dark:text-green-400">远程最新版本 (Remote)</label>
+                                <div className="p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-lg text-xs font-mono text-gray-800 dark:text-gray-200 h-96 overflow-y-auto whitespace-pre-wrap">
+                                    {updateModal.remoteContent}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button onClick={() => setUpdateModal({ ...updateModal, isOpen: false })} disabled={applyingUpdate} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-base-200">
+                                取消
+                            </button>
+                            <button 
+                                disabled={applyingUpdate}
+                                onClick={async () => {
+                                    setApplyingUpdate(true);
+                                    try {
+                                        await applySkillUpdate(updateModal.skillId, updateModal.remoteContent);
+                                        showToast('技能更新成功！', 'success');
+                                        setUpdateModal({ ...updateModal, isOpen: false });
+                                    } catch (e) {
+                                        showToast(`更新失败: \n${e}`, 'error');
+                                    } finally {
+                                        setApplyingUpdate(false);
+                                    }
+                                }}
+                                className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                {applyingUpdate ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 确认覆盖更新
+                            </button>
+                        </div>
+                    </div>
+                </ModalDialog>
 
                 {/* 删除确认（v2）*/}
                 <ModalDialog isOpen={v2DeleteModal.isOpen} title="卸载技能" message="确认卸载此技能？将从所有应用目录移除。" type="confirm" isDestructive={true}

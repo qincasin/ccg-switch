@@ -31,6 +31,8 @@ pub struct DiscoverableSkill {
     pub repo_name: String,
     #[serde(rename = "repoBranch")]
     pub repo_branch: String,
+    /// 仓库 Star 数
+    pub stars: Option<u32>,
 }
 
 /// SKILL.md front-matter 元数据
@@ -113,6 +115,7 @@ fn scan_extracted_dir(
             repo_owner: repo.owner.clone(),
             repo_name: repo.name.clone(),
             repo_branch: repo.branch.clone(),
+            stars: None, // 在外层批量获取后赋值
         });
         return;
     }
@@ -242,6 +245,29 @@ async fn download_repo(repo: &SkillRepo) -> Result<(PathBuf, String), String> {
     )))
 }
 
+/// 获取仓库元数据（主要为了 Star 数）
+async fn fetch_repo_stars(repo: &SkillRepo) -> Option<u32> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .ok()?;
+
+    let url = format!("https://api.github.com/repos/{}/{}", repo.owner, repo.name);
+    let resp = client
+        .get(&url)
+        .header("User-Agent", "CCG-Switch-Skill-Discovery")
+        .send()
+        .await
+        .ok()?;
+
+    if resp.status().is_success() {
+        let json: serde_json::Value = resp.json().await.ok()?;
+        json.get("stargazers_count").and_then(|v| v.as_u64()).map(|n| n as u32)
+    } else {
+        None
+    }
+}
+
 /// 从单个仓库发现技能
 pub async fn fetch_repo_skills(repo: &SkillRepo) -> Result<Vec<DiscoverableSkill>, String> {
     let (temp_dir, resolved_branch) = download_repo(repo).await?;
@@ -250,6 +276,16 @@ pub async fn fetch_repo_skills(repo: &SkillRepo) -> Result<Vec<DiscoverableSkill
     repo_with_branch.branch = resolved_branch;
     scan_extracted_dir(&temp_dir, &temp_dir, &repo_with_branch, &mut skills);
     let _ = fs::remove_dir_all(&temp_dir);
+
+    // 抓取 GitHub Star 数并赋值
+    if !skills.is_empty() {
+        if let Some(stars) = fetch_repo_stars(repo).await {
+            for skill in &mut skills {
+                skill.stars = Some(stars);
+            }
+        }
+    }
+
     Ok(skills)
 }
 

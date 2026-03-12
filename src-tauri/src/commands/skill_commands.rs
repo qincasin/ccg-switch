@@ -1,6 +1,7 @@
 use crate::database::dao::skills::{InstalledSkillRow, SkillRepo};
 use crate::services::skill_discovery::DiscoverableSkill;
-use crate::services::skill_service_v2::SkillServiceV2;
+use crate::services::skill_service_v2::{RemoteUpdateData, SkillServiceV2};
+use crate::services::sandbox_service::{run_sandbox_test, SandboxRequest, SandboxResponse};
 use crate::store::AppState;
 use tauri::State;
 
@@ -20,6 +21,39 @@ pub async fn install_skill(
     current_app: String,
 ) -> Result<InstalledSkillRow, String> {
     SkillServiceV2::install(&state.db, &skill, &current_app).await
+}
+
+/// 读取技能的系统提示词内容（SKILL.md 文件全文）
+#[tauri::command]
+pub fn read_skill_content_by_id(state: State<'_, AppState>, id: String) -> Result<String, String> {
+    let skills = state.db.get_all_installed_skills()
+        .map_err(|e| format!("DB Error: {}", e))?;
+    let skill = skills.get(&id)
+        .ok_or_else(|| format!("找不到技能: {}", id))?;
+
+    let home = dirs::home_dir().ok_or("无法获取 HOME 目录")?;
+    let skill_file = home
+        .join(".ccg-switch")
+        .join("skills")
+        .join(&skill.directory)
+        .join("SKILL.md");
+
+    if !skill_file.exists() {
+        return Ok(String::new());
+    }
+    std::fs::read_to_string(&skill_file).map_err(|e| format!("读取文件失败: {}", e))
+}
+
+/// 导出单技能为 Base64 长链接
+#[tauri::command]
+pub fn export_skill(state: State<'_, AppState>, id: String) -> Result<String, String> {
+    SkillServiceV2::export_skill(&state.db, &id)
+}
+
+/// 从 Base64 长链接导入技能
+#[tauri::command]
+pub fn import_skill(state: State<'_, AppState>, payload: String) -> Result<InstalledSkillRow, String> {
+    SkillServiceV2::import_skill(&state.db, &payload)
 }
 
 /// 卸载 Skill
@@ -75,4 +109,32 @@ pub fn scan_and_import_skills(
     state: State<'_, AppState>,
 ) -> Result<(usize, usize, Vec<String>), String> {
     SkillServiceV2::scan_and_import(&state.db)
+}
+
+/// 运行技能沙盒测试（调用选定的大模型 Provider）
+#[tauri::command]
+pub async fn run_skill_sandbox(
+    state: State<'_, AppState>,
+    request: SandboxRequest,
+) -> Result<SandboxResponse, String> {
+    run_sandbox_test(&state.db, request).await
+}
+
+/// 检查技能是否有远程更新
+#[tauri::command]
+pub async fn check_skill_update(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<RemoteUpdateData, String> {
+    SkillServiceV2::check_update(&state.db, &id).await
+}
+
+/// 应用技能远程更新
+#[tauri::command]
+pub fn apply_skill_update(
+    state: State<'_, AppState>,
+    id: String,
+    new_content: String,
+) -> Result<(), String> {
+    SkillServiceV2::apply_update(&state.db, &id, &new_content)
 }
