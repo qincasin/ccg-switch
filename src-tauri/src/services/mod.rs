@@ -1,4 +1,5 @@
 pub mod config_service;
+pub mod sandbox_service;
 pub mod dashboard_service;
 pub mod mcp_service;
 pub mod migration_service;

@@ -8,16 +8,27 @@ use crate::database::dao::skills::{InstalledSkillRow, SkillRepo};
 use crate::database::Database;
 use crate::services::skill_discovery::{discover_available, download_skill_to_ssot, DiscoverableSkill};
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use reqwest::Client;
+use crate::utils::base64;
 
 /// SKILL.md frontmatter 结构
 #[derive(Debug, Deserialize)]
 struct SkillFrontmatter {
     name: String,
     description: Option<String>,
+}
+
+/// 导出所用数据结构
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkillExportData {
+    pub name: String,
+    pub description: Option<String>,
+    pub directory: String,
+    pub content: String,
 }
 
 // ========== 路径管理 ==========
@@ -95,6 +106,13 @@ fn copy_dir(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> 
     Ok(())
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RemoteUpdateData {
+    pub has_update: bool,
+    pub remote_content: String,
+    pub local_content: String,
+}
+
 // ========== SkillServiceV2 ==========
 
 pub struct SkillServiceV2;
@@ -122,12 +140,13 @@ impl SkillServiceV2 {
         let existing = db.get_all_installed_skills()?;
         for row in existing.values() {
             if row.directory.eq_ignore_ascii_case(&skill.directory) {
-                return Err(format!("Skill '{}' 已安装", skill.directory));
+                return Err(format!("技能 '{}' 已安装，无需重复安装", skill.directory));
             }
         }
 
         let ssot_dir = get_ssot_dir()?;
-        download_skill_to_ssot(skill, &ssot_dir).await?;
+        download_skill_to_ssot(skill, &ssot_dir).await
+            .map_err(|e| format!("下载技能失败: {}", e))?;
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -161,16 +180,108 @@ impl SkillServiceV2 {
         Ok(row)
     }
 
+    /// 导出技能（读取 SKILL.md，返回 `ccg-skill://` Base64）
+    pub fn export_skill(db: &Arc<Database>, id: &str) -> Result<String, String> {
+        let skills = db.get_all_installed_skills()?;
+        let row = skills.get(id).ok_or_else(|| format!("Skill not found: {}", id))?;
+        
+        let ssot_dir = get_ssot_dir()?;
+        let file_path = ssot_dir.join(&row.directory).join("SKILL.md");
+        let content = fs::read_to_string(&file_path)
+            .map_err(|e| format!("无法读取技能文件: {}", e))?;
+            
+        let export_data = SkillExportData {
+            name: row.name.clone(),
+            description: row.description.clone(),
+            directory: row.directory.clone(),
+            content,
+        };
+        
+        // JSON -> Base64
+        let json_str = serde_json::to_string(&export_data)
+            .map_err(|e| format!("序列化失败: {}", e))?;
+            
+        // 加入自定义前缀
+        let encoded = base64::encode(json_str.as_bytes());
+        Ok(format!("ccg-skill://{}", encoded))
+    }
+
+    /// 导入通过 Base64 分享的技能
+    pub fn import_skill(db: &Arc<Database>, payload: &str) -> Result<InstalledSkillRow, String> {
+        // 1. 去除前缀
+        let b64 = payload.strip_prefix("ccg-skill://")
+            .unwrap_or(payload)
+            .trim();
+
+        // 2. 解码与反序列化
+        let decoded = base64::decode(b64)
+            .map_err(|e| format!("Base64 解码失败: {}", e))?;
+        let json_str = String::from_utf8(decoded)
+            .map_err(|e| format!("UTF-8 解码失败: {}", e))?;
+        let data: SkillExportData = serde_json::from_str(&json_str)
+            .map_err(|e| format!("解析技能数据失败: {}", e))?;
+            
+        // 3. 检查冲突：目录已存在或同名技能已在数据库中，直接拒绝导入
+        let ssot_dir = get_ssot_dir()?;
+        let target_dir = data.directory.clone();
+
+        // 检查 SSOT 目录重复
+        if ssot_dir.join(&target_dir).exists() {
+            return Err(format!("技能「{}」已存在（目录 {} 重复），跳过导入", data.name, target_dir));
+        }
+        // 检查数据库中同名重复
+        let existing = db.get_all_installed_skills()?;
+        let name_lower = data.name.to_lowercase();
+        if existing.values().any(|s| s.name.to_lowercase() == name_lower || s.directory.to_lowercase() == target_dir.to_lowercase()) {
+            return Err(format!("技能「{}」已经安装，无需重复导入", data.name));
+        }
+        
+        // 4. 写文件
+        let skill_dir = ssot_dir.join(&target_dir);
+        fs::create_dir_all(&skill_dir).map_err(|e| e.to_string())?;
+        fs::write(skill_dir.join("SKILL.md"), &data.content).map_err(|e| e.to_string())?;
+        
+        // 5. 写入数据库
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+
+        let row = InstalledSkillRow {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: data.name,
+            description: data.description,
+            directory: target_dir,
+            repo_owner: None,
+            repo_name: None,
+            repo_branch: None,
+            readme_url: None,
+            enabled_claude: true, // 默认在 Claude 中启用
+            enabled_codex: false,
+            enabled_gemini: false,
+            installed_at: now,
+        };
+
+        db.save_skill(&row)?;
+
+        // 同步到 Claude 目录
+        let _ = sync_to_app_dir(&row.directory, "claude");
+
+        Ok(row)
+    }
+
     /// 卸载 Skill
     pub fn uninstall(db: &Arc<Database>, id: &str) -> Result<(), String> {
-        let skills = db.get_all_installed_skills()?;
+        let skills = db.get_all_installed_skills()
+            .map_err(|e| format!("读取技能列表失败: {}", e))?;
         if let Some(row) = skills.get(id) {
             // 删除 SSOT 目录
             let ssot_dir = get_ssot_dir()?;
             let ssot_path = ssot_dir.join(&row.directory);
             if ssot_path.exists() {
                 if ssot_path.is_dir() {
-                    fs::remove_dir_all(&ssot_path).map_err(|e| e.to_string())?;
+                    fs::remove_dir_all(&ssot_path)
+                        .map_err(|e| format!("删除目录失败: {}", e))?;
                 } else {
                     fs::remove_file(&ssot_path).map_err(|e| e.to_string())?;
                 }
@@ -191,10 +302,11 @@ impl SkillServiceV2 {
         app: &str,
         enabled: bool,
     ) -> Result<(), String> {
-        let mut skills = db.get_all_installed_skills()?;
+        let mut skills = db.get_all_installed_skills()
+            .map_err(|e| format!("读取技能列表失败: {}", e))?;
         let row = skills
             .get_mut(id)
-            .ok_or_else(|| format!("Skill '{}' 不存在", id))?;
+            .ok_or_else(|| format!("技能 ID '{}' 不存在", id))?;
 
         match app {
             "claude" => row.enabled_claude = enabled,
@@ -387,6 +499,77 @@ impl SkillServiceV2 {
         }
 
         Ok((imported, skipped, imported_names))
+    }
+
+    // ========== 更新机制 ==========
+
+    /// 检查指定技能是否有远程更新
+    pub async fn check_update(db: &Arc<Database>, id: &str) -> Result<RemoteUpdateData, String> {
+        let skills = db.get_all_installed_skills()?;
+        let row = skills.get(id).ok_or_else(|| format!("Skill not found: {}", id))?;
+
+        // 只有来源于仓库的技能才能更新
+        let owner = row.repo_owner.as_ref().ok_or("该技能不是来自远程仓库")?;
+        let name = row.repo_name.as_ref().ok_or("该技能不是来自远程仓库")?;
+        let branch = row.repo_branch.as_ref().ok_or("丢失分支信息")?;
+        let directory = &row.directory;
+
+        // 构造 Raw URL: https://raw.githubusercontent.com/{owner}/{name}/{branch}/skills/{directory}/SKILL.md
+        let raw_url = format!(
+            "https://raw.githubusercontent.com/{}/{}/{}/skills/{}/SKILL.md",
+            owner, name, branch, directory
+        );
+
+        let client = Client::new();
+        let resp = client.get(&raw_url).send().await.map_err(|e| format!("请求远程文件失败: {}", e))?;
+        
+        if !resp.status().is_success() {
+            return Err(format!("从 GitHub 抓取文件失败，HTTP 状态: {}", resp.status()));
+        }
+
+        let remote_content: String = resp.text().await.map_err(|e| format!("读取响应失败: {}", e))?;
+
+        // 读取本地内容
+        let ssot_dir = get_ssot_dir()?;
+        let local_file = ssot_dir.join(directory).join("SKILL.md");
+        let local_content = if local_file.exists() {
+            fs::read_to_string(&local_file).unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        // TODO: 如果只比对正文，可以忽略 YAML 变动等细节；目前简单全量比对
+        let has_update = remote_content != local_content;
+
+        Ok(RemoteUpdateData {
+            has_update,
+            remote_content,
+            local_content,
+        })
+    }
+
+    /// 应用远程更新并同步目录
+    pub fn apply_update(db: &Arc<Database>, id: &str, new_content: &str) -> Result<(), String> {
+        let skills = db.get_all_installed_skills()?;
+        let row = skills.get(id).ok_or_else(|| format!("Skill not found: {}", id))?;
+        
+        let ssot_dir = get_ssot_dir()?;
+        let local_file = ssot_dir.join(&row.directory).join("SKILL.md");
+        
+        fs::write(&local_file, new_content).map_err(|e| format!("无法覆盖本地技能文件: {}", e))?;
+
+        // 将新的内容同步到已启用的应用 (如 Claude / Codex) 所在的目录
+        if row.enabled_claude {
+            let _ = sync_to_app_dir(&row.directory, "claude");
+        }
+        if row.enabled_codex {
+            let _ = sync_to_app_dir(&row.directory, "codex");
+        }
+        if row.enabled_gemini {
+            let _ = sync_to_app_dir(&row.directory, "gemini");
+        }
+
+        Ok(())
     }
 }
 

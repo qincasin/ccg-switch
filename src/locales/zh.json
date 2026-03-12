@@ -338,6 +338,8 @@
         "role_assistant": "助手",
         "no_sessions": "暂无会话",
         "session_preview_empty": "未提取到会话摘要",
-        "open_terminal_error": "打开终端失败"
+        "open_terminal_error": "打开终端失败",
+        "resume_success": "已启动 Claude 终端",
+        "resume_error": "启动终端失败"
     }
 }

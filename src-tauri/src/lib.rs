@@ -30,6 +30,13 @@ use services::{config_service, dashboard_service, migration_service, prompt_serv
 use services::universal_provider_service::UniversalProviderConfig;
 use services::tool_version_service::ToolVersion;
 
+// 剪贴板写入（arboard 直接写系统级剪贴板，规避 WebView 权限限制）
+#[tauri::command]
+fn write_clipboard(text: String) -> Result<(), String> {
+    let mut ctx = arboard::Clipboard::new().map_err(|e| format!("剪贴板初始化失败: {}", e))?;
+    ctx.set_text(&text).map_err(|e| format!("写入剪贴板失败: {}", e))
+}
+
 // 配置管理命令
 #[tauri::command]
 fn get_config(state: tauri::State<store::AppState>) -> Result<Config, String> {
@@ -190,74 +197,327 @@ fn get_session_messages(file_path: String) -> Result<Vec<SessionMessage>, String
 
 // 在终端中打开目录
 #[tauri::command]
-async fn open_in_terminal(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    use tauri_plugin_shell::ShellExt;
-    let shell = app.shell();
+async fn open_in_terminal(_app: tauri::AppHandle, path: String, terminal: Option<String>) -> Result<(), String> {
+    use std::process::Command;
+
+    let terminal_app = terminal.unwrap_or_else(|| {
+        // 默认终端配置
+        #[cfg(target_os = "windows")]
+        { "cmd".to_string() }
+        #[cfg(target_os = "macos")]
+        {
+            // macOS 优先级: iTerm2 > Warp > Terminal
+            if Command::new("ls").arg("/Applications/iTerm.app").output().map(|o| o.status.success()).unwrap_or(false) {
+                "iterm".to_string()
+            } else if Command::new("ls").arg("/Applications/Warp.app").output().map(|o| o.status.success()).unwrap_or(false) {
+                "warp".to_string()
+            } else {
+                "terminal".to_string()
+            }
+        }
+        #[cfg(target_os = "linux")]
+        { "xterm".to_string() }
+    });
+
     #[cfg(target_os = "windows")]
     {
-        shell
-            .command("cmd")
-            .args(["/c", "start", "cmd", "/k", &format!("cd /d {}", path)])
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        use tauri_plugin_shell::ShellExt;
+        let shell = app.shell();
+        match terminal_app.as_str() {
+            "powershell" => {
+                shell.command("cmd")
+                    .args(["/c", "start", "powershell", "-NoExit", "-Command",
+                           &format!("Set-Location '{}'; cd {}", path.replace('\\', "\\\\").replace('\'', "''"), path)])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            "wt" => {
+                shell.command("wt")
+                    .args(["new-tab", "-d", &path, "powershell"])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            _ => { // cmd
+                shell.command("cmd")
+                    .args(["/c", "start", "cmd", "/k", &format!("cd /d {}", path)])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
     }
+
     #[cfg(target_os = "macos")]
     {
-        shell
-            .command("open")
-            .args(["-a", "Terminal", &path])
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        // 转义 AppleScript 中的特殊字符
+        let escape_apple_script = |s: &str| -> String {
+            s.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\\\n")
+                .replace('\r', "\\\\r")
+                .replace('\t', "\\\\t")
+                .replace('$', "\\$")
+                .replace('`', "\\`")
+        };
+
+        match terminal_app.as_str() {
+            "iterm" => {
+                let escaped_path = escape_apple_script(&path);
+                let script = format!(
+                    "tell application \"iTerm\"\n\
+                        if (count of windows) is 0 then\n\
+                            create window with default profile\n\
+                        else\n\
+                            tell current window\n\
+                                create tab with default profile\n\
+                            end tell\n\
+                        end if\n\
+                        tell current session of current window\n\
+                            write text \"cd {}\"\n\
+                        end tell\n\
+                        activate\n\
+                    end tell",
+                    escaped_path
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            "warp" => {
+                let escaped_path = escape_apple_script(&path);
+                let script = format!(
+                    "tell application \"Warp\"\n\
+                        activate\n\
+                    end tell\n\
+                    delay 0.5\n\
+                    tell application \"System Events\"\n\
+                        keystroke \"t\" using command down\n\
+                        delay 0.3\n\
+                        keystroke \"cd {}\" & return\n\
+                    end tell",
+                    escaped_path
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            _ => { // Terminal (默认)
+                let escaped_path = escape_apple_script(&path);
+                let script = format!(
+                    "tell application \"Terminal\"\n\
+                        activate\n\
+                        do script \"cd {}\" in front window\n\
+                    end tell",
+                    escaped_path
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
     }
+
     #[cfg(target_os = "linux")]
     {
-        shell
-            .command("xterm")
-            .args(["-e", &format!("cd {} && bash", path)])
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        // 转义 shell 特殊字符
+        let escape_shell = |s: &str| -> String {
+            s.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$")
+                .replace('`', "\\`")
+                .replace('!', "\\!")
+        };
+        let escaped_path = escape_shell(&path);
+
+        match terminal_app.as_str() {
+            "gnome-terminal" => {
+                Command::new("gnome-terminal")
+                    .args(["--", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            "konsole" => {
+                Command::new("konsole")
+                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+            _ => { // xterm (默认)
+                Command::new("xterm")
+                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
     }
+
     Ok(())
 }
 
 // 在终端中恢复会话
 #[tauri::command]
-async fn launch_resume_session(command: String, cwd: Option<String>) -> Result<bool, String> {
+async fn launch_resume_session(command: String, cwd: Option<String>, state: tauri::State<'_, store::AppState>) -> Result<bool, String> {
     use std::process::Command;
 
     if command.trim().is_empty() {
         return Err("Resume command is empty".to_string());
     }
 
-    let config = config_service::load_config().unwrap_or_default();
+    // 从数据库加载配置（与 get_config 一致）
+    let config = config_service::load_config_from_db(&state.db).unwrap_or_default();
     let terminal = config.preferred_terminal;
 
     let work_dir = cwd.as_deref().unwrap_or(".");
 
-    match terminal.as_str() {
-        "cmd" => {
-            Command::new("cmd")
-                .args(["/c", "start", "cmd", "/k", &command])
-                .current_dir(work_dir)
-                .spawn()
-                .map_err(|e| format!("Failed to launch cmd: {e}"))?;
+    #[cfg(target_os = "windows")]
+    {
+        match terminal.as_str() {
+            "cmd" => {
+                Command::new("cmd")
+                    .args(["/c", "start", "cmd", "/k", &command])
+                    .current_dir(work_dir)
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch cmd: {e}"))?;
+            }
+            "powershell" => {
+                // PowerShell 转义特殊字符 (使用反引号转义双引号)
+                let escaped_dir = work_dir.replace('\'', "''").replace('"', "`\"");
+                let escaped_cmd = command.replace('"', "`\"");
+                Command::new("cmd")
+                    .args(["/c", "start", "powershell", "-NoExit", "-Command",
+                           &format!("Set-Location '{}'; {}", escaped_dir, escaped_cmd)])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch PowerShell: {e}"))?;
+            }
+            "wt" => {
+                Command::new("wt")
+                    .args(["new-tab", "-d", work_dir, "powershell", "-NoExit", "-Command", &command])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch Windows Terminal: {e}"))?;
+            }
+            _ => {
+                // 默认使用 cmd
+                Command::new("cmd")
+                    .args(["/c", "start", "cmd", "/k", &command])
+                    .current_dir(work_dir)
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch cmd: {e}"))?;
+            }
         }
-        "powershell" => {
-            Command::new("cmd")
-                .args(["/c", "start", "powershell", "-NoExit", "-Command",
-                       &format!("Set-Location '{}'; {}", work_dir.replace('\'', "''"), command)])
-                .spawn()
-                .map_err(|e| format!("Failed to launch PowerShell: {e}"))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // 转义 AppleScript 中的特殊字符
+        fn escape_apple_script(s: &str) -> String {
+            s.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\\\n")
+                .replace('\r', "\\\\r")
+                .replace('\t', "\\\\t")
+                .replace('$', "\\$")
+                .replace('`', "\\`")
         }
-        "wt" => {
-            // Windows Terminal
-            Command::new("wt")
-                .args(["new-tab", "-d", work_dir, "cmd", "/k", &command])
-                .spawn()
-                .map_err(|e| format!("Failed to launch Windows Terminal: {e}"))?;
+
+        match terminal.as_str() {
+            "iterm" => {
+                let escaped_dir = escape_apple_script(work_dir);
+                let escaped_cmd = escape_apple_script(&command);
+                let script = format!(
+                    "tell application \"iTerm\"\n\
+                        if (count of windows) is 0 then\n\
+                            create window with default profile\n\
+                        else\n\
+                            tell current window\n\
+                                create tab with default profile\n\
+                            end tell\n\
+                        end if\n\
+                        tell current session of current window\n\
+                            write text \"cd {} && {}\"\n\
+                        end tell\n\
+                        activate\n\
+                    end tell",
+                    escaped_dir, escaped_cmd
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch iTerm2: {}", e))?;
+            }
+            "warp" => {
+                // Warp 需要通过 CLI 方式启动，使用 osascript 模拟键盘输入
+                let escaped_dir = escape_apple_script(work_dir);
+                let escaped_cmd = escape_apple_script(&command);
+                let script = format!(
+                    "tell application \"Warp\"\n\
+                        activate\n\
+                    end tell\n\
+                    delay 0.5\n\
+                    tell application \"System Events\"\n\
+                        keystroke \"t\" using command down\n\
+                        delay 0.3\n\
+                        keystroke \"cd {} && {}\" & return\n\
+                    end tell",
+                    escaped_dir, escaped_cmd
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch Warp: {}", e))?;
+            }
+            _ => { // Terminal (默认)
+                let escaped_dir = escape_apple_script(work_dir);
+                let escaped_cmd = escape_apple_script(&command);
+                let script = format!(
+                    "tell application \"Terminal\"\n\
+                        activate\n\
+                        do script \"cd {} && {}\" in front window\n\
+                    end tell",
+                    escaped_dir, escaped_cmd
+                );
+                Command::new("osascript")
+                    .args(["-e", &script])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch Terminal: {}", e))?;
+            }
         }
-        other => {
-            return Err(format!("Unsupported terminal: {}. Supported: cmd, powershell, wt", other));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // 转义 shell 特殊字符
+        let escape_shell = |s: &str| -> String {
+            s.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$")
+                .replace('`', "\\`")
+                .replace('!', "\\!")
+        };
+        let escaped_dir = escape_shell(work_dir);
+        let escaped_cmd = escape_shell(&command);
+
+        match terminal.as_str() {
+            "gnome-terminal" => {
+                // gnome-terminal 支持 --working-directory，但 bash 中 cd 更可靠
+                Command::new("gnome-terminal")
+                    .args(["--", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch GNOME Terminal: {e}"))?;
+            }
+            "konsole" => {
+                Command::new("konsole")
+                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch Konsole: {e}"))?;
+            }
+            _ => { // xterm (默认)
+                Command::new("xterm")
+                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch XTerm: {e}"))?;
+            }
         }
     }
 
@@ -438,6 +698,8 @@ pub fn run() {
             utility_commands::set_global_proxy,
             utility_commands::check_env,
             utility_commands::fetch_models,
+            // Clipboard
+            write_clipboard,
             // Advanced 命令
             advanced_commands::get_webdav_config,
             advanced_commands::save_webdav_config,
@@ -460,6 +722,12 @@ pub fn run() {
             skill_commands::save_skill_repo,
             skill_commands::delete_skill_repo,
             skill_commands::scan_and_import_skills,
+            skill_commands::export_skill,
+            skill_commands::import_skill,
+            skill_commands::read_skill_content_by_id,
+            skill_commands::run_skill_sandbox,
+            skill_commands::check_skill_update,
+            skill_commands::apply_skill_update,
             // Prompts v2 (数据库版)
             prompt_commands::get_prompts_v2,
             prompt_commands::upsert_prompt_v2,

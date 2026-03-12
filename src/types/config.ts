@@ -1,5 +1,5 @@
 export type SidebarPosition = 'left' | 'right' | 'top';
-export type TerminalType = 'cmd' | 'powershell' | 'wt';
+export type TerminalType = 'cmd' | 'powershell' | 'wt' | 'terminal' | 'iterm' | 'warp' | 'xterm' | 'gnome-terminal' | 'konsole';
 
 export interface Config {
     theme: 'light' | 'dark';
