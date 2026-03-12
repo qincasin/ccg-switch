@@ -1,5 +1,7 @@
 mod commands;
 mod database;
+mod deeplink;
+mod error;
 mod mcp;
 mod models;
 mod proxy;
@@ -16,6 +18,8 @@ use commands::advanced_commands;
 use commands::mcp_commands;
 use commands::skill_commands;
 use commands::prompt_commands;
+use commands::deeplink_commands;
+use tauri::Emitter;
 use tauri::State;
 use store::AppState;
 
@@ -613,18 +617,48 @@ fn get_prompt_sync_status(name: String) -> Result<Vec<String>, String> {
     prompt_service::get_prompt_sync_status(&name).map_err(|e| e.to_string())
 }
 
+/// 处理 deep link URL：解析并 emit 事件到前端
+fn handle_deeplink_url(app: &tauri::AppHandle, url: &str) {
+    use crate::deeplink::utils::redact_url_for_log;
+
+    let redacted = redact_url_for_log(url);
+    tracing::info!("Processing deep link: {}", redacted);
+
+    match deeplink::parse_deeplink_url(url) {
+        Ok(request) => {
+            if let Err(e) = app.emit("deeplink-import", &request) {
+                tracing::error!("Failed to emit deeplink-import event: {}", e);
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to parse deep link: {}", e);
+            if let Err(emit_err) = app.emit("deeplink-error", e.to_string()) {
+                tracing::error!("Failed to emit deeplink-error event: {}", emit_err);
+            }
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
                 let _ = window.unminimize();
             }
+            // 处理 deep link URL（第二实例启动时 URL 在 args 中）
+            for arg in &args {
+                if arg.starts_with("ccswitch://") || arg.starts_with("ccgswitch://") {
+                    handle_deeplink_url(app, arg);
+                    break;
+                }
+            }
         }))
+        .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
@@ -700,6 +734,9 @@ pub fn run() {
             utility_commands::fetch_models,
             // Clipboard
             write_clipboard,
+            // Deep Link 命令
+            deeplink_commands::parse_deeplink,
+            deeplink_commands::import_provider_from_deeplink,
             // Advanced 命令
             advanced_commands::get_webdav_config,
             advanced_commands::save_webdav_config,
@@ -755,6 +792,24 @@ pub fn run() {
 
             let state = store::AppState::new(db_arc);
             app.manage(state);
+
+            // Deep link: 开发模式下注册 URL scheme
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let _ = app.deep_link().register_all();
+            }
+
+            // Deep link: 监听 URL 打开事件
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let handle = app.handle().clone();
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        handle_deeplink_url(&handle, url.as_str());
+                    }
+                });
+            }
 
             let _ = tray::setup_tray(app);
             Ok(())

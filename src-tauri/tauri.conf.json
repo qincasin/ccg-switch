@@ -12,6 +12,11 @@
   "plugins": {
     "shell": {
       "open": ".*"
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["ccswitch", "ccgswitch"]
+      }
     }
   },
   "app": {
