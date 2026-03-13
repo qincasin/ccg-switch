@@ -9,6 +9,7 @@ import ImportExportPanel from '../components/settings/ImportExportPanel';
 import GlobalProxyPanel from '../components/settings/GlobalProxyPanel';
 import EnvCheckerPanel from '../components/settings/EnvCheckerPanel';
 import AboutPanel from '../components/settings/AboutPanel';
+import BackupPanel from '../components/settings/BackupPanel';
 import WebDavBackupPanel from '../components/settings/WebDavBackupPanel';
 
 type SettingsTab = 'general' | 'proxy' | 'advanced' | 'about';
@@ -269,6 +270,7 @@ function Settings() {
                 {activeTab === 'advanced' && (
                     <>
                         <ImportExportPanel />
+                        <BackupPanel />
                         <WebDavBackupPanel />
                         <EnvCheckerPanel />
                     </>

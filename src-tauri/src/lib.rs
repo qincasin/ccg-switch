@@ -19,6 +19,7 @@ use commands::mcp_commands;
 use commands::skill_commands;
 use commands::prompt_commands;
 use commands::deeplink_commands;
+use commands::backup_commands;
 use tauri::Emitter;
 use tauri::State;
 use store::AppState;
@@ -781,12 +782,21 @@ pub fn run() {
             prompt_commands::disable_prompt_v2,
             prompt_commands::import_prompt_from_file,
             prompt_commands::get_prompt_live_content,
+            // Backup 命令
+            backup_commands::create_db_backup,
+            backup_commands::list_db_backups,
+            backup_commands::restore_db_backup,
+            backup_commands::delete_db_backup,
+            backup_commands::rename_db_backup,
+            backup_commands::get_backup_settings,
+            backup_commands::save_backup_settings,
         ])
         .setup(|app| {
             // 初始化数据库
             let db = database::Database::init()
                 .expect("Failed to initialize database");
             let db_arc = std::sync::Arc::new(db);
+            let db_for_backup = db_arc.clone();
 
             // 执行数据目录迁移 (.claude-switch → .ccg-switch)
             if let Err(e) = migration_service::check_and_run_migration() {
@@ -800,6 +810,22 @@ pub fn run() {
 
             let state = store::AppState::new(db_arc);
             app.manage(state);
+
+            // 自动备份：启动时检查 + 后台定时任务
+            {
+                if let Err(e) = db_for_backup.periodic_backup_if_needed() {
+                    eprintln!("Auto backup check failed: {e}");
+                }
+                let db_for_timer = db_for_backup.clone();
+                tauri::async_runtime::spawn(async move {
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                        if let Err(e) = db_for_timer.periodic_backup_if_needed() {
+                            eprintln!("Periodic backup failed: {e}");
+                        }
+                    }
+                });
+            }
 
             // Deep link: 开发模式下注册 URL scheme
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
