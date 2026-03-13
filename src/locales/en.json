@@ -510,6 +510,41 @@
             "new_version_available": "New version {{version}} available",
             "download_update": "Download",
             "update_check_failed": "Update check failed"
+        },
+        "backup": {
+            "title": "Database Backup",
+            "interval": "Auto Backup Interval",
+            "retainCount": "Retain Count",
+            "backupNow": "Backup Now",
+            "backupList": "Backup List",
+            "empty": "No backups yet",
+            "restore": "Restore",
+            "delete": "Delete",
+            "rename": "Rename",
+            "confirmRestore": "Confirm Restore",
+            "confirmRestoreMsg": "Restoring will overwrite the current database. A safety backup will be created automatically before restoring. Are you sure?",
+            "confirmDelete": "Confirm Delete",
+            "confirmDeleteMsg": "Are you sure you want to delete this backup? This action cannot be undone.",
+            "backupSuccess": "Backup created successfully",
+            "restoreSuccess": "Database restored (safety backup: {{filename}})",
+            "deleteSuccess": "Backup deleted",
+            "renameSuccess": "Renamed successfully",
+            "operationFailed": "Operation failed",
+            "intervalOptions": {
+                "off": "Off",
+                "6h": "Every 6 hours",
+                "12h": "Every 12 hours",
+                "24h": "Every 24 hours",
+                "48h": "Every 48 hours",
+                "168h": "Every 7 days"
+            },
+            "retainOptions": {
+                "3": "3",
+                "5": "5",
+                "10": "10",
+                "20": "20",
+                "50": "50"
+            }
         }
     },
     "tray": {

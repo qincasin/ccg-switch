@@ -318,7 +318,42 @@
             "success": "安装完成，请重启应用",
             "failed": "安装失败"
         },
-        "relaunchNow": "立即重启"
+        "relaunchNow": "立即重启",
+        "backup": {
+            "title": "数据库备份",
+            "interval": "自动备份间隔",
+            "retainCount": "保留数量",
+            "backupNow": "立即备份",
+            "backupList": "备份列表",
+            "empty": "暂无备份",
+            "restore": "恢复",
+            "delete": "删除",
+            "rename": "重命名",
+            "confirmRestore": "确认恢复",
+            "confirmRestoreMsg": "恢复将覆盖当前数据库，恢复前会自动创建安全备份。确定要恢复吗？",
+            "confirmDelete": "确认删除",
+            "confirmDeleteMsg": "确定要删除此备份文件吗？此操作不可撤销。",
+            "backupSuccess": "备份创建成功",
+            "restoreSuccess": "数据库恢复成功（安全备份: {{filename}}）",
+            "deleteSuccess": "备份已删除",
+            "renameSuccess": "重命名成功",
+            "operationFailed": "操作失败",
+            "intervalOptions": {
+                "off": "关闭",
+                "6h": "每 6 小时",
+                "12h": "每 12 小时",
+                "24h": "每 24 小时",
+                "48h": "每 48 小时",
+                "168h": "每 7 天"
+            },
+            "retainOptions": {
+                "3": "3 个",
+                "5": "5 个",
+                "10": "10 个",
+                "20": "20 个",
+                "50": "50 个"
+            }
+        }
     },
     "token_usage": {
         "title": "Token 用量分析",

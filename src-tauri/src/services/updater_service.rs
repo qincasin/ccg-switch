@@ -27,6 +27,7 @@ pub struct DownloadProgress {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // 仅在 macOS 构建中使用
 pub struct InstallProgress {
     pub stage: String,
     pub message: String,

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 mod schema;
 pub mod dao;
+pub mod backup;
 
 pub struct Database {
     pub(crate) conn: Mutex<Connection>,
