@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 use crate::database::Database;
 use crate::models::app_type::AppType;
-use crate::models::provider::{Provider, ProvidersConfig};
-use crate::services::storage::json_store;
+use crate::models::provider::Provider;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -16,26 +15,10 @@ fn get_data_dir() -> Result<PathBuf, io::Error> {
     Ok(home.join(".ccg-switch"))
 }
 
-fn get_providers_path() -> Result<PathBuf, io::Error> {
-    Ok(get_data_dir()?.join("providers.json"))
-}
-
 fn get_claude_settings_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
     Ok(home.join(".claude").join("settings.json"))
-}
-
-// ── 从 JSON 文件加载 providers（迁移回退方案）──────────────────────────────────────────────
-
-/// 从 providers.json 加载所有 providers
-fn load_providers_from_json() -> Result<Vec<Provider>, io::Error> {
-    let path = get_providers_path()?;
-    if !path.exists() {
-        return Ok(vec![]);
-    }
-    let config: ProvidersConfig = json_store::read_json(&path)?;
-    Ok(config.providers)
 }
 
 // ── 数据库读写（v3+）──────────────────────────────────────────────
@@ -67,44 +50,15 @@ pub fn get_provider_config_files(app: AppType) -> Result<Vec<(String, String)>, 
         .collect())
 }
 
-/// 列出指定应用的 providers（从数据库读取，失败时回退到 JSON）
+/// 列出指定应用的 providers（从数据库读取）
 pub fn list_providers_from_db(db: &Arc<Database>, app: AppType) -> Result<Vec<Provider>, String> {
     let all = db.list_providers()?;
-
-    // 如果数据库为空，尝试从 JSON 文件回退加载
-    if all.is_empty() {
-        if let Ok(json_providers) = load_providers_from_json() {
-            if !json_providers.is_empty() {
-                // 将 JSON 数据迁移到数据库
-                for provider in &json_providers {
-                    let _ = db.upsert_provider(provider);
-                }
-                return Ok(json_providers.into_iter().filter(|p| p.app_type == app).collect());
-            }
-        }
-    }
-
     Ok(all.into_iter().filter(|p| p.app_type == app).collect())
 }
 
-/// 列出所有应用的 providers（从数据库读取，失败时回退到 JSON）
+/// 列出所有应用的 providers（从数据库读取）
 pub fn list_all_providers_from_db(db: &Arc<Database>) -> Result<Vec<Provider>, String> {
-    let all = db.list_providers()?;
-
-    // 如果数据库为空，尝试从 JSON 文件回退加载
-    if all.is_empty() {
-        if let Ok(json_providers) = load_providers_from_json() {
-            if !json_providers.is_empty() {
-                // 将 JSON 数据迁移到数据库
-                for provider in &json_providers {
-                    let _ = db.upsert_provider(provider);
-                }
-                return Ok(json_providers);
-            }
-        }
-    }
-
-    Ok(all)
+    db.list_providers()
 }
 
 /// 获取单个 provider（从数据库读取）
