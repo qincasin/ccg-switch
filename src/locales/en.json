@@ -136,7 +136,15 @@
             "commandRequired": "Command is required for stdio type",
             "jsonInvalid": "Invalid JSON format",
             "saveFailed": "Save failed"
-        }
+        },
+        "status_online": "Online",
+        "status_offline": "Offline",
+        "status_timeout": "Timeout",
+        "status_error": "Error",
+        "status_unknown": "Unknown",
+        "status_checking": "Checking...",
+        "check_status": "Check Status",
+        "check_all_status": "Check All Status"
     },
     "dashboard": {
         "hello": "Hello, User 👋",

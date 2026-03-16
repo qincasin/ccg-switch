@@ -1,6 +1,7 @@
 use crate::database::dao::mcp::McpServerRow;
 use crate::mcp::import;
 use crate::services::mcp_service::McpService;
+use crate::services::mcp_status_service::{self, McpStatusResult};
 use crate::store::AppState;
 use indexmap::IndexMap;
 use tauri::State;
@@ -41,4 +42,12 @@ pub fn toggle_mcp_app(
 #[tauri::command]
 pub fn import_mcp_from_apps(state: State<'_, AppState>) -> Result<usize, String> {
     import::import_from_all(&state.db)
+}
+
+#[tauri::command]
+pub async fn check_mcp_status(
+    state: State<'_, AppState>,
+    server_ids: Vec<String>,
+) -> Result<Vec<McpStatusResult>, String> {
+    mcp_status_service::check_batch(&state.db, server_ids).await
 }

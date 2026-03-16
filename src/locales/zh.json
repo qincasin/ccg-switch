@@ -125,7 +125,15 @@
             "commandRequired": "stdio 类型必须填写命令",
             "jsonInvalid": "JSON 格式无效",
             "saveFailed": "保存失败"
-        }
+        },
+        "status_online": "在线",
+        "status_offline": "离线",
+        "status_timeout": "超时",
+        "status_error": "错误",
+        "status_unknown": "未知",
+        "status_checking": "检测中...",
+        "check_status": "检测状态",
+        "check_all_status": "检测所有状态"
     },
     "dashboard": {
         "welcome": "欢迎回来",

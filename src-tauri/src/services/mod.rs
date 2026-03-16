@@ -25,3 +25,4 @@ pub mod prompt_service_v2;
 pub mod model_api_service;
 pub mod tool_version_service;
 pub mod updater_service;
+pub mod mcp_status_service;
