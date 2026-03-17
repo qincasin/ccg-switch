@@ -149,7 +149,13 @@ async fn get_single_tool_version(tool: &str) -> ToolVersion {
     // 1. 用 spawn_blocking 非阻塞获取本地版本
     let tool_for_local = tool_name.clone();
     let (local_version, local_error) = tokio::task::spawn_blocking(move || {
-        try_get_version(&tool_for_local)
+        let result = try_get_version(&tool_for_local);
+        // 如果直接检测失败，尝试扫描常见安装路径
+        if result.0.is_some() {
+            result
+        } else {
+            scan_cli_version(&tool_for_local)
+        }
     })
     .await
     .unwrap_or((None, Some("检测超时".to_string())));
@@ -208,6 +214,149 @@ fn try_get_version(tool: &str) -> (Option<String>, Option<String>) {
         }
         Err(_) => (None, Some("未安装".to_string())),
     }
+}
+
+// ── 路径扫描备选方案 ──
+
+/// 去重添加路径
+fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if path.as_os_str().is_empty() {
+        return;
+    }
+    if !paths.iter().any(|existing| existing == &path) {
+        paths.push(path);
+    }
+}
+
+/// 获取工具的可执行文件候选名
+fn tool_executable_candidates(tool: &str, dir: &std::path::Path) -> Vec<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        vec![
+            dir.join(format!("{tool}.cmd")),
+            dir.join(format!("{tool}.exe")),
+            dir.join(tool),
+        ]
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        vec![dir.join(tool)]
+    }
+}
+
+/// 扫描常见安装路径查找 CLI 工具版本
+/// 当 try_get_version 通过 shell 找不到命令时（macOS/Linux 桌面应用 PATH 不完整），
+/// 直接在已知路径中查找可执行文件
+fn scan_cli_version(tool: &str) -> (Option<String>, Option<String>) {
+    use std::process::Command;
+
+    let home = dirs::home_dir().unwrap_or_default();
+
+    // 构建搜索路径列表
+    let mut search_paths: Vec<PathBuf> = Vec::new();
+
+    if !home.as_os_str().is_empty() {
+        push_unique_path(&mut search_paths, home.join(".local/bin"));
+        push_unique_path(&mut search_paths, home.join(".npm-global/bin"));
+        push_unique_path(&mut search_paths, home.join("n/bin"));
+        push_unique_path(&mut search_paths, home.join(".volta/bin"));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        push_unique_path(&mut search_paths, PathBuf::from("/opt/homebrew/bin"));
+        push_unique_path(&mut search_paths, PathBuf::from("/usr/local/bin"));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        push_unique_path(&mut search_paths, PathBuf::from("/usr/local/bin"));
+        push_unique_path(&mut search_paths, PathBuf::from("/usr/bin"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(appdata) = dirs::data_dir() {
+            push_unique_path(&mut search_paths, appdata.join("npm"));
+        }
+        push_unique_path(&mut search_paths, PathBuf::from("C:\\Program Files\\nodejs"));
+    }
+
+    // fnm multishells 动态路径
+    let fnm_base = home.join(".local/state/fnm_multishells");
+    if fnm_base.exists() {
+        if let Ok(entries) = std::fs::read_dir(&fnm_base) {
+            for entry in entries.flatten() {
+                let bin_path = entry.path().join("bin");
+                if bin_path.exists() {
+                    push_unique_path(&mut search_paths, bin_path);
+                }
+            }
+        }
+    }
+
+    // nvm versions 动态路径
+    let nvm_base = home.join(".nvm/versions/node");
+    if nvm_base.exists() {
+        if let Ok(entries) = std::fs::read_dir(&nvm_base) {
+            for entry in entries.flatten() {
+                let bin_path = entry.path().join("bin");
+                if bin_path.exists() {
+                    push_unique_path(&mut search_paths, bin_path);
+                }
+            }
+        }
+    }
+
+    // opencode 特有路径
+    if tool == "opencode" && !home.as_os_str().is_empty() {
+        push_unique_path(&mut search_paths, home.join("bin"));
+        push_unique_path(&mut search_paths, home.join(".opencode/bin"));
+        push_unique_path(&mut search_paths, home.join("go/bin"));
+    }
+
+    let current_path = std::env::var("PATH").unwrap_or_default();
+
+    for dir in &search_paths {
+        #[cfg(target_os = "windows")]
+        let new_path = format!("{};{}", dir.display(), current_path);
+
+        #[cfg(not(target_os = "windows"))]
+        let new_path = format!("{}:{}", dir.display(), current_path);
+
+        for tool_path in tool_executable_candidates(tool, dir) {
+            if !tool_path.exists() {
+                continue;
+            }
+
+            #[cfg(target_os = "windows")]
+            let output = Command::new("cmd")
+                .args(["/C", &format!("\"{}\" --version", tool_path.display())])
+                .env("PATH", &new_path)
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
+
+            #[cfg(not(target_os = "windows"))]
+            let output = Command::new(&tool_path)
+                .arg("--version")
+                .env("PATH", &new_path)
+                .output();
+
+            if let Ok(out) = output {
+                let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                if out.status.success() {
+                    let raw = if stdout.is_empty() { &stderr } else { &stdout };
+                    if !raw.is_empty() {
+                        return (Some(extract_version(raw)), None);
+                    }
+                }
+            }
+        }
+    }
+
+    (None, Some("未安装".to_string()))
 }
 
 async fn fetch_npm_latest(client: &reqwest::Client, package: &str) -> Option<String> {
