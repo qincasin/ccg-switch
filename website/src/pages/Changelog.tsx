@@ -12,6 +12,19 @@ interface Version {
 }
 
 const versions: Version[] = [
+    {
+    version: '1.3.1',
+    date: '2026-03-17',
+    type: 'patch',
+    changes: [
+      { type: 'fix', text: '修复 macOS 上本地环境检查无法识别已安装工具（Claude/Gemini/OpenCode）的问题' },
+      { type: 'fix', text: '修复设置页开机自启动检测导致 Tab 切换卡顿的问题，改用 auto-launch crate + 异步非阻塞' },
+      { type: 'fix', text: '修复 macOS 下点击 Dock 图标无法唤起隐藏窗口的问题' },
+      { type: 'fix', text: '修复删除所有 Provider 后数据自动恢复的问题' },
+      { type: 'improvement', text: '设置页 Tab 切换改为 CSS 隐藏模式，消除组件重建卡顿' },
+      { type: 'improvement', text: '开机自启动支持跨平台（Windows/macOS/Linux）' },
+    ]
+  },
         {
     version: '1.2.18',
     date: '2026-03-13',
