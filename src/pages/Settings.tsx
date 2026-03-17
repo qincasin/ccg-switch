@@ -118,9 +118,8 @@ function Settings() {
                     ))}
                 </div>
 
-                {activeTab === 'general' && (
-                    <>
-                        <div className="bg-white dark:bg-base-100 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-base-200">
+                <div className={activeTab !== 'general' ? 'hidden' : 'space-y-6'}>
+                    <div className="bg-white dark:bg-base-100 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-base-200">
                             <h2 className="font-semibold text-gray-900 dark:text-base-content mb-4">
                                 {t('settings.appearance')}
                             </h2>
@@ -260,23 +259,20 @@ function Settings() {
                                 <div className="text-sm text-red-500 mt-2">{autoLaunchError}</div>
                             )}
                         </div>
-                    </>
-                )}
+                    </div>
 
-                {activeTab === 'proxy' && (
+                <div className={activeTab !== 'proxy' ? 'hidden' : ''}>
                     <GlobalProxyPanel />
-                )}
+                </div>
 
-                {activeTab === 'advanced' && (
-                    <>
-                        <ImportExportPanel />
-                        <BackupPanel />
-                        <WebDavBackupPanel />
-                        <EnvCheckerPanel />
-                    </>
-                )}
+                <div className={activeTab !== 'advanced' ? 'hidden' : 'space-y-6'}>
+                    <ImportExportPanel />
+                    <BackupPanel />
+                    <WebDavBackupPanel />
+                    <EnvCheckerPanel />
+                </div>
 
-                <div className={activeTab === 'about' ? '' : 'hidden'}>
+                <div className={activeTab !== 'about' ? 'hidden' : ''}>
                     <AboutPanel />
                 </div>
             </div>
