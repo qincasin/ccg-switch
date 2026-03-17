@@ -12,13 +12,13 @@ pub fn save_webdav_config(config: webdav_service::WebDavConfig) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn get_auto_launch_status() -> Result<auto_launch_service::AutoLaunchStatus, String> {
-    auto_launch_service::get_auto_launch_status().map_err(|e| e.to_string())
+pub async fn get_auto_launch_status() -> Result<auto_launch_service::AutoLaunchStatus, String> {
+    auto_launch_service::get_auto_launch_status().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn set_auto_launch(enabled: bool) -> Result<(), String> {
-    auto_launch_service::set_auto_launch(enabled).map_err(|e| e.to_string())
+pub async fn set_auto_launch(enabled: bool) -> Result<(), String> {
+    auto_launch_service::set_auto_launch(enabled).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
