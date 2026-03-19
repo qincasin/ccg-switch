@@ -18,7 +18,7 @@ pub fn get_available_provider(app: AppType) -> Result<Provider, ProxyError> {
         .map_err(|e| ProxyError::ConfigError(e.to_string()))?;
 
     if providers.is_empty() {
-        return Err(ProxyError::NoActiveProvider);
+        return Err(ProxyError::NoAvailableProvider);
     }
 
     // 尝试当前活跃 provider
@@ -36,7 +36,7 @@ pub fn get_available_provider(app: AppType) -> Result<Provider, ProxyError> {
 
     fallback
         .cloned()
-        .ok_or(ProxyError::NoActiveProvider)
+        .ok_or(ProxyError::NoAvailableProvider)
 }
 
 /// 处理 provider 请求成功

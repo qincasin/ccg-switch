@@ -2,6 +2,7 @@ use crate::database::{lock_conn, Database};
 use crate::models::provider::Provider;
 use crate::models::app_type::AppType;
 use chrono::Utc;
+use indexmap::IndexMap;
 use rusqlite::OptionalExtension;
 use std::str::FromStr;
 
@@ -177,5 +178,140 @@ impl Database {
         )
         .map_err(|e| format!("Failed to set provider last_used: {e}"))?;
         Ok(())
+    }
+
+    /// 获取指定应用类型的所有 Provider
+    pub fn list_providers_by_app(&self, app_type: &str) -> Result<Vec<Provider>, String> {
+        let conn = lock_conn!(self.conn);
+        let mut stmt = conn
+            .prepare("SELECT id, name, app_type, api_key, url, default_sonnet_model, default_opus_model, default_haiku_model, default_reasoning_model, custom_params, settings_config, meta, icon, in_failover_queue, description, tags, is_active, created_at, last_used, proxy_config FROM providers WHERE app_type = ?1 ORDER BY name ASC")
+            .map_err(|e| format!("Failed to prepare query: {e}"))?;
+
+        let rows = stmt
+            .query_map(rusqlite::params![app_type], |row| {
+                let custom_params_str: Option<String> = row.get(9)?;
+                let settings_config_str: Option<String> = row.get(10)?;
+                let meta_str: Option<String> = row.get(11)?;
+                let tags_str: Option<String> = row.get(15)?;
+                let proxy_config_str: Option<String> = row.get(19)?;
+
+                Ok(Provider {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    app_type: AppType::from_str(&row.get::<_, String>(2)?).unwrap_or(AppType::Claude),
+                    api_key: row.get(3)?,
+                    url: row.get(4)?,
+                    default_sonnet_model: row.get(5)?,
+                    default_opus_model: row.get(6)?,
+                    default_haiku_model: row.get(7)?,
+                    default_reasoning_model: row.get(8)?,
+                    custom_params: custom_params_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    settings_config: settings_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    meta: meta_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    icon: row.get(12)?,
+                    in_failover_queue: row.get(13)?,
+                    description: row.get(14)?,
+                    tags: tags_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
+                    is_active: row.get(16)?,
+                    created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0).unwrap_or_default(),
+                    last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0).or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
+                    proxy_config: proxy_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                })
+            })
+            .map_err(|e| format!("Failed to query providers by app: {e}"))?;
+
+        let mut providers = Vec::new();
+        for row in rows {
+            providers.push(row.map_err(|e| format!("Failed to read row: {e}"))?);
+        }
+        Ok(providers)
+    }
+
+    /// 获取指定应用类型的单个 Provider
+    pub fn get_provider_by_app(&self, id: &str, app_type: &str) -> Result<Option<Provider>, String> {
+        let conn = lock_conn!(self.conn);
+        let provider = conn
+            .query_row(
+                "SELECT id, name, app_type, api_key, url, default_sonnet_model, default_opus_model, default_haiku_model, default_reasoning_model, custom_params, settings_config, meta, icon, in_failover_queue, description, tags, is_active, created_at, last_used, proxy_config FROM providers WHERE id = ?1 AND app_type = ?2",
+                rusqlite::params![id, app_type],
+                |row| {
+                    let custom_params_str: Option<String> = row.get(9)?;
+                    let settings_config_str: Option<String> = row.get(10)?;
+                    let meta_str: Option<String> = row.get(11)?;
+                    let tags_str: Option<String> = row.get(15)?;
+                    let proxy_config_str: Option<String> = row.get(19)?;
+
+                    Ok(Provider {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        app_type: AppType::from_str(&row.get::<_, String>(2)?).unwrap_or(AppType::Claude),
+                        api_key: row.get(3)?,
+                        url: row.get(4)?,
+                        default_sonnet_model: row.get(5)?,
+                        default_opus_model: row.get(6)?,
+                        default_haiku_model: row.get(7)?,
+                        default_reasoning_model: row.get(8)?,
+                        custom_params: custom_params_str.and_then(|s| serde_json::from_str(&s).ok()),
+                        settings_config: settings_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                        meta: meta_str.and_then(|s| serde_json::from_str(&s).ok()),
+                        icon: row.get(12)?,
+                        in_failover_queue: row.get(13)?,
+                        description: row.get(14)?,
+                        tags: tags_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
+                        is_active: row.get(16)?,
+                        created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0).unwrap_or_default(),
+                        last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0).or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
+                        proxy_config: proxy_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| format!("Failed to get provider by app: {e}"))?;
+        Ok(provider)
+    }
+
+    /// 获取指定应用类型的当前激活 Provider ID
+    pub fn get_current_provider_id(&self, app_type: &str) -> Result<Option<String>, String> {
+        let conn = lock_conn!(self.conn);
+        let id: Option<String> = conn
+            .query_row(
+                "SELECT id FROM providers WHERE app_type = ?1 AND is_active = 1 LIMIT 1",
+                rusqlite::params![app_type],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| format!("Failed to get current provider id: {e}"))?;
+        Ok(id)
+    }
+
+    /// 设置指定应用类型的当前激活 Provider
+    ///
+    /// 先将同 app_type 的所有 Provider 设为非激活，再将目标 Provider 设为激活
+    pub fn set_current_provider_by_app(&self, app_type: &str, id: &str) -> Result<(), String> {
+        let conn = lock_conn!(self.conn);
+        // 先将同 app_type 的所有 Provider 设为非激活
+        conn.execute(
+            "UPDATE providers SET is_active = 0 WHERE app_type = ?1",
+            rusqlite::params![app_type],
+        )
+        .map_err(|e| format!("Failed to deactivate providers: {e}"))?;
+
+        // 再将目标 Provider 设为激活
+        conn.execute(
+            "UPDATE providers SET is_active = 1 WHERE id = ?1 AND app_type = ?2",
+            rusqlite::params![id, app_type],
+        )
+        .map_err(|e| format!("Failed to activate provider: {e}"))?;
+        Ok(())
+    }
+
+    /// 获取指定应用类型的所有 Provider，以 IndexMap 返回（按 id 索引）
+    pub fn get_all_providers_map(&self, app_type: &str) -> Result<IndexMap<String, Provider>, String> {
+        let providers = self.list_providers_by_app(app_type)?;
+        let mut map = IndexMap::new();
+        for provider in providers {
+            map.insert(provider.id.clone(), provider);
+        }
+        Ok(map)
     }
 }

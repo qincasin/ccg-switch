@@ -18,7 +18,7 @@ pub fn resolve_upstream(request_path: &str) -> Result<RouteResult, ProxyError> {
     let active = providers
         .into_iter()
         .find(|p| p.is_active)
-        .ok_or(ProxyError::NoActiveProvider)?;
+        .ok_or(ProxyError::NoAvailableProvider)?;
 
     // 构建目标 URL
     let base_url = active

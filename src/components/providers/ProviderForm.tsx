@@ -43,8 +43,45 @@ interface InternalSettings {
     teammatesMode?: boolean;
     disableNonessentialTraffic?: boolean;
     disableAttributionHeader?: boolean;
+    disableInstallationChecks?: boolean;
+    enableToolSearch?: boolean;
+    disableTelemetry?: boolean;
+    disableBugCommand?: boolean;
+    disableAutoupdater?: boolean;
+    disableErrorReporting?: boolean;
     maxOutputTokens?: string;
 }
+
+const CLAUDE_SETTINGS_DEFAULTS: InternalSettings = {
+    alwaysThinkingEnabled: false,
+    teammatesMode: false,
+    disableNonessentialTraffic: false,
+    disableAttributionHeader: false,
+    disableInstallationChecks: false,
+    enableToolSearch: false,
+    disableTelemetry: false,
+    disableBugCommand: false,
+    disableAutoupdater: false,
+    disableErrorReporting: false,
+    maxOutputTokens: '',
+};
+
+const CLAUDE_SETTING_KEYS = Object.keys(CLAUDE_SETTINGS_DEFAULTS) as (keyof InternalSettings)[];
+
+const CLAUDE_BOOLEAN_TOGGLES: Array<{ key: Exclude<keyof InternalSettings, 'maxOutputTokens'>; label: string }> = [
+    { key: 'alwaysThinkingEnabled', label: '扩展思考' },
+    { key: 'teammatesMode', label: 'Teammates 模式' },
+    { key: 'disableNonessentialTraffic', label: '禁用非必要流量' },
+    { key: 'disableAttributionHeader', label: '禁用归因头' },
+    { key: 'disableInstallationChecks', label: '禁用安装检查' },
+    { key: 'enableToolSearch', label: '启用 Tool Search' },
+    { key: 'disableTelemetry', label: '禁用遥测' },
+    { key: 'disableBugCommand', label: '禁用 /bug 命令' },
+    { key: 'disableAutoupdater', label: '禁用自动升级' },
+    { key: 'disableErrorReporting', label: '禁用错误报告' },
+];
+
+const CLAUDE_SETTING_CONTROL_CLASS = "flex min-h-[36px] items-center rounded-md border border-transparent px-2";
 
 // ── 预设配置 ──────────────────────────────────────────────
 
@@ -95,13 +132,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
         if (editingProvider?.settingsConfig) {
             return JSON.parse(JSON.stringify(editingProvider.settingsConfig));
         }
-        return {
-            alwaysThinkingEnabled: false,
-            teammatesMode: false,
-            disableNonessentialTraffic: false,
-            disableAttributionHeader: false,
-            maxOutputTokens: '',
-        };
+        return { ...CLAUDE_SETTINGS_DEFAULTS };
     });
 
     useEffect(() => {
@@ -127,13 +158,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             if (editingProvider?.settingsConfig) {
                 setInternalSettings(JSON.parse(JSON.stringify(editingProvider.settingsConfig)));
             } else {
-                setInternalSettings({
-                    alwaysThinkingEnabled: false,
-                    teammatesMode: false,
-                    disableNonessentialTraffic: false,
-                    disableAttributionHeader: false,
-                    maxOutputTokens: '',
-                });
+                setInternalSettings({ ...CLAUDE_SETTINGS_DEFAULTS });
             }
 
             // 对 Claude 类型，从当前 settings.json 读取 checkbox 状态
@@ -145,8 +170,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                         const saved = editingProvider?.settingsConfig || {};
                         const merged = { ...prev };
                         // 对每个已知字段：如果 Provider 没有显式保存过，用文件当前值
-                        const knownKeys = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
-                        for (const key of knownKeys) {
+                        for (const key of CLAUDE_SETTING_KEYS) {
                             if (!(key in saved)) {
                                 merged[key] = fileState[key];
                             }
@@ -224,10 +248,9 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                 tags: tags.length > 0 ? tags : undefined,
                 settingsConfig: (() => {
                     // 只保存白名单内的已知字段，排除历史残留
-                    const known: (keyof InternalSettings)[] = ['alwaysThinkingEnabled', 'teammatesMode', 'disableNonessentialTraffic', 'disableAttributionHeader', 'maxOutputTokens'];
                     const clean: Record<string, any> = {};
                     if (internalSettings) {
-                        for (const k of known) {
+                        for (const k of CLAUDE_SETTING_KEYS) {
                             if (k in internalSettings) clean[k] = internalSettings[k];
                         }
                     }
@@ -268,18 +291,11 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     // 构建用于预览的 Provider 对象（仅包含已知配置字段，排除历史残留字段）
     const buildPreviewProvider = useCallback(() => {
         // 白名单：只有这些字段可以写入 settingsConfig 传给后端
-        const knownFields: Record<string, any> = {
-            alwaysThinkingEnabled: false,
-            teammatesMode: false,
-            disableNonessentialTraffic: false,
-            disableAttributionHeader: false,
-            maxOutputTokens: '',
-        };
         const filteredSettings: Record<string, any> = {};
         if (internalSettings) {
             for (const [k, v] of Object.entries(internalSettings)) {
-                if (!(k in knownFields)) continue; // 跳过不在白名单中的字段（如历史残留的 enabledPlugins）
-                const def = knownFields[k];
+                if (!(k in CLAUDE_SETTINGS_DEFAULTS)) continue; // 跳过不在白名单中的字段（如历史残留的 enabledPlugins）
+                const def = CLAUDE_SETTINGS_DEFAULTS[k as keyof InternalSettings];
                 if (typeof def === 'boolean') {
                     filteredSettings[k] = v; // 布尔字段始终发送，确保 true/false 都能明确生效
                 } else if (typeof def === 'string' && v && (v as string).trim() !== '') {
@@ -566,48 +582,24 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
 
                     {/* 快捷配置按钮组 */}
                     {appType === 'claude' && (
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 px-4 py-3 bg-gray-50 dark:bg-slate-800/50 rounded-md border border-gray-200 dark:border-slate-700/50">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                                    checked={!!internalSettings.alwaysThinkingEnabled}
-                                    onChange={(e) => handleCheckboxChange('alwaysThinkingEnabled', e.target.checked)}
-                                />
-                                <span className="text-xs text-gray-600 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-slate-200 transition-colors">扩展思考</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                                    checked={!!internalSettings.teammatesMode}
-                                    onChange={(e) => handleCheckboxChange('teammatesMode', e.target.checked)}
-                                />
-                                <span className="text-xs text-gray-600 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-slate-200 transition-colors">Teammates 模式</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                                    checked={!!internalSettings.disableNonessentialTraffic}
-                                    onChange={(e) => handleCheckboxChange('disableNonessentialTraffic', e.target.checked)}
-                                />
-                                <span className="text-xs text-gray-600 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-slate-200 transition-colors">禁用非必要流量</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                                    checked={!!internalSettings.disableAttributionHeader}
-                                    onChange={(e) => handleCheckboxChange('disableAttributionHeader', e.target.checked)}
-                                />
-                                <span className="text-xs text-gray-600 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-slate-200 transition-colors">禁用归因头</span>
-                            </label>
-                            <label className="flex items-center gap-2 group">
-                                <span className="text-xs text-gray-600 dark:text-slate-300 whitespace-nowrap">最大输出 Tokens</span>
+                        <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700/50 dark:bg-slate-800/50">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 xl:grid-cols-4">
+                            {CLAUDE_BOOLEAN_TOGGLES.map((toggle) => (
+                                <label key={toggle.key} className={cn(CLAUDE_SETTING_CONTROL_CLASS, "cursor-pointer group")}>
+                                    <input
+                                        type="checkbox"
+                                        className="mt-px h-4 w-4 shrink-0 rounded border-gray-300 bg-white text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:border-slate-600 dark:bg-slate-900/50 dark:focus:ring-offset-slate-900"
+                                        checked={!!internalSettings[toggle.key]}
+                                        onChange={(e) => handleCheckboxChange(toggle.key, e.target.checked)}
+                                    />
+                                    <span className="text-xs leading-5 text-gray-600 transition-colors group-hover:text-gray-900 dark:text-slate-300 dark:group-hover:text-slate-200">{toggle.label}</span>
+                                </label>
+                            ))}
+                            <label className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group col-span-2 xl:col-span-1")}>
+                                <span className="whitespace-nowrap text-xs leading-5 text-gray-600 dark:text-slate-300">最大输出 Tokens</span>
                                 <input
                                     type="text"
-                                    className="h-7 w-24 rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 px-2 text-xs text-gray-900 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                                    className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500"
                                     placeholder="如 100000"
                                     value={internalSettings.maxOutputTokens || ''}
                                     onChange={(e) => {
@@ -616,6 +608,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                                     }}
                                 />
                             </label>
+                            </div>
                         </div>
                     )}
 

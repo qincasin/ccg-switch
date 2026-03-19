@@ -90,6 +90,43 @@ pub fn create_tables(conn: &Connection) -> Result<(), String> {
             no_proxy TEXT,
             updated_at INTEGER NOT NULL
         );
+
+        -- 代理配置表（每个应用独立配置）
+        CREATE TABLE IF NOT EXISTS proxy_config (
+            app_type TEXT PRIMARY KEY,
+            enabled BOOLEAN NOT NULL DEFAULT 0,
+            auto_failover_enabled BOOLEAN NOT NULL DEFAULT 0,
+            max_retries INTEGER NOT NULL DEFAULT 3,
+            streaming_first_byte_timeout INTEGER NOT NULL DEFAULT 60,
+            streaming_idle_timeout INTEGER NOT NULL DEFAULT 120,
+            non_streaming_timeout INTEGER NOT NULL DEFAULT 600,
+            circuit_failure_threshold INTEGER NOT NULL DEFAULT 5,
+            circuit_success_threshold INTEGER NOT NULL DEFAULT 2,
+            circuit_timeout_seconds INTEGER NOT NULL DEFAULT 60,
+            circuit_error_rate_threshold REAL NOT NULL DEFAULT 0.6,
+            circuit_min_requests INTEGER NOT NULL DEFAULT 10
+        );
+
+        -- 故障转移队列表
+        CREATE TABLE IF NOT EXISTS failover_queue (
+            app_type TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (app_type, provider_id)
+        );
+
+        -- Provider 健康状态表
+        CREATE TABLE IF NOT EXISTS provider_health (
+            provider_id TEXT NOT NULL,
+            app_type TEXT NOT NULL,
+            is_healthy BOOLEAN NOT NULL DEFAULT 1,
+            consecutive_failures INTEGER NOT NULL DEFAULT 0,
+            last_success_at TEXT,
+            last_failure_at TEXT,
+            last_error TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (provider_id, app_type)
+        );
         ",
     )
     .map_err(|e| format!("Failed to create tables: {e}"))

@@ -57,7 +57,7 @@ pub async fn proxy_handler(req: Request<Body>) -> Result<Response, ProxyError> {
         body_bytes,
     )
     .await
-    .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
+    .map_err(|e| ProxyError::ForwardFailed(e.to_string()))?;
 
     // 递增请求计数
     server::increment_request_count();

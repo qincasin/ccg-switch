@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+pub mod auth;
 pub mod claude;
 pub mod gemini;
 pub mod openai;

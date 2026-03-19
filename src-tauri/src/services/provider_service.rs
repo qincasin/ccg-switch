@@ -215,6 +215,24 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
     let disable_attribution = settings.get("disableAttributionHeader")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let disable_installation_checks = settings.get("disableInstallationChecks")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let enable_tool_search = settings.get("enableToolSearch")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let disable_telemetry = settings.get("disableTelemetry")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let disable_bug_command = settings.get("disableBugCommand")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let disable_autoupdater = settings.get("disableAutoupdater")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let disable_error_reporting = settings.get("disableErrorReporting")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let max_output = settings.get("maxOutputTokens")
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -226,6 +244,12 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         obj.remove("teammatesMode");
         obj.remove("disableNonessentialTraffic");
         obj.remove("disableAttributionHeader");
+        obj.remove("disableInstallationChecks");
+        obj.remove("enableToolSearch");
+        obj.remove("disableTelemetry");
+        obj.remove("disableBugCommand");
+        obj.remove("disableAutoupdater");
+        obj.remove("disableErrorReporting");
         obj.remove("maxOutputTokens");
         obj.remove("hideSignature"); // 已废弃，清理残留
     }
@@ -252,6 +276,48 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
                 serde_json::Value::String("0".to_string()));
         } else {
             env.remove("CLAUDE_CODE_ATTRIBUTION_HEADER");
+        }
+        // disableInstallationChecks → DISABLE_INSTALLATION_CHECKS
+        if disable_installation_checks {
+            env.insert("DISABLE_INSTALLATION_CHECKS".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("DISABLE_INSTALLATION_CHECKS");
+        }
+        // enableToolSearch → ENABLE_TOOL_SEARCH
+        if enable_tool_search {
+            env.insert("ENABLE_TOOL_SEARCH".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("ENABLE_TOOL_SEARCH");
+        }
+        // disableTelemetry → DISABLE_TELEMETRY
+        if disable_telemetry {
+            env.insert("DISABLE_TELEMETRY".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("DISABLE_TELEMETRY");
+        }
+        // disableBugCommand → DISABLE_BUG_COMMAND
+        if disable_bug_command {
+            env.insert("DISABLE_BUG_COMMAND".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("DISABLE_BUG_COMMAND");
+        }
+        // disableAutoupdater → DISABLE_AUTOUPDATER
+        if disable_autoupdater {
+            env.insert("DISABLE_AUTOUPDATER".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("DISABLE_AUTOUPDATER");
+        }
+        // disableErrorReporting → DISABLE_ERROR_REPORTING
+        if disable_error_reporting {
+            env.insert("DISABLE_ERROR_REPORTING".to_string(),
+                serde_json::Value::String("1".to_string()));
+        } else {
+            env.remove("DISABLE_ERROR_REPORTING");
         }
         // maxOutputTokens → CLAUDE_CODE_MAX_OUTPUT_TOKENS（用户自定义值）
         if !max_output.is_empty() {
@@ -288,6 +354,18 @@ pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
             .and_then(|v| v.as_str()) == Some("1"),
         "disableAttributionHeader": env.and_then(|e| e.get("CLAUDE_CODE_ATTRIBUTION_HEADER"))
             .and_then(|v| v.as_str()) == Some("0"),
+        "disableInstallationChecks": env.and_then(|e| e.get("DISABLE_INSTALLATION_CHECKS"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "enableToolSearch": env.and_then(|e| e.get("ENABLE_TOOL_SEARCH"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableTelemetry": env.and_then(|e| e.get("DISABLE_TELEMETRY"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableBugCommand": env.and_then(|e| e.get("DISABLE_BUG_COMMAND"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableAutoupdater": env.and_then(|e| e.get("DISABLE_AUTOUPDATER"))
+            .and_then(|v| v.as_str()) == Some("1"),
+        "disableErrorReporting": env.and_then(|e| e.get("DISABLE_ERROR_REPORTING"))
+            .and_then(|v| v.as_str()) == Some("1"),
         "maxOutputTokens": env.and_then(|e| e.get("CLAUDE_CODE_MAX_OUTPUT_TOKENS"))
             .and_then(|v| v.as_str()).unwrap_or(""),
     }))
