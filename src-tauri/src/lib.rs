@@ -820,6 +820,34 @@ pub fn run() {
                 });
             }
 
+            // 自动更新检查：启动延迟 5 秒 + 后台定时任务
+            {
+                let app_handle = app.handle().clone();
+                let db_for_update = db_for_backup.clone();
+                tauri::async_runtime::spawn(async move {
+                    // 延迟 5 秒，等待前端事件监听器初始化
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                    loop {
+                        if let Err(e) = services::updater_service::check_update_and_emit(
+                            &app_handle,
+                            &db_for_update,
+                        ).await {
+                            tracing::warn!("Auto update check failed: {}", e);
+                        }
+
+                        // 每次唤醒后读取最新配置获取间隔
+                        let sleep_hours = config_service::load_config_from_db(&db_for_update)
+                            .map(|c| c.check_update_interval_hours.max(1))
+                            .unwrap_or(24);
+
+                        tokio::time::sleep(std::time::Duration::from_secs(
+                            sleep_hours as u64 * 3600,
+                        )).await;
+                    }
+                });
+            }
+
             // Deep link: 开发模式下注册 URL scheme
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
             {

@@ -418,6 +418,12 @@
         "tab_proxy": "Proxy",
         "tab_advanced": "Advanced",
         "tab_about": "About",
+        "auto_check_update": "Auto Check for Updates",
+        "auto_check_update_hint": "Periodically check for new versions in the background",
+        "check_update_interval": "Check Interval",
+        "hour": "hour",
+        "hours": "hours",
+        "week": "week",
         "auto_launch": "Launch at Startup",
         "auto_launch_hint": "Automatically start the app when you log in",
         "auto_launch_unsupported": "Auto-launch is not supported on this system",
@@ -982,5 +988,8 @@
         "configEmbedded": "Embedded",
         "configRemote": "Remote",
         "configDetails": "Config Details"
+    },
+    "about": {
+        "update_available": "New Version Available"
     }
 }

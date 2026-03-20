@@ -10,6 +10,10 @@ import { useConfigStore } from './stores/useConfigStore';
 import { useTokenStore } from './stores/useTokenStore';
 import { useAboutStore } from './stores/useAboutStore';
 import { useTranslation } from 'react-i18next';
+import { listen } from '@tauri-apps/api/event';
+import { showToast } from './components/common/ToastContainer';
+import { UpdateInfo } from './types/about';
+
 
 // 懒加载非首屏页面，减少 Dashboard 切换到其他页面时的渲染开销
 const ClaudePage = lazy(() => import('./pages/ClaudePage'));
@@ -125,6 +129,30 @@ function App() {
     const timer = globalThis.setTimeout(warmup, 500);
     return () => globalThis.clearTimeout(timer);
   }, []);
+
+  // 监听后端推送的自动更新事件
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    
+    const setupListener = async () => {
+      unlisten = await listen<UpdateInfo>('auto-update-available', (event) => {
+        const info = event.payload;
+        showToast(
+          `${i18n.t('about.update_available')}\nv${info.latestVersion}`,
+          'info',
+          8000,
+          () => {
+            window.location.hash = '/settings?tab=about';
+          }
+        );
+      });
+    };
+
+    setupListener();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [i18n]);
 
   return (
     <>

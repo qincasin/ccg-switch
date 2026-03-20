@@ -7,14 +7,15 @@ export interface ToastItem {
     message: string;
     type: ToastType;
     duration?: number;
+    onClick?: () => void;
 }
 
 let toastCounter = 0;
-let addToastExternal: ((message: string, type: ToastType, duration?: number) => void) | null = null;
+let addToastExternal: ((message: string, type: ToastType, duration?: number, onClick?: () => void) => void) | null = null;
 
-export const showToast = (message: string, type: ToastType = 'info', duration: number = 3000) => {
+export const showToast = (message: string, type: ToastType = 'info', duration: number = 3000, onClick?: () => void) => {
     if (addToastExternal) {
-        addToastExternal(message, type, duration);
+        addToastExternal(message, type, duration, onClick);
     } else {
         console.warn('ToastContainer not mounted');
     }
@@ -23,9 +24,9 @@ export const showToast = (message: string, type: ToastType = 'info', duration: n
 const ToastContainer = () => {
     const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-    const addToast = useCallback((message: string, type: ToastType, duration?: number) => {
+    const addToast = useCallback((message: string, type: ToastType, duration?: number, onClick?: () => void) => {
         const id = `toast-${Date.now()}-${toastCounter++}`;
-        setToasts(prev => [...prev, { id, message, type, duration }]);
+        setToasts(prev => [...prev, { id, message, type, duration, onClick }]);
     }, []);
 
     const removeToast = useCallback((id: string) => {

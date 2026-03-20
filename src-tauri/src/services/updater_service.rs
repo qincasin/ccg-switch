@@ -1,9 +1,19 @@
-use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use crate::database::Database;
+use crate::services::config_service;
+use chrono::Utc;
 use futures::StreamExt;
+use once_cell::sync::Lazy;
+use serde::Serialize;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
+use tokio::sync::RwLock;
 
 const GITHUB_REPO: &str = "cus45/ccg-switch";
+const AUTO_UPDATE_AVAILABLE_EVENT: &str = "auto-update-available";
+const UPDATE_CHECK_LAST_RUN_KEY: &str = "update_check_last_run";
+
+static LAST_EMITTED_VERSION: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -318,4 +328,62 @@ pub fn install_update(app: &tauri::AppHandle, file_path: &str) -> Result<(), Str
             .map_err(|e| format!("启动安装程序失败: {}", e))?;
         Ok(())
     }
+}
+
+/// 判断是否到达检查时间
+fn should_check_update(last_run: Option<String>, interval_hours: u32) -> Result<bool, String> {
+    let interval_hours = interval_hours.max(1) as i64;
+
+    match last_run {
+        Some(timestamp_str) => {
+            let last_ts: i64 = timestamp_str
+                .parse()
+                .map_err(|e| format!("Failed to parse {UPDATE_CHECK_LAST_RUN_KEY}: {e}"))?;
+            let last_time = chrono::DateTime::from_timestamp(last_ts, 0)
+                .ok_or_else(|| format!("Invalid {UPDATE_CHECK_LAST_RUN_KEY} timestamp"))?;
+            let elapsed = Utc::now().signed_duration_since(last_time);
+            Ok(elapsed.num_hours() >= interval_hours)
+        }
+        None => Ok(true),
+    }
+}
+
+/// 自动检查更新：按配置判断是否需要执行，发现新版本时向前端 emit 一次事件
+pub async fn check_update_and_emit(app: &AppHandle, db: &Arc<Database>) -> Result<(), String> {
+    let config = config_service::load_config_from_db(db)?;
+    if !config.auto_check_update {
+        return Ok(());
+    }
+
+    let last_run = db.get_app_config(UPDATE_CHECK_LAST_RUN_KEY)?;
+    if !should_check_update(last_run, config.check_update_interval_hours)? {
+        return Ok(());
+    }
+
+    let current_version = app.package_info().version.to_string();
+    let update_info = check_update(&current_version).await?;
+
+    // 记录本次检查时间
+    let now_ts = Utc::now().timestamp().to_string();
+    db.set_app_config(UPDATE_CHECK_LAST_RUN_KEY, &now_ts)?;
+
+    if !update_info.has_update || update_info.latest_version.is_empty() {
+        return Ok(());
+    }
+
+    // 去重：同一版本只 emit 一次
+    {
+        let last_emitted = LAST_EMITTED_VERSION.read().await;
+        if last_emitted.as_deref() == Some(update_info.latest_version.as_str()) {
+            return Ok(());
+        }
+    }
+
+    app.emit(AUTO_UPDATE_AVAILABLE_EVENT, update_info.clone())
+        .map_err(|e| format!("Failed to emit {AUTO_UPDATE_AVAILABLE_EVENT}: {e}"))?;
+
+    let mut last_emitted = LAST_EMITTED_VERSION.write().await;
+    *last_emitted = Some(update_info.latest_version.clone());
+
+    Ok(())
 }

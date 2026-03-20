@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings as SettingsIcon, Sun, Moon, Globe, PanelLeft, PanelRight, PanelTop, Terminal, Power } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Settings as SettingsIcon, Sun, Moon, Globe, PanelLeft, PanelRight, PanelTop, Terminal, Power, RefreshCw } from 'lucide-react';
 import { useConfigStore } from '../stores/useConfigStore';
 import { SidebarPosition, TerminalType } from '../types/config';
+
 import { AutoLaunchStatus } from '../types/advanced';
 import { getAutoLaunchStatus, setAutoLaunch } from '../services/advancedService';
 import ImportExportPanel from '../components/settings/ImportExportPanel';
@@ -17,8 +19,20 @@ type SettingsTab = 'general' | 'proxy' | 'advanced' | 'about';
 function Settings() {
     const { t, i18n } = useTranslation();
     const { config, saveConfig } = useConfigStore();
-    const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = (searchParams.get('tab') as SettingsTab) || 'general';
+    const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+
+    // 同步 URL 参数到 activeTab
+    useEffect(() => {
+        const tab = searchParams.get('tab') as SettingsTab;
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
     const [autoLaunch, setAutoLaunchState] = useState<AutoLaunchStatus | null>(null);
+
     const [autoLaunchError, setAutoLaunchError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -90,6 +104,21 @@ function Settings() {
         }
     };
 
+    const handleTabChange = (tab: SettingsTab) => {
+        setActiveTab(tab);
+        setSearchParams({ tab }, { replace: true });
+    };
+
+    const handleAutoCheckUpdateToggle = async (enabled: boolean) => {
+        if (!config) return;
+        await saveConfig({ ...config, autoCheckUpdate: enabled });
+    };
+
+    const handleCheckUpdateIntervalChange = async (hours: number) => {
+        if (!config) return;
+        await saveConfig({ ...config, checkUpdateIntervalHours: hours });
+    };
+
     const sidebarOptions: { value: SidebarPosition; label: string; icon: typeof PanelLeft }[] = [
         { value: 'left', label: t('settings.sidebarLeft', '左侧'), icon: PanelLeft },
         { value: 'right', label: t('settings.sidebarRight', '右侧'), icon: PanelRight },
@@ -111,7 +140,7 @@ function Settings() {
                         <button
                             key={tab}
                             className={`tab ${activeTab === tab ? 'tab-active' : ''}`}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => handleTabChange(tab)}
                         >
                             {t(`settings.tab_${tab}`)}
                         </button>
@@ -229,6 +258,49 @@ function Settings() {
                                     </optgroup>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* 自动检查更新 */}
+                        <div className="bg-white dark:bg-base-100 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-base-200">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <RefreshCw className="w-5 h-5 text-blue-500" />
+                                    <div>
+                                        <span className="font-semibold text-gray-900 dark:text-base-content">
+                                            {t('settings.auto_check_update', '自动检查更新')}
+                                        </span>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            {t('settings.auto_check_update_hint', '在后台定期检查新版本并提醒')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-primary"
+                                    checked={config?.autoCheckUpdate ?? true}
+                                    onChange={(e) => handleAutoCheckUpdateToggle(e.target.checked)}
+                                />
+                            </div>
+
+                            {config?.autoCheckUpdate && (
+                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-base-200">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        {t('settings.check_update_interval', '检查间隔')}
+                                    </div>
+                                    <select
+                                        value={config?.checkUpdateIntervalHours || 24}
+                                        onChange={(e) => handleCheckUpdateIntervalChange(Number(e.target.value))}
+                                        className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[120px]"
+                                    >
+                                        <option value={1}>1 {t('settings.hour', '小时')}</option>
+                                        <option value={6}>6 {t('settings.hours', '小时')}</option>
+                                        <option value={12}>12 {t('settings.hours', '小时')}</option>
+                                        <option value={24}>24 {t('settings.hours', '小时')}</option>
+                                        <option value={48}>48 {t('settings.hours', '小时')}</option>
+                                        <option value={72}>72 {t('settings.hours', '小时')}</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {/* 开机自启动 */}

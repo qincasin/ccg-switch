@@ -6,6 +6,8 @@ export interface Config {
     language: 'en' | 'zh';
     sidebarPosition: SidebarPosition;
     preferredTerminal: TerminalType;
+    autoCheckUpdate?: boolean;
+    checkUpdateIntervalHours?: number;
 }
 
 export interface ApiConfig {

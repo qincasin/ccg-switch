@@ -8,10 +8,11 @@ export interface ToastProps {
     message: string;
     type: ToastType;
     duration?: number;
+    onClick?: () => void;
     onClose: (id: string) => void;
 }
 
-const Toast = ({ id, message, type, duration = 3000, onClose }: ToastProps) => {
+const Toast = ({ id, message, type, duration = 3000, onClick, onClose }: ToastProps) => {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -47,13 +48,24 @@ const Toast = ({ id, message, type, duration = 3000, onClose }: ToastProps) => {
 
     return (
         <div
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${getStyles()} ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+            onClick={() => {
+                if (onClick) {
+                    onClick();
+                    setIsVisible(false);
+                    setTimeout(() => onClose(id), 300);
+                }
+            }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${getStyles()} ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'} ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''}`}
             style={{ minWidth: '300px' }}
         >
             {getIcon()}
-            <p className="flex-1 text-sm font-medium text-gray-700 dark:text-base-content">{message}</p>
+            <p className="flex-1 text-sm font-medium text-gray-700 dark:text-base-content whitespace-pre-line">{message}</p>
             <button
-                onClick={() => { setIsVisible(false); setTimeout(() => onClose(id), 300); }}
+                onClick={(e) => { 
+                    e.stopPropagation();
+                    setIsVisible(false); 
+                    setTimeout(() => onClose(id), 300); 
+                }}
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
                 <X className="w-4 h-4" />
