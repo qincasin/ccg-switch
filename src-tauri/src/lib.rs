@@ -6,6 +6,7 @@ mod mcp;
 mod models;
 mod proxy;
 mod services;
+mod session_manager;
 mod store;
 mod tray;
 mod utils;
@@ -20,6 +21,7 @@ use commands::skill_commands;
 use commands::prompt_commands;
 use commands::deeplink_commands;
 use commands::backup_commands;
+use commands::session_commands;
 use tauri::Emitter;
 use tauri::State;
 use store::AppState;
@@ -29,7 +31,7 @@ use models::prompt::PromptPreset;
 use models::skill::{Skill, SkillApps};
 use models::subagent::Subagent;
 use models::token::ApiToken;
-use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat, SessionInfo, SessionMessage};
+use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat};
 use services::stats_service::StatsCache;
 use services::{config_service, dashboard_service, migration_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
 use services::universal_provider_service::UniversalProviderConfig;
@@ -187,17 +189,6 @@ fn get_stats_cache_data() -> Result<StatsCache, String> {
 #[tauri::command]
 fn refresh_stats_cache() -> Result<StatsCache, String> {
     stats_service::refresh_stats_cache().map_err(|e| e.to_string())
-}
-
-// 工作区会话列表命令
-#[tauri::command]
-fn get_project_sessions(project_path: String) -> Result<Vec<SessionInfo>, String> {
-    dashboard_service::get_project_sessions(&project_path).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn get_session_messages(file_path: String) -> Result<Vec<SessionMessage>, String> {
-    dashboard_service::get_session_messages(&file_path).map_err(|e| e.to_string())
 }
 
 // 在终端中打开目录
@@ -697,8 +688,10 @@ pub fn run() {
             get_project_token_stats,
             get_stats_cache_data,
             refresh_stats_cache,
-            get_project_sessions,
-            get_session_messages,
+            // Session Manager 命令
+            session_commands::list_sessions,
+            session_commands::get_project_provider_map,
+            session_commands::get_unified_session_messages,
             open_in_terminal,
             launch_resume_session,
             open_external,

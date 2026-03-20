@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::database::{lock_conn, Database};
 use crate::proxy::types::{AppProxyConfig, RectifierConfig};
 use rusqlite::OptionalExtension;

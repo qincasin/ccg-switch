@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
 pub mod body_filter;
 pub mod circuit_breaker;
 pub mod error;

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::database::{lock_conn, Database};
 use crate::models::provider::Provider;
 use crate::models::app_type::AppType;

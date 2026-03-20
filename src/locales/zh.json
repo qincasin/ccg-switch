@@ -412,6 +412,25 @@
         "resume_success": "已启动 Claude 终端",
         "resume_error": "启动终端失败"
     },
+    "sessions": {
+        "all_sessions": "全部会话",
+        "filter_all": "全部",
+        "filter_claude": "Claude",
+        "filter_codex": "Codex",
+        "filter_gemini": "Gemini",
+        "no_sessions": "暂无会话记录",
+        "no_sessions_filtered": "没有匹配的 {{provider}} 会话",
+        "resume_not_available": "此会话不支持恢复",
+        "resume_success": "已启动终端",
+        "resume_error": "启动终端失败",
+        "loading_sessions": "加载会话中...",
+        "session_count": "{{count}} 个会话",
+        "provider_claude": "Claude",
+        "provider_codex": "Codex",
+        "provider_gemini": "Gemini",
+        "view_all": "查看全部会话",
+        "view_by_project": "按项目查看"
+    },
     "deeplink": {
         "confirmImport": "确认导入",
         "confirmImportDescription": "以下配置将被导入到应用中，请确认信息无误。",

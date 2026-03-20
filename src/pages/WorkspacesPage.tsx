@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, FolderOpen, Terminal, FileText, RefreshCw, ChevronRight, Clock, MessageSquare, Copy, Hash, Play, List, X } from 'lucide-react';
+import { Search, FolderOpen, Terminal, FileText, RefreshCw, ChevronRight, Clock, MessageSquare, Copy, Hash, Play, List, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { showToast } from '../components/common/ToastContainer';
+import { SessionMeta, UnifiedSessionMessage, ProviderFilter } from '../types/session';
 
 interface ProjectInfo {
     name: string;
@@ -11,29 +12,10 @@ interface ProjectInfo {
     last_active: string | null;
 }
 
-interface SessionInfo {
-    session_id: string;
-    file_path: string;
-    last_modified: string | null;
-    file_size: number;
-    session_title?: string;
-    session_preview?: string;
-    session_slug?: string;
-    last_message?: string;
-    last_message_role?: string;
-    last_message_at?: string;
-}
-
-interface SessionMessage {
-    role: string;
-    content: string;
-    ts?: string;
-}
-
 /** 将 ISO/日期字符串转成友好的相对时间 */
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string | number): string {
     try {
-        const date = new Date(dateStr);
+        const date = typeof dateStr === 'number' ? new Date(dateStr) : new Date(dateStr);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMin = Math.floor(diffMs / 60000);
@@ -47,30 +29,44 @@ function formatRelativeTime(dateStr: string): string {
         if (diffMonth < 12) return `${diffMonth} 个月前`;
         return `${Math.floor(diffMonth / 12)} 年前`;
     } catch {
-        return dateStr;
+        return String(dateStr);
     }
 }
 
 /** 格式化时间戳为 yyyy/M/d HH:mm:ss */
-function formatTimestamp(dateStr: string): string {
+function formatTimestamp(dateStr: string | number): string {
     try {
-        const d = new Date(dateStr);
+        const d = typeof dateStr === 'number' ? new Date(dateStr) : new Date(dateStr);
         return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
     } catch {
-        return dateStr;
+        return String(dateStr);
     }
 }
+
+/** 格式化为短日期 M/d HH:mm */
+function formatShortDate(dateStr: string | number): string {
+    try {
+        const d = typeof dateStr === 'number' ? new Date(dateStr) : new Date(dateStr);
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    } catch {
+        return String(dateStr);
+    }
+}
+
+const providerColors: Record<string, string> = {
+    claude: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    codex: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    gemini: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+};
 
 function WorkspacesPage() {
     const { t } = useTranslation();
     const [projects, setProjects] = useState<ProjectInfo[]>([]);
-    const [sessions, setSessions] = useState<SessionInfo[]>([]);
     const [selectedProject, setSelectedProject] = useState<ProjectInfo | null>(null);
-    const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
-    const [messages, setMessages] = useState<SessionMessage[]>([]);
+    const [selectedSession, setSelectedSession] = useState<SessionMeta | null>(null);
+    const [messages, setMessages] = useState<UnifiedSessionMessage[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [search, setSearch] = useState('');
-    const [sessionSearch, setSessionSearch] = useState('');
     const [loadingProjects, setLoadingProjects] = useState(true);
     const [loadingSessions, setLoadingSessions] = useState(false);
     const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
@@ -79,11 +75,23 @@ function WorkspacesPage() {
     const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-    const loadMessages = useCallback(async (session: SessionInfo) => {
+    // Panel collapse states
+    const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+    const [sessionsCollapsed, setSessionsCollapsed] = useState(true);
+
+    // Multi-platform states
+    const [providerFilter, setProviderFilter] = useState<ProviderFilter>('all');
+    const [projectSessions, setProjectSessions] = useState<SessionMeta[]>([]);
+    const [providerMap, setProviderMap] = useState<Record<string, string[]>>({});
+
+    const loadMessages = useCallback(async (session: SessionMeta) => {
         setLoadingMessages(true);
         setMessages([]);
         try {
-            const data = await invoke<SessionMessage[]>('get_session_messages', { filePath: session.file_path });
+            const data = await invoke<UnifiedSessionMessage[]>('get_unified_session_messages', {
+                providerId: session.providerId,
+                sourcePath: session.sourcePath,
+            });
             setMessages(data);
         } catch (e) {
             console.error('Failed to load messages:', e);
@@ -91,7 +99,7 @@ function WorkspacesPage() {
         setLoadingMessages(false);
     }, []);
 
-    const handleSelectSession = useCallback((session: SessionInfo) => {
+    const handleSelectSession = useCallback((session: SessionMeta) => {
         setSelectedSession(session);
         messageRefs.current.clear();
         setActiveMessageIndex(null);
@@ -104,6 +112,10 @@ function WorkspacesPage() {
         try {
             const data = await invoke<ProjectInfo[]>('get_dashboard_projects');
             setProjects(data);
+            // 异步加载 provider 映射（轻量扫描）
+            invoke<Record<string, string[]>>('get_project_provider_map', {
+                projectPaths: data.map(p => p.path),
+            }).then(map => setProviderMap(map)).catch(() => {});
         } catch (e) {
             console.error('Failed to load projects:', e);
         }
@@ -114,29 +126,24 @@ function WorkspacesPage() {
         loadProjects();
     }, [loadProjects]);
 
-    const loadSessions = useCallback(async (project: ProjectInfo) => {
+    const loadProjectSessions = useCallback(async (projectPath: string) => {
         setLoadingSessions(true);
-        setSessions([]);
-        setSelectedSession(null);
-        setMessages([]);
+        setProjectSessions([]);
         try {
-            const data = await invoke<SessionInfo[]>('get_project_sessions', { projectPath: project.path });
-            setSessions(data);
-            // 自动选中第一个会话并加载消息
-            if (data.length > 0) {
-                setSelectedSession(data[0]);
-                loadMessages(data[0]);
-            }
+            const data = await invoke<SessionMeta[]>('list_sessions', { projectPath });
+            setProjectSessions(data);
         } catch (e) {
             console.error('Failed to load sessions:', e);
         }
         setLoadingSessions(false);
-    }, [loadMessages]);
+    }, []);
 
     const selectProject = (project: ProjectInfo) => {
         setSelectedProject(project);
-        setSessionSearch('');
-        loadSessions(project);
+        setSelectedSession(null);
+        setMessages([]);
+        setSessionsCollapsed(false);
+        loadProjectSessions(project.path);
     };
 
     const openTerminal = async (path: string) => {
@@ -148,15 +155,21 @@ function WorkspacesPage() {
         }
     };
 
-    const resumeSession = async (sessionId: string, projectPath?: string) => {
+    const resumeSession = async (session: SessionMeta) => {
+        if (!session.resumeCommand) {
+            showToast(t('sessions.resume_not_available'), 'error');
+            return;
+        }
         try {
-            const command = `claude --resume ${sessionId}`;
-            await invoke('launch_resume_session', { command, cwd: projectPath || null });
-            showToast(t('workspaces.resume_success', '已启动 Claude 终端'), 'success');
+            await invoke('launch_resume_session', {
+                command: session.resumeCommand,
+                cwd: session.projectDir || null,
+            });
+            showToast(t('sessions.resume_success'), 'success');
         } catch (e) {
             console.error('Failed to resume session:', e);
             const errorMsg = e instanceof Error ? e.message : String(e);
-            showToast(t('workspaces.resume_error', '启动终端失败') + ': ' + errorMsg, 'error');
+            showToast(t('sessions.resume_error') + ': ' + errorMsg, 'error');
         }
     };
 
@@ -168,24 +181,33 @@ function WorkspacesPage() {
         }
     };
 
-    const filteredProjects = useMemo(() =>
-        projects.filter(p =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            p.path.toLowerCase().includes(search.toLowerCase())
-        ), [projects, search]
-    );
+    const getProjectProviders = (projectPath: string): string[] => {
+        return providerMap[projectPath] || ['claude'];
+    };
 
-    const filteredSessions = useMemo(() => {
-        if (!sessionSearch.trim()) return sessions;
-        const q = sessionSearch.toLowerCase();
-        return sessions.filter(s =>
-            (s.session_title || '').toLowerCase().includes(q) ||
-            (s.session_preview || '').toLowerCase().includes(q) ||
-            (s.session_slug || '').toLowerCase().includes(q) ||
-            (s.last_message || '').toLowerCase().includes(q) ||
-            s.session_id.toLowerCase().includes(q)
-        );
-    }, [sessions, sessionSearch]);
+    const filteredProjects = useMemo(() => {
+        let result = projects;
+        // 按 provider 过滤项目
+        if (providerFilter !== 'all') {
+            result = result.filter(p => {
+                const providers = providerMap[p.path] || ['claude'];
+                return providers.includes(providerFilter);
+            });
+        }
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(q) ||
+                p.path.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [projects, search, providerFilter, providerMap]);
+
+    let filteredSessions = projectSessions;
+    if (providerFilter !== 'all') {
+        filteredSessions = filteredSessions.filter(s => s.providerId === providerFilter);
+    }
 
     const userMessagesToc = useMemo(() => {
         return messages
@@ -214,18 +236,16 @@ function WorkspacesPage() {
         }
     }, []);
 
-    const formatSize = (bytes: number) => {
-        if (bytes >= 1_048_576) return (bytes / 1_048_576).toFixed(1) + ' MB';
-        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return bytes + ' B';
+    const getSessionTitle = (session: SessionMeta) => {
+        if (session.title?.trim()) return session.title.trim();
+        return session.sessionId.length <= 18
+            ? session.sessionId
+            : `${session.sessionId.slice(0, 8)}…${session.sessionId.slice(-6)}`;
     };
 
-    const getSessionTitle = (session: SessionInfo) => {
-        if (session.session_title?.trim()) return session.session_title.trim();
-        if (session.session_slug?.trim()) return session.session_slug.trim();
-        return session.session_id.length <= 18
-            ? session.session_id
-            : `${session.session_id.slice(0, 8)}…${session.session_id.slice(-6)}`;
+    const getResumeCommandDisplay = (session: SessionMeta) => {
+        if (session.resumeCommand) return session.resumeCommand;
+        return `${session.providerId} --resume ${session.sessionId}`;
     };
 
     return (
@@ -247,8 +267,11 @@ function WorkspacesPage() {
                         </div>
                     </div>
                     <button
-                        onClick={loadProjects}
-                        disabled={loadingProjects}
+                        onClick={() => {
+                            loadProjects();
+                            if (selectedProject) loadProjectSessions(selectedProject.path);
+                        }}
+                        disabled={loadingProjects || loadingSessions}
                         className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
                         title={t('common.refresh')}
                     >
@@ -259,9 +282,53 @@ function WorkspacesPage() {
                 {/* Main Content - Three Panel Layout */}
                 <div className="flex-1 flex min-h-0">
                     {/* Left Panel - Project List */}
+                    {projectsCollapsed ? (
+                        <div
+                            className="w-10 shrink-0 flex flex-col items-center border-r border-gray-200/50 dark:border-base-200 bg-gray-50/50 dark:bg-base-100/50 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-base-200/50 transition-colors"
+                            onClick={() => setProjectsCollapsed(false)}
+                            title={t('workspaces.title')}
+                        >
+                            <div className="py-3">
+                                <PanelLeftOpen className="w-4 h-4 text-gray-400" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-center">
+                                <span className="text-xs text-gray-400 font-medium [writing-mode:vertical-lr]">
+                                    {t('workspaces.title')}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
                     <div className="w-64 shrink-0 flex flex-col border-r border-gray-200/50 dark:border-base-200 bg-gray-50/50 dark:bg-base-100/50">
+                        {/* Provider Filter Tabs */}
+                        <div className="p-3 pb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-gray-200/70 dark:bg-base-300 rounded-lg p-0.5 flex flex-1">
+                                    {(['all', 'claude', 'codex', 'gemini'] as const).map(p => (
+                                        <button
+                                            key={p}
+                                            className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                                providerFilter === p
+                                                    ? 'bg-white dark:bg-base-100 text-gray-900 dark:text-base-content shadow-sm'
+                                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                            }`}
+                                            onClick={() => setProviderFilter(p)}
+                                        >
+                                            {t(`sessions.filter_${p}`)}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => setProjectsCollapsed(true)}
+                                    className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-base-300 transition-colors shrink-0"
+                                    title={t('common.collapse', { defaultValue: '收起' })}
+                                >
+                                    <PanelLeftClose className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Search */}
-                        <div className="p-3">
+                        <div className="px-3 pb-2">
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                                 <input
@@ -304,13 +371,22 @@ function WorkspacesPage() {
                                                     <span className="font-medium text-sm text-gray-900 dark:text-base-content truncate flex-1">
                                                         {project.name}
                                                     </span>
+                                                    {getProjectProviders(project.path).length > 0 && (
+                                                        <div className="flex gap-0.5 shrink-0">
+                                                            {getProjectProviders(project.path).map(p => (
+                                                                <span key={p} className={`px-1 py-px rounded text-[9px] font-medium leading-tight ${providerColors[p] || ''}`}>
+                                                                    {p === 'claude' ? 'C' : p === 'codex' ? 'X' : 'G'}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isSelected ? 'text-blue-500 rotate-90' : 'text-gray-300 dark:text-gray-600'}`} />
                                                 </div>
                                                 <div className="mt-1 flex items-center gap-1 text-[11px] text-gray-400 ml-6">
-                                                    <Clock className="w-3 h-3" />
+                                                    <Clock className="w-3 h-3 shrink-0" />
                                                     <span>{project.session_count} {t('dashboard.projects_sessions')}</span>
                                                     {project.last_active && (
-                                                        <span className="ml-1">· {formatRelativeTime(project.last_active)}</span>
+                                                        <span>· {formatRelativeTime(project.last_active)}</span>
                                                     )}
                                                 </div>
                                             </button>
@@ -320,66 +396,74 @@ function WorkspacesPage() {
                             )}
                         </div>
                     </div>
+                    )}
 
                     {/* Middle Panel - Sessions List */}
-                    <div className="w-80 shrink-0 flex flex-col border-r border-gray-200/50 dark:border-base-200">
-                        {!selectedProject ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                                <MessageSquare className="w-10 h-10 mb-2 opacity-30" />
-                                <p className="text-sm">{t('workspaces.select_project')}</p>
+                    {sessionsCollapsed ? (
+                        <div
+                            className="w-10 shrink-0 flex flex-col items-center border-r border-gray-200/50 dark:border-base-200 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-base-200/50 transition-colors"
+                            onClick={() => setSessionsCollapsed(false)}
+                            title={t('workspaces.sessions_title', { defaultValue: '会话列表' })}
+                        >
+                            <div className="py-3">
+                                <PanelLeftOpen className="w-4 h-4 text-gray-400" />
                             </div>
-                        ) : (
-                            <>
-                                {/* Session List Header */}
-                                <div className="py-2 px-3 border-b border-gray-200/50 dark:border-base-200 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-gray-900 dark:text-base-content">
-                                            {t('workspaces.sessions_title', { defaultValue: '会话列表' })}
-                                        </span>
-                                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium">
-                                            {filteredSessions.length}{sessionSearch.trim() ? `/${sessions.length}` : ''}
-                                        </span>
-                                    </div>
-                                    <button
-                                        onClick={() => selectedProject && loadSessions(selectedProject)}
-                                        className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
-                                    >
-                                        <RefreshCw className={`w-3.5 h-3.5 ${loadingSessions ? 'animate-spin' : ''}`} />
-                                    </button>
-                                </div>
+                            <div className="flex-1 flex items-center justify-center">
+                                <span className="text-xs text-gray-400 font-medium [writing-mode:vertical-lr]">
+                                    {t('workspaces.sessions_title', { defaultValue: '会话列表' })}
+                                    {filteredSessions.length > 0 && ` (${filteredSessions.length})`}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                    <div className="w-80 shrink-0 flex flex-col border-r border-gray-200/50 dark:border-base-200">
+                        {/* Session List Header - always visible */}
+                        <div className="py-2 px-3 border-b border-gray-200/50 dark:border-base-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900 dark:text-base-content">
+                                    {t('workspaces.sessions_title', { defaultValue: '会话列表' })}
+                                </span>
+                                {projectSessions.length > 0 && (
+                                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium">
+                                        {filteredSessions.length}{providerFilter !== 'all' ? `/${projectSessions.length}` : ''}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => selectedProject && loadProjectSessions(selectedProject.path)}
+                                    className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSessions ? 'animate-spin' : ''}`} />
+                                </button>
+                                <button
+                                    onClick={() => setSessionsCollapsed(true)}
+                                    className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
+                                    title={t('common.collapse', { defaultValue: '收起' })}
+                                >
+                                    <PanelLeftClose className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
 
-                                {/* Session Search */}
-                                <div className="px-3 py-2 border-b border-gray-200/50 dark:border-base-200">
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={sessionSearch}
-                                            onChange={(e) => setSessionSearch(e.target.value)}
-                                            placeholder={t('workspaces.search_sessions', { defaultValue: '搜索会话...' })}
-                                            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-gray-900 dark:text-base-content placeholder-gray-400 transition-all"
-                                        />
-                                    </div>
+                        {/* Session List */}
+                        <div className="flex-1 overflow-y-auto">
+                            {loadingSessions ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
                                 </div>
-
-                                {/* Session List */}
-                                <div className="flex-1 overflow-y-auto">
-                                    {loadingSessions ? (
-                                        <div className="flex items-center justify-center py-12">
-                                            <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
-                                        </div>
-                                    ) : filteredSessions.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
-                                            <MessageSquare className="w-8 h-8 mb-2 opacity-40" />
-                                            <p>{sessionSearch.trim() ? t('workspaces.no_search_results', { defaultValue: '无匹配会话' }) : t('workspaces.no_sessions')}</p>
-                                        </div>
-                                    ) : (
-                                        <div className="p-2 space-y-0.5">
+                            ) : filteredSessions.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm">
+                                    <MessageSquare className="w-8 h-8 mb-2 opacity-40" />
+                                    <p>{selectedProject ? t('sessions.no_sessions') : t('workspaces.select_project', { defaultValue: '选择一个项目查看会话' })}</p>
+                                </div>
+                            ) : (
+                                        <div key={`list-${providerFilter}-${selectedProject?.path ?? 'all'}`} className="p-2 space-y-0.5">
                                             {filteredSessions.map((session) => {
-                                                const isSelected = selectedSession?.session_id === session.session_id;
+                                                const isSelected = selectedSession?.sessionId === session.sessionId && selectedSession?.sourcePath === session.sourcePath;
                                                 return (
                                                     <button
-                                                        key={session.session_id}
+                                                        key={`${session.providerId}-${session.sessionId}`}
                                                         onClick={() => handleSelectSession(session)}
                                                         className={`w-full text-left rounded-lg px-3 py-2.5 transition-all group ${
                                                             isSelected
@@ -391,25 +475,27 @@ function WorkspacesPage() {
                                                             <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`} />
                                                             <span
                                                                 className="text-sm font-medium text-gray-900 dark:text-base-content truncate flex-1"
-                                                                title={session.session_title || session.session_slug || session.session_id}
+                                                                title={session.title || session.sessionId}
                                                             >
                                                                 {getSessionTitle(session)}
+                                                            </span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${providerColors[session.providerId] || ''}`}>
+                                                                {session.providerId}
                                                             </span>
                                                             <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isSelected ? 'text-blue-500 rotate-90' : 'text-gray-300 dark:text-gray-600'}`} />
                                                         </div>
                                                         {/* Preview */}
-                                                        {(session.last_message || session.session_preview) && (
+                                                        {session.summary && (
                                                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate ml-[22px] mb-1">
-                                                                {session.last_message
-                                                                    ? `${session.last_message_role === 'assistant' ? t('workspaces.role_assistant') : t('workspaces.role_user')}: ${session.last_message}`
-                                                                    : session.session_preview}
+                                                                {session.summary}
                                                             </p>
                                                         )}
                                                         <div className="flex items-center gap-2 text-[11px] text-gray-400 ml-[22px]">
-                                                            <Clock className="w-3 h-3" />
-                                                            <span>{session.last_message_at ? formatRelativeTime(session.last_message_at) : (session.last_modified ? formatRelativeTime(session.last_modified) : '')}</span>
+                                                            <span className="font-mono opacity-60">{session.sessionId.slice(0, 8)}</span>
                                                             <span className="text-gray-300 dark:text-gray-600">·</span>
-                                                            <span>{formatSize(session.file_size)}</span>
+                                                            <span>{formatShortDate(session.lastActiveAt)}</span>
+                                                            <span className="text-gray-300 dark:text-gray-600">·</span>
+                                                            <span>{formatRelativeTime(session.lastActiveAt)}</span>
                                                         </div>
                                                     </button>
                                                 );
@@ -417,9 +503,8 @@ function WorkspacesPage() {
                                         </div>
                                     )}
                                 </div>
-                            </>
-                        )}
                     </div>
+                    )}
 
                     {/* Right Panel - Session Detail */}
                     <div className="flex-1 flex min-w-0">
@@ -435,69 +520,75 @@ function WorkspacesPage() {
                                 <div className="px-5 py-3 border-b border-gray-200/50 dark:border-base-200 shrink-0">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0 flex-1">
-                                            <h2 className="text-base font-semibold text-gray-900 dark:text-base-content truncate">
-                                                {getSessionTitle(selectedSession)}
-                                            </h2>
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-base font-semibold text-gray-900 dark:text-base-content truncate">
+                                                    {getSessionTitle(selectedSession)}
+                                                </h2>
+                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ${providerColors[selectedSession.providerId] || ''}`}>
+                                                    {selectedSession.providerId}
+                                                </span>
+                                            </div>
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                                {selectedSession.last_message_at && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" />
-                                                        <span>{formatTimestamp(selectedSession.last_message_at)}</span>
-                                                    </div>
-                                                )}
-                                                {selectedProject && (
+                                                <div className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    <span>{formatTimestamp(selectedSession.lastActiveAt)}</span>
+                                                </div>
+                                                {selectedSession.projectDir && (
                                                     <button
                                                         className="flex items-center gap-1 hover:text-blue-500 transition-colors"
-                                                        onClick={() => copyToClipboard(selectedProject.path)}
-                                                        title={selectedProject.path}
+                                                        onClick={() => copyToClipboard(selectedSession.projectDir!)}
+                                                        title={selectedSession.projectDir}
                                                     >
                                                         <FolderOpen className="w-3 h-3" />
-                                                        <span className="truncate max-w-[200px]">{selectedProject.name}</span>
+                                                        <span className="truncate max-w-[200px]">{selectedSession.projectDir.split(/[/\\]/).pop()}</span>
                                                     </button>
                                                 )}
                                                 <div className="flex items-center gap-1">
                                                     <Hash className="w-3 h-3" />
-                                                    <span className="font-mono text-[11px]" title={selectedSession.session_id}>
-                                                        {selectedSession.session_id.length > 18
-                                                            ? `${selectedSession.session_id.slice(0, 8)}…${selectedSession.session_id.slice(-6)}`
-                                                            : selectedSession.session_id}
+                                                    <span className="font-mono text-[11px]" title={selectedSession.sessionId}>
+                                                        {selectedSession.sessionId.length > 18
+                                                            ? `${selectedSession.sessionId.slice(0, 8)}…${selectedSession.sessionId.slice(-6)}`
+                                                            : selectedSession.sessionId}
                                                     </span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <FileText className="w-3 h-3" />
-                                                    <span>{formatSize(selectedSession.file_size)}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        {selectedProject && (
-                                            <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                onClick={() => resumeSession(selectedSession)}
+                                                disabled={!selectedSession.resumeCommand}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all shadow-sm shrink-0 ${
+                                                    selectedSession.resumeCommand
+                                                        ? 'text-white bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 hover:shadow-md'
+                                                        : 'text-gray-400 bg-gray-100 dark:bg-base-200 cursor-not-allowed'
+                                                }`}
+                                                title={selectedSession.resumeCommand
+                                                    ? t('workspaces.resume_session', { defaultValue: '恢复会话' })
+                                                    : t('sessions.resume_not_available')}
+                                            >
+                                                <Play className="w-3.5 h-3.5" />
+                                                <span className="hidden sm:inline">{t('workspaces.resume_session', { defaultValue: '恢复会话' })}</span>
+                                            </button>
+                                            {selectedSession.projectDir && (
                                                 <button
-                                                    onClick={() => resumeSession(selectedSession.session_id, selectedProject.path)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg transition-all shadow-sm hover:shadow-md shrink-0"
-                                                    title={t('workspaces.resume_session', { defaultValue: '恢复会话' })}
-                                                >
-                                                    <Play className="w-3.5 h-3.5" />
-                                                    <span className="hidden sm:inline">{t('workspaces.resume_session', { defaultValue: '恢复会话' })}</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => openTerminal(selectedProject.path)}
+                                                    onClick={() => openTerminal(selectedSession.projectDir!)}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 bg-gray-100 dark:bg-base-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0"
                                                     title={t('workspaces.open_terminal')}
                                                 >
                                                     <Terminal className="w-3.5 h-3.5" />
                                                 </button>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Resume Command Bar */}
                                     <div className="mt-2.5 flex items-center gap-2">
                                         <div className="flex-1 rounded-md bg-gray-50 dark:bg-base-200 px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            <span className="text-blue-500 dark:text-blue-400">claude</span> --resume {selectedSession.session_id}
+                                            {getResumeCommandDisplay(selectedSession)}
                                         </div>
                                         <button
                                             className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors shrink-0"
-                                            onClick={() => copyToClipboard(`claude --resume ${selectedSession.session_id}`)}
+                                            onClick={() => copyToClipboard(getResumeCommandDisplay(selectedSession))}
                                             title={t('common.copy', { defaultValue: '复制' })}
                                         >
                                             <Copy className="w-3.5 h-3.5" />
@@ -507,11 +598,11 @@ function WorkspacesPage() {
                                     {/* File Path Bar */}
                                     <div className="mt-1.5 flex items-center gap-2">
                                         <div className="flex-1 rounded-md bg-gray-50 dark:bg-base-200 px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            {selectedSession.file_path}
+                                            {selectedSession.sourcePath}
                                         </div>
                                         <button
                                             className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-base-200 transition-colors shrink-0"
-                                            onClick={() => copyToClipboard(selectedSession.file_path)}
+                                            onClick={() => copyToClipboard(selectedSession.sourcePath)}
                                             title={t('common.copy', { defaultValue: '复制' })}
                                         >
                                             <Copy className="w-3.5 h-3.5" />

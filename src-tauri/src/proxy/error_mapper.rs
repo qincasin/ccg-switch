@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! 错误类型到 HTTP 状态码的映射
 //!
 //! 将 ProxyError 映射到合适的 HTTP 状态码，用于日志记录

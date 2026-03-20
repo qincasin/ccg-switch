@@ -937,6 +937,25 @@
         "resume_success": "Claude terminal launched",
         "resume_error": "Failed to launch terminal"
     },
+    "sessions": {
+        "all_sessions": "All Sessions",
+        "filter_all": "All",
+        "filter_claude": "Claude",
+        "filter_codex": "Codex",
+        "filter_gemini": "Gemini",
+        "no_sessions": "No sessions found",
+        "no_sessions_filtered": "No {{provider}} sessions found",
+        "resume_not_available": "Resume not supported for this session",
+        "resume_success": "Terminal launched",
+        "resume_error": "Failed to launch terminal",
+        "loading_sessions": "Loading sessions...",
+        "session_count": "{{count}} sessions",
+        "provider_claude": "Claude",
+        "provider_codex": "Codex",
+        "provider_gemini": "Gemini",
+        "view_all": "View All Sessions",
+        "view_by_project": "View by Project"
+    },
     "deeplink": {
         "confirmImport": "Confirm Import",
         "confirmImportDescription": "The following configuration will be imported. Please verify the information.",

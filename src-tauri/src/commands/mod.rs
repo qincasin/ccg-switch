@@ -7,3 +7,4 @@ pub mod prompt_commands;
 pub mod skill_commands;
 pub mod deeplink_commands;
 pub mod backup_commands;
+pub mod session_commands;
