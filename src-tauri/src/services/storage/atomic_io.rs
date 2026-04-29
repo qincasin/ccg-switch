@@ -1,7 +1,7 @@
+use serde::Serialize;
 use std::fs;
 use std::io;
 use std::path::Path;
-use serde::Serialize;
 
 /// 原子写入 JSON 数据到文件（先写 .tmp 再 rename）
 pub fn atomic_write_json<T: Serialize>(path: &Path, data: &T) -> io::Result<()> {

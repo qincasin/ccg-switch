@@ -1,15 +1,13 @@
 use crate::database::dao::skills::{InstalledSkillRow, SkillRepo};
+use crate::services::sandbox_service::{run_sandbox_test, SandboxRequest, SandboxResponse};
 use crate::services::skill_discovery::DiscoverableSkill;
 use crate::services::skill_service_v2::{RemoteUpdateData, SkillServiceV2};
-use crate::services::sandbox_service::{run_sandbox_test, SandboxRequest, SandboxResponse};
 use crate::store::AppState;
 use tauri::State;
 
 /// 获取所有已安装的 Skills（数据库版）
 #[tauri::command]
-pub fn get_installed_skills(
-    state: State<'_, AppState>,
-) -> Result<Vec<InstalledSkillRow>, String> {
+pub fn get_installed_skills(state: State<'_, AppState>) -> Result<Vec<InstalledSkillRow>, String> {
     SkillServiceV2::get_all_installed(&state.db)
 }
 
@@ -26,9 +24,12 @@ pub async fn install_skill(
 /// 读取技能的系统提示词内容（SKILL.md 文件全文）
 #[tauri::command]
 pub fn read_skill_content_by_id(state: State<'_, AppState>, id: String) -> Result<String, String> {
-    let skills = state.db.get_all_installed_skills()
+    let skills = state
+        .db
+        .get_all_installed_skills()
         .map_err(|e| format!("DB Error: {}", e))?;
-    let skill = skills.get(&id)
+    let skill = skills
+        .get(&id)
         .ok_or_else(|| format!("找不到技能: {}", id))?;
 
     let home = dirs::home_dir().ok_or("无法获取 HOME 目录")?;
@@ -52,7 +53,10 @@ pub fn export_skill(state: State<'_, AppState>, id: String) -> Result<String, St
 
 /// 从 Base64 长链接导入技能
 #[tauri::command]
-pub fn import_skill(state: State<'_, AppState>, payload: String) -> Result<InstalledSkillRow, String> {
+pub fn import_skill(
+    state: State<'_, AppState>,
+    payload: String,
+) -> Result<InstalledSkillRow, String> {
     SkillServiceV2::import_skill(&state.db, &payload)
 }
 
@@ -75,9 +79,7 @@ pub fn toggle_skill_app(
 
 /// 发现可安装的 Skills（从仓库抓取）
 #[tauri::command]
-pub async fn discover_skills(
-    state: State<'_, AppState>,
-) -> Result<Vec<DiscoverableSkill>, String> {
+pub async fn discover_skills(state: State<'_, AppState>) -> Result<Vec<DiscoverableSkill>, String> {
     SkillServiceV2::discover(&state.db).await
 }
 

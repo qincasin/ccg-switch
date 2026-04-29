@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use super::ProviderAdapter;
 use crate::models::provider::Provider;
 use crate::proxy::error::ProxyError;
-use super::ProviderAdapter;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 
 pub struct ClaudeAdapter;
 
@@ -11,8 +11,16 @@ impl ProviderAdapter for ClaudeAdapter {
         path.starts_with("/v1/messages") || path.starts_with("/v1/complete")
     }
 
-    fn build_target_url(&self, provider: &Provider, path: &str, query: &str) -> Result<String, ProxyError> {
-        let base = provider.url.as_deref().unwrap_or("https://api.anthropic.com");
+    fn build_target_url(
+        &self,
+        provider: &Provider,
+        path: &str,
+        query: &str,
+    ) -> Result<String, ProxyError> {
+        let base = provider
+            .url
+            .as_deref()
+            .unwrap_or("https://api.anthropic.com");
         let base = base.trim_end_matches('/');
         Ok(format!("{}{}{}", base, path, query))
     }
@@ -20,7 +28,10 @@ impl ProviderAdapter for ClaudeAdapter {
     fn build_auth_headers(&self, provider: &Provider) -> Result<HeaderMap, ProxyError> {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        let base = provider.url.as_deref().unwrap_or("https://api.anthropic.com");
+        let base = provider
+            .url
+            .as_deref()
+            .unwrap_or("https://api.anthropic.com");
         if base.contains("anthropic.com") {
             // Anthropic 原生 API 使用 x-api-key
             headers.insert(

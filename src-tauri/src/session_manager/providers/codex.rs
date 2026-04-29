@@ -1,4 +1,4 @@
-use super::utils::{home_dir, truncate_text, sanitize_session_text};
+use super::utils::{home_dir, sanitize_session_text, truncate_text};
 use crate::session_manager::{SessionMeta, UnifiedSessionMessage};
 use regex::Regex;
 use std::fs;
@@ -103,12 +103,10 @@ fn scan_codex_sessions_inner() -> Vec<SessionMeta> {
                                 // 跳过系统指令类消息（以 # 开头的 markdown 文档，如 AGENTS.md）
                                 if is_system_instruction(&cleaned) {
                                     if fallback_title.is_none() {
-                                        fallback_title =
-                                            Some(truncate_text(&cleaned, 80));
+                                        fallback_title = Some(truncate_text(&cleaned, 80));
                                     }
                                 } else {
-                                    best_title =
-                                        Some(truncate_text(&cleaned, 80));
+                                    best_title = Some(truncate_text(&cleaned, 80));
                                 }
                             }
                         }

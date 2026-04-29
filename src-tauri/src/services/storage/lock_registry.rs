@@ -17,7 +17,9 @@ where
     let key = path.to_string_lossy().to_string();
     let lock = {
         let mut map = global_locks().lock().unwrap();
-        map.entry(key).or_insert_with(|| Arc::new(Mutex::new(()))).clone()
+        map.entry(key)
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
     };
     let _guard = lock.lock().unwrap();
     f()

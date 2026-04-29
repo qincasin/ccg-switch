@@ -88,7 +88,12 @@ impl Database {
     }
 
     /// 设置单个 prompt 的启用状态
-    pub fn set_prompt_enabled(&self, id: &str, app_type: &str, enabled: bool) -> Result<(), String> {
+    pub fn set_prompt_enabled(
+        &self,
+        id: &str,
+        app_type: &str,
+        enabled: bool,
+    ) -> Result<(), String> {
         let conn = lock_conn!(self.conn);
         conn.execute(
             "UPDATE prompts SET enabled = ?1, updated_at = ?2 WHERE id = ?3 AND app_type = ?4",

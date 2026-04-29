@@ -165,7 +165,9 @@ pub fn scan_gemini_sessions_for_project(project_path: &str) -> Vec<SessionMeta> 
             if !file_name.starts_with("session-") || !file_name.ends_with(".json") {
                 continue;
             }
-            if let Some(meta) = parse_session_file(&file_path, &file_name, Some(resolved_path.clone())) {
+            if let Some(meta) =
+                parse_session_file(&file_path, &file_name, Some(resolved_path.clone()))
+            {
                 sessions.push(meta);
             }
         }
@@ -283,9 +285,7 @@ fn parse_session_file(
         .unwrap_or(fallback_ts);
 
     // 标题：第一条用户消息
-    let title = json
-        .get("messages")
-        .and_then(|msgs| extract_title(msgs));
+    let title = json.get("messages").and_then(|msgs| extract_title(msgs));
 
     let source_path = file_path.to_string_lossy().to_string();
     let resume_command = format!("gemini --resume {}", session_id);
@@ -305,8 +305,7 @@ fn parse_session_file(
 
 /// 加载指定 Gemini 会话文件的所有消息
 pub fn load_gemini_messages(source_path: &str) -> Result<Vec<UnifiedSessionMessage>, String> {
-    let content =
-        fs::read_to_string(source_path).map_err(|e| format!("读取文件失败: {}", e))?;
+    let content = fs::read_to_string(source_path).map_err(|e| format!("读取文件失败: {}", e))?;
 
     let json: serde_json::Value =
         serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {}", e))?;

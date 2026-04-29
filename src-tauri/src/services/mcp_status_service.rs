@@ -1,9 +1,9 @@
 #![allow(dead_code)]
+use crate::database::Database;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use crate::database::Database;
-use futures::StreamExt;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -166,7 +166,10 @@ async fn check_stdio(
             }
             Err(e) => {
                 let msg = e.to_string();
-                if msg.contains("not found") || msg.contains("No such file") || msg.contains("cannot find") {
+                if msg.contains("not found")
+                    || msg.contains("No such file")
+                    || msg.contains("cannot find")
+                {
                     McpStatusResult {
                         server_id,
                         status: McpStatus::Offline,

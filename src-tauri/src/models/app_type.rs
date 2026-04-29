@@ -53,7 +53,13 @@ impl AppType {
 
     /// 所有应用类型
     pub fn all() -> &'static [AppType] {
-        &[AppType::Claude, AppType::Codex, AppType::Gemini, AppType::OpenCode, AppType::OpenClaw]
+        &[
+            AppType::Claude,
+            AppType::Codex,
+            AppType::Gemini,
+            AppType::OpenCode,
+            AppType::OpenClaw,
+        ]
     }
 }
 

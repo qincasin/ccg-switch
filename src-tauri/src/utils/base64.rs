@@ -6,7 +6,7 @@ pub fn encode(input: &[u8]) -> String {
         let b0 = input[i];
         let b1 = if i + 1 < input.len() { input[i + 1] } else { 0 };
         let b2 = if i + 2 < input.len() { input[i + 2] } else { 0 };
-        
+
         out.push(ALPHABET[(b0 >> 2) as usize] as char);
         out.push(ALPHABET[(((b0 & 3) << 4) | (b1 >> 4)) as usize] as char);
         if i + 1 < input.len() {

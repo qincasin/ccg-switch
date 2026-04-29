@@ -1,23 +1,20 @@
 #![allow(dead_code)]
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write, BufRead, BufReader};
-use std::path::Path;
+use super::lock_registry::with_file_lock;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use super::lock_registry::with_file_lock;
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, BufReader, Write};
+use std::path::Path;
 
 /// 追加一行 JSON 到 JSONL 文件
 pub fn append_line<T: Serialize>(path: &Path, data: &T) -> io::Result<()> {
-    let line = serde_json::to_string(data)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let line =
+        serde_json::to_string(data).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     with_file_lock(path, || {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
         writeln!(file, "{}", line)
     })
 }

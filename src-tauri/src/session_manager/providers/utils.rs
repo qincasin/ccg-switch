@@ -27,11 +27,8 @@ pub fn truncate_text(text: &str, max_chars: usize) -> String {
 }
 
 /// Claude Code 内部标签名列表（这些标签会被完整移除，包括内容）
-const SYSTEM_TAGS_REMOVE_CONTENT: &[&str] = &[
-    "local-command-caveat",
-    "system-reminder",
-    "command-args",
-];
+const SYSTEM_TAGS_REMOVE_CONTENT: &[&str] =
+    &["local-command-caveat", "system-reminder", "command-args"];
 
 /// Claude Code 内部标签名列表（这些标签移除标签但保留内容）
 const SYSTEM_TAGS_KEEP_CONTENT: &[&str] = &[

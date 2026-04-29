@@ -34,9 +34,7 @@ pub fn get_available_provider(app: AppType) -> Result<Provider, ProxyError> {
         .filter(|p| p.in_failover_queue && !p.is_active)
         .find(|p| circuit_breaker::is_request_allowed(&p.id, &config));
 
-    fallback
-        .cloned()
-        .ok_or(ProxyError::NoAvailableProvider)
+    fallback.cloned().ok_or(ProxyError::NoAvailableProvider)
 }
 
 /// 处理 provider 请求成功

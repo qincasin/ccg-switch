@@ -1,11 +1,11 @@
-use std::io;
-use std::sync::Arc;
-use std::time::Duration;
-use serde::{Deserialize, Serialize};
 use crate::database::Database;
 use crate::models::provider::ProviderProxyConfig;
 use futures::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
+use std::io;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamCheckResult {
@@ -95,18 +95,12 @@ fn build_request(
             };
 
             let mut headers = HeaderMap::new();
-            headers.insert(
-                "x-api-key",
-                HeaderValue::from_str(api_key).unwrap(),
-            );
+            headers.insert("x-api-key", HeaderValue::from_str(api_key).unwrap());
             headers.insert(
                 "Authorization",
                 HeaderValue::from_str(&format!("Bearer {}", api_key)).unwrap(),
             );
-            headers.insert(
-                "anthropic-version",
-                HeaderValue::from_static("2023-06-01"),
-            );
+            headers.insert("anthropic-version", HeaderValue::from_static("2023-06-01"));
             headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
             let body = serde_json::json!({
@@ -166,8 +160,7 @@ pub async fn check_stream(
     let (request_url, headers, body) = build_request(app_type_str, &url, &api_key, &model);
 
     // 构建 reqwest Client，支持代理配置
-    let mut client_builder = reqwest::Client::builder()
-        .timeout(Duration::from_secs(30));
+    let mut client_builder = reqwest::Client::builder().timeout(Duration::from_secs(30));
 
     if let Some(ref pc) = proxy_config {
         if pc.enabled {
@@ -270,28 +263,33 @@ pub async fn check_provider_health(
         .default_sonnet_model
         .as_deref()
         .filter(|s| !s.is_empty())
-        .or(provider.default_opus_model.as_deref().filter(|s| !s.is_empty()))
-        .or(provider.default_haiku_model.as_deref().filter(|s| !s.is_empty()))
-        .or(provider.default_reasoning_model.as_deref().filter(|s| !s.is_empty()))
+        .or(provider
+            .default_opus_model
+            .as_deref()
+            .filter(|s| !s.is_empty()))
+        .or(provider
+            .default_haiku_model
+            .as_deref()
+            .filter(|s| !s.is_empty()))
+        .or(provider
+            .default_reasoning_model
+            .as_deref()
+            .filter(|s| !s.is_empty()))
         .map(|s| s.to_string())
-        .unwrap_or_else(|| {
-            match app_type_str.as_str() {
-                "codex" => "gpt-4o".to_string(),
-                "gemini" => "gemini-2.0-flash".to_string(),
-                _ => "claude-sonnet-4-20250514".to_string(),
-            }
+        .unwrap_or_else(|| match app_type_str.as_str() {
+            "codex" => "gpt-4o".to_string(),
+            "gemini" => "gemini-2.0-flash".to_string(),
+            _ => "claude-sonnet-4-20250514".to_string(),
         });
 
     let base_url = provider
         .url
         .as_deref()
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| {
-            match app_type_str.as_str() {
-                "codex" => "https://api.openai.com",
-                "gemini" => "https://generativelanguage.googleapis.com",
-                _ => "https://api.anthropic.com",
-            }
+        .unwrap_or_else(|| match app_type_str.as_str() {
+            "codex" => "https://api.openai.com",
+            "gemini" => "https://generativelanguage.googleapis.com",
+            _ => "https://api.anthropic.com",
         })
         .to_string();
 

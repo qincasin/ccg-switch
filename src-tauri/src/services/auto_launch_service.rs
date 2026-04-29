@@ -1,6 +1,6 @@
-use std::io;
 use auto_launch::AutoLaunchBuilder;
 use serde::{Deserialize, Serialize};
+use std::io;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutoLaunchStatus {
@@ -68,11 +68,17 @@ pub async fn get_auto_launch_status() -> Result<AutoLaunchStatus, io::Error> {
         match build_auto_launch() {
             Ok(auto_launch) => {
                 let enabled = auto_launch.is_enabled().unwrap_or(false);
-                Ok(AutoLaunchStatus { enabled, supported: true })
+                Ok(AutoLaunchStatus {
+                    enabled,
+                    supported: true,
+                })
             }
             Err(_) => {
                 // 构建失败（如开发环境），标记为不支持
-                Ok(AutoLaunchStatus { enabled: false, supported: false })
+                Ok(AutoLaunchStatus {
+                    enabled: false,
+                    supported: false,
+                })
             }
         }
     })
@@ -86,13 +92,15 @@ pub async fn set_auto_launch(enabled: bool) -> Result<(), io::Error> {
         let auto_launch = build_auto_launch()?;
 
         if enabled {
-            auto_launch.enable()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("启用开机自启失败: {e}")))?;
+            auto_launch.enable().map_err(|e| {
+                io::Error::new(io::ErrorKind::Other, format!("启用开机自启失败: {e}"))
+            })?;
             // 启用新键后清理旧键
             cleanup_legacy_registry_key();
         } else {
-            auto_launch.disable()
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("禁用开机自启失败: {e}")))?;
+            auto_launch.disable().map_err(|e| {
+                io::Error::new(io::ErrorKind::Other, format!("禁用开机自启失败: {e}"))
+            })?;
             // 禁用时也清理旧键
             cleanup_legacy_registry_key();
         }

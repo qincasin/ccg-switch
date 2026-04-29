@@ -26,7 +26,10 @@ pub struct Config {
     pub preferred_terminal: String,
     #[serde(default = "default_auto_check_update", rename = "autoCheckUpdate")]
     pub auto_check_update: bool,
-    #[serde(default = "default_check_update_interval_hours", rename = "checkUpdateIntervalHours")]
+    #[serde(
+        default = "default_check_update_interval_hours",
+        rename = "checkUpdateIntervalHours"
+    )]
     pub check_update_interval_hours: u32,
 }
 

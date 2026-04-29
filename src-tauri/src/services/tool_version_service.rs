@@ -280,7 +280,10 @@ fn scan_cli_version(tool: &str) -> (Option<String>, Option<String>) {
         if let Some(appdata) = dirs::data_dir() {
             push_unique_path(&mut search_paths, appdata.join("npm"));
         }
-        push_unique_path(&mut search_paths, PathBuf::from("C:\\Program Files\\nodejs"));
+        push_unique_path(
+            &mut search_paths,
+            PathBuf::from("C:\\Program Files\\nodejs"),
+        );
     }
 
     // fnm multishells 动态路径

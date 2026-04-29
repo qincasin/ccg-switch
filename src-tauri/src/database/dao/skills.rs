@@ -117,7 +117,9 @@ impl Database {
     pub fn get_skill_repos(&self) -> Result<Vec<SkillRepo>, String> {
         let conn = lock_conn!(self.conn);
         let mut stmt = conn
-            .prepare("SELECT owner, name, branch, enabled FROM skill_repos ORDER BY owner ASC, name ASC")
+            .prepare(
+                "SELECT owner, name, branch, enabled FROM skill_repos ORDER BY owner ASC, name ASC",
+            )
             .map_err(|e| format!("Failed to prepare query: {e}"))?;
 
         let rows = stmt

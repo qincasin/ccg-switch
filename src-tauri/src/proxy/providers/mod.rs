@@ -6,9 +6,9 @@ pub mod openai;
 pub mod streaming;
 pub mod transform;
 
-use reqwest::header::HeaderMap;
-use crate::proxy::error::ProxyError;
 use crate::models::provider::Provider;
+use crate::proxy::error::ProxyError;
+use reqwest::header::HeaderMap;
 
 /// 统一的 provider 适配器接口
 pub trait ProviderAdapter: Send + Sync {
@@ -16,7 +16,12 @@ pub trait ProviderAdapter: Send + Sync {
     fn can_handle(&self, path: &str) -> bool;
 
     /// 构建转发目标 URL
-    fn build_target_url(&self, provider: &Provider, path: &str, query: &str) -> Result<String, ProxyError>;
+    fn build_target_url(
+        &self,
+        provider: &Provider,
+        path: &str,
+        query: &str,
+    ) -> Result<String, ProxyError>;
 
     /// 构建认证头
     fn build_auth_headers(&self, provider: &Provider) -> Result<HeaderMap, ProxyError>;

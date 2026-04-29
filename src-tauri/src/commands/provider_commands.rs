@@ -2,8 +2,8 @@ use crate::models::app_type::AppType;
 use crate::models::provider::Provider;
 use crate::services::provider_service;
 use crate::services::stream_check_service;
-use tauri::State;
 use crate::store::AppState;
+use tauri::State;
 
 #[tauri::command]
 pub fn get_providers(app: String, state: State<AppState>) -> Result<Vec<Provider>, String> {
@@ -22,7 +22,11 @@ pub fn add_provider(provider: Provider, state: State<AppState>) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn update_provider(provider_id: String, provider: Provider, state: State<AppState>) -> Result<(), String> {
+pub fn update_provider(
+    provider_id: String,
+    provider: Provider,
+    state: State<AppState>,
+) -> Result<(), String> {
     provider_service::update_provider_in_db(&state.db, &provider_id, provider)
 }
 
@@ -32,13 +36,21 @@ pub fn delete_provider(provider_id: String, state: State<AppState>) -> Result<()
 }
 
 #[tauri::command]
-pub fn switch_provider(app: String, provider_id: String, state: State<AppState>) -> Result<(), String> {
+pub fn switch_provider(
+    app: String,
+    provider_id: String,
+    state: State<AppState>,
+) -> Result<(), String> {
     let app_type: AppType = app.parse().map_err(|e: String| e)?;
     provider_service::switch_provider_in_db(&state.db, app_type, &provider_id)
 }
 
 #[tauri::command]
-pub fn move_provider(provider_id: String, target_index: usize, state: State<AppState>) -> Result<(), String> {
+pub fn move_provider(
+    provider_id: String,
+    target_index: usize,
+    state: State<AppState>,
+) -> Result<(), String> {
     provider_service::move_provider_in_db(&state.db, &provider_id, target_index)
 }
 

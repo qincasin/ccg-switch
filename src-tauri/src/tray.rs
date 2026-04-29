@@ -1,11 +1,11 @@
-use tauri::{
-    image::Image,
-    tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent},
-    menu::MenuBuilder,
-    Manager,
-};
 use crate::models::app_type::AppType;
 use crate::services::provider_service;
+use tauri::{
+    image::Image,
+    menu::MenuBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager,
+};
 
 /// AppType 显示名称
 fn display_name(app_type: &AppType) -> &'static str {

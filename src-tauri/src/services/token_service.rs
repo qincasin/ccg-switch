@@ -2,11 +2,11 @@
 // 兼容层：保留原有 token_service API，确保向后兼容。
 // 新功能请使用 provider_service，此模块将在命令层适配完成后逐步废弃。
 use crate::models::token::{ApiToken, TokensConfig};
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct OldConfigToken {
@@ -193,7 +193,8 @@ pub fn switch_token(token_id: &str) -> Result<(), io::Error> {
     let mut tokens = list_tokens()?;
 
     // 找到要激活的 token
-    let token_to_activate = tokens.iter_mut()
+    let token_to_activate = tokens
+        .iter_mut()
         .find(|t| t.id == token_id)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Token not found"))?;
 
@@ -228,34 +229,50 @@ pub fn switch_token(token_id: &str) -> Result<(), io::Error> {
     }
 
     // 获取 env 对象的可变引用
-    let env = settings["env"].as_object_mut()
+    let env = settings["env"]
+        .as_object_mut()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "env is not an object"))?;
 
     // 更新 API Key
-    env.insert("ANTHROPIC_AUTH_TOKEN".to_string(), serde_json::Value::String(api_key));
+    env.insert(
+        "ANTHROPIC_AUTH_TOKEN".to_string(),
+        serde_json::Value::String(api_key),
+    );
 
     // 更新或删除 URL
     if let Some(url_value) = url {
-        env.insert("ANTHROPIC_BASE_URL".to_string(), serde_json::Value::String(url_value));
+        env.insert(
+            "ANTHROPIC_BASE_URL".to_string(),
+            serde_json::Value::String(url_value),
+        );
     } else {
         env.remove("ANTHROPIC_BASE_URL");
     }
 
     // 更新或删除默认模型
     if let Some(sonnet) = sonnet_model {
-        env.insert("ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(), serde_json::Value::String(sonnet));
+        env.insert(
+            "ANTHROPIC_DEFAULT_SONNET_MODEL".to_string(),
+            serde_json::Value::String(sonnet),
+        );
     } else {
         env.remove("ANTHROPIC_DEFAULT_SONNET_MODEL");
     }
 
     if let Some(opus) = opus_model {
-        env.insert("ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(), serde_json::Value::String(opus));
+        env.insert(
+            "ANTHROPIC_DEFAULT_OPUS_MODEL".to_string(),
+            serde_json::Value::String(opus),
+        );
     } else {
         env.remove("ANTHROPIC_DEFAULT_OPUS_MODEL");
     }
 
     if let Some(haiku) = haiku_model {
-        env.insert("ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(), serde_json::Value::String(haiku));
+        env.insert(
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL".to_string(),
+            serde_json::Value::String(haiku),
+        );
     } else {
         env.remove("ANTHROPIC_DEFAULT_HAIKU_MODEL");
     }
@@ -279,7 +296,8 @@ pub fn update_token(token_id: &str, updated_token: ApiToken) -> Result<(), io::E
     let mut tokens = list_tokens()?;
 
     // 查找并更新 token
-    let token = tokens.iter_mut()
+    let token = tokens
+        .iter_mut()
         .find(|t| t.id == token_id)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Token not found"))?;
 
@@ -352,10 +370,7 @@ pub async fn fetch_models(base_url: String, api_key: String) -> Result<Vec<Strin
         return Err(format!("API returned status: {}", response.status()));
     }
 
-    let models_response: ModelsResponse = response
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
+    let models_response: ModelsResponse = response.json().await.map_err(|e| e.to_string())?;
 
     Ok(models_response.data.into_iter().map(|m| m.id).collect())
 }

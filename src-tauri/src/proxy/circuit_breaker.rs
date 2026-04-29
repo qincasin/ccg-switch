@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use std::path::Path;
 
 use chrono::Utc;
 
@@ -68,10 +68,7 @@ pub fn record_success(provider_id: &str) {
 }
 
 /// 记录失败请求，返回新状态
-pub fn record_failure(
-    provider_id: &str,
-    config: &CircuitBreakerConfig,
-) -> CircuitBreakerState {
+pub fn record_failure(provider_id: &str, config: &CircuitBreakerConfig) -> CircuitBreakerState {
     let mut map = global_breakers().lock().unwrap();
     let entry = map
         .entry(provider_id.to_string())

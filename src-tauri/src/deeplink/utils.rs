@@ -33,7 +33,10 @@ pub fn redact_url_for_log(url_str: &str) -> String {
                 .query_pairs()
                 .map(|(k, v)| {
                     let key_str = k.to_string();
-                    if sensitive_keys.iter().any(|s| key_str.eq_ignore_ascii_case(s)) {
+                    if sensitive_keys
+                        .iter()
+                        .any(|s| key_str.eq_ignore_ascii_case(s))
+                    {
                         (key_str, "***".to_string())
                     } else {
                         (key_str, v.to_string())

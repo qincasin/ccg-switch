@@ -20,7 +20,8 @@ pub fn list_subagents() -> Result<Vec<Subagent>, io::Error> {
         let entry = entry?;
         let path = entry.path();
         if path.extension().map_or(false, |ext| ext == "md") {
-            let name = path.file_stem()
+            let name = path
+                .file_stem()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
@@ -39,7 +40,10 @@ pub fn list_subagents() -> Result<Vec<Subagent>, io::Error> {
 pub fn get_subagent(name: &str) -> Result<Subagent, io::Error> {
     let path = get_agents_dir()?.join(format!("{}.md", name));
     if !path.exists() {
-        return Err(io::Error::new(io::ErrorKind::NotFound, "Subagent not found"));
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Subagent not found",
+        ));
     }
     let content = fs::read_to_string(&path)?;
     Ok(Subagent {

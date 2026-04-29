@@ -67,9 +67,9 @@ pub fn switch_universal_provider(provider_name: &str) -> Result<(), String> {
 
     for app_type in AppType::all() {
         // 查找该应用下是否已有同名 provider
-        let existing = all_providers.iter().find(|p| {
-            p.app_type == *app_type && p.name == provider_name
-        });
+        let existing = all_providers
+            .iter()
+            .find(|p| p.app_type == *app_type && p.name == provider_name);
 
         match existing {
             Some(p) => {
@@ -81,7 +81,8 @@ pub fn switch_universal_provider(provider_name: &str) -> Result<(), String> {
                 let reference = all_providers.iter().find(|p| p.name == provider_name);
                 if let Some(ref_provider) = reference {
                     let now = Utc::now();
-                    let new_id = format!("universal-{}-{}", app_type.as_str(), now.timestamp_millis());
+                    let new_id =
+                        format!("universal-{}-{}", app_type.as_str(), now.timestamp_millis());
                     let new_provider = Provider {
                         id: new_id.clone(),
                         name: provider_name.to_string(),

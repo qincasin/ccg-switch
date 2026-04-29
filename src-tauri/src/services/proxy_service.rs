@@ -17,8 +17,8 @@ fn get_proxy_config_path() -> Result<PathBuf, io::Error> {
 pub fn load_proxy_config_from_db(db: &Arc<Database>) -> Result<ProxyConfig, String> {
     match db.get_app_config("proxy_server_config")? {
         Some(json) => {
-            let config: ProxyConfig = serde_json::from_str(&json)
-                .map_err(|e| format!("Parse config failed: {e}"))?;
+            let config: ProxyConfig =
+                serde_json::from_str(&json).map_err(|e| format!("Parse config failed: {e}"))?;
             Ok(config)
         }
         None => {
@@ -37,8 +37,8 @@ pub fn load_proxy_config_from_db(db: &Arc<Database>) -> Result<ProxyConfig, Stri
 
 /// 保存代理配置到数据库（v3+）
 pub fn save_proxy_config_to_db(db: &Arc<Database>, config: &ProxyConfig) -> Result<(), String> {
-    let config_json = serde_json::to_string(config)
-        .map_err(|e| format!("Serialize config failed: {e}"))?;
+    let config_json =
+        serde_json::to_string(config).map_err(|e| format!("Serialize config failed: {e}"))?;
     db.set_app_config("proxy_server_config", &config_json)
 }
 
@@ -49,8 +49,7 @@ pub fn load_proxy_config() -> Result<ProxyConfig, io::Error> {
         return Ok(ProxyConfig::default());
     }
     let content = fs::read_to_string(&path)?;
-    serde_json::from_str(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// 保存代理配置到文件（保留兼容）

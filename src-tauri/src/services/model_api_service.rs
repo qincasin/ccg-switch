@@ -1,5 +1,5 @@
-use std::io;
 use serde::Deserialize;
+use std::io;
 
 #[derive(Debug, Deserialize)]
 struct ModelInfo {
@@ -14,7 +14,10 @@ struct ModelListResponse {
 /// 从 API 获取可用模型列表
 pub async fn fetch_models(url: String, api_key: String) -> Result<Vec<String>, io::Error> {
     if url.trim().is_empty() || api_key.trim().is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "URL and API Key are required"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "URL and API Key are required",
+        ));
     }
 
     let base = url.trim().trim_end_matches('/');

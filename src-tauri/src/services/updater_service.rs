@@ -46,7 +46,10 @@ pub struct InstallProgress {
 
 /// 检查 GitHub Release 是否有新版本
 pub async fn check_update(current_version: &str) -> Result<UpdateInfo, String> {
-    let url = format!("https://api.github.com/repos/{}/releases/latest", GITHUB_REPO);
+    let url = format!(
+        "https://api.github.com/repos/{}/releases/latest",
+        GITHUB_REPO
+    );
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
@@ -152,9 +155,7 @@ fn find_platform_asset(release: &serde_json::Value) -> (Option<String>, Option<u
 
 /// 语义版本比较
 fn version_is_newer(latest: &str, current: &str) -> bool {
-    let parse = |v: &str| -> Vec<u32> {
-        v.split('.').filter_map(|s| s.parse().ok()).collect()
-    };
+    let parse = |v: &str| -> Vec<u32> { v.split('.').filter_map(|s| s.parse().ok()).collect() };
     parse(latest) > parse(current)
 }
 
@@ -198,11 +199,14 @@ pub async fn download_update(app: &AppHandle, url: &str) -> Result<String, Strin
             0.0
         };
 
-        let _ = app.emit("update-download-progress", DownloadProgress {
-            downloaded,
-            total,
-            percentage,
-        });
+        let _ = app.emit(
+            "update-download-progress",
+            DownloadProgress {
+                downloaded,
+                total,
+                percentage,
+            },
+        );
     }
 
     file.flush()
@@ -220,11 +224,14 @@ pub fn install_update(app: &tauri::AppHandle, file_path: &str) -> Result<(), Str
         use std::fs;
 
         // Stage 1: 挂载 DMG
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "mounting".to_string(),
-            message: "正在挂载磁盘镜像...".to_string(),
-            percentage: 10.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "mounting".to_string(),
+                message: "正在挂载磁盘镜像...".to_string(),
+                percentage: 10.0,
+            },
+        );
 
         let mount_output = std::process::Command::new("hdiutil")
             .args(["attach", "-nobrowse", "-readonly", file_path])
@@ -247,11 +254,14 @@ pub fn install_update(app: &tauri::AppHandle, file_path: &str) -> Result<(), Str
             .ok_or_else(|| format!("无法解析 DMG 挂载点，输出: {}", stdout))?;
 
         // Stage 2: 查找 .app 文件
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "copying".to_string(),
-            message: "正在查找应用程序...".to_string(),
-            percentage: 30.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "copying".to_string(),
+                message: "正在查找应用程序...".to_string(),
+                percentage: 30.0,
+            },
+        );
 
         let mount_path = std::path::Path::new(&mount_point);
         let app_bundle = fs::read_dir(mount_path)
@@ -267,56 +277,81 @@ pub fn install_update(app: &tauri::AppHandle, file_path: &str) -> Result<(), Str
         let app_target = std::path::Path::new("/Applications").join(app_name);
 
         // Stage 3: 复制到 /Applications
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "copying".to_string(),
-            message: format!("正在复制到应用程序文件夹...",),
-            percentage: 50.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "copying".to_string(),
+                message: format!("正在复制到应用程序文件夹...",),
+                percentage: 50.0,
+            },
+        );
 
         // 如果目标已存在，先删除
         if app_target.exists() {
-            fs::remove_dir_all(&app_target)
-                .map_err(|e| format!("删除旧版本失败（权限不足）: {}，请手动删除 /Applications 中的旧版本后重试", e))?;
+            fs::remove_dir_all(&app_target).map_err(|e| {
+                format!(
+                    "删除旧版本失败（权限不足）: {}，请手动删除 /Applications 中的旧版本后重试",
+                    e
+                )
+            })?;
         }
 
         // 使用 cp -R 递归复制
         std::process::Command::new("cp")
-            .args(["-R", app_source.to_str().unwrap(), app_target.to_str().unwrap()])
+            .args([
+                "-R",
+                app_source.to_str().unwrap(),
+                app_target.to_str().unwrap(),
+            ])
             .status()
             .map_err(|e| format!("复制应用失败: {}，请确保已授予写入 /Applications 的权限", e))?;
 
         if !app_target.exists() {
-            return Err(format!("复制后目标文件不存在，请检查 /Applications 目录权限"));
+            return Err(format!(
+                "复制后目标文件不存在，请检查 /Applications 目录权限"
+            ));
         }
 
         // Stage 4: 验证
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "verifying".to_string(),
-            message: "正在验证安装...".to_string(),
-            percentage: 80.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "verifying".to_string(),
+                message: "正在验证安装...".to_string(),
+                percentage: 80.0,
+            },
+        );
 
         if !app_target.exists() || !app_target.join("Contents").exists() {
             return Err(format!("安装验证失败：应用包结构不完整"));
         }
 
         // Stage 5: 清理（卸载 DMG）
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "cleanup".to_string(),
-            message: "正在清理临时文件...".to_string(),
-            percentage: 90.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "cleanup".to_string(),
+                message: "正在清理临时文件...".to_string(),
+                percentage: 90.0,
+            },
+        );
 
         let _ = std::process::Command::new("hdiutil")
             .args(["detach", &mount_point])
             .status();
 
         // Stage 6: 完成
-        let _ = app.emit("update-install-progress", InstallProgress {
-            stage: "success".to_string(),
-            message: format!("安装成功！已更新到 /Applications/{}", app_name.to_string_lossy()),
-            percentage: 100.0,
-        });
+        let _ = app.emit(
+            "update-install-progress",
+            InstallProgress {
+                stage: "success".to_string(),
+                message: format!(
+                    "安装成功！已更新到 /Applications/{}",
+                    app_name.to_string_lossy()
+                ),
+                percentage: 100.0,
+            },
+        );
 
         Ok(())
     }

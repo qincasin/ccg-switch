@@ -1,8 +1,8 @@
 use crate::models::proxy::ProxyConfig;
 use crate::proxy::types::ProxyState;
 use crate::services::proxy_service;
-use tauri::State;
 use crate::store::AppState;
+use tauri::State;
 
 #[tauri::command]
 pub fn get_proxy_config(state: State<AppState>) -> Result<ProxyConfig, String> {

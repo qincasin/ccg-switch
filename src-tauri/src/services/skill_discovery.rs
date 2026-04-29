@@ -179,7 +179,10 @@ async fn download_repo(repo: &SkillRepo) -> Result<(PathBuf, String), String> {
         if !resp.status().is_success() {
             last_error = Some(format!(
                 "下载 {}/{} (分支 {}) 失败: HTTP {}",
-                repo.owner, repo.name, branch, resp.status()
+                repo.owner,
+                repo.name,
+                branch,
+                resp.status()
             ));
             continue;
         }
@@ -239,10 +242,7 @@ async fn download_repo(repo: &SkillRepo) -> Result<(PathBuf, String), String> {
 
     // 所有分支都失败
     let _ = fs::remove_dir_all(&temp_dir);
-    Err(last_error.unwrap_or_else(|| format!(
-        "下载 {}/{} 所有分支均失败",
-        repo.owner, repo.name
-    )))
+    Err(last_error.unwrap_or_else(|| format!("下载 {}/{} 所有分支均失败", repo.owner, repo.name)))
 }
 
 /// 获取仓库元数据（主要为了 Star 数）
@@ -262,7 +262,9 @@ async fn fetch_repo_stars(repo: &SkillRepo) -> Option<u32> {
 
     if resp.status().is_success() {
         let json: serde_json::Value = resp.json().await.ok()?;
-        json.get("stargazers_count").and_then(|v| v.as_u64()).map(|n| n as u32)
+        json.get("stargazers_count")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as u32)
     } else {
         None
     }
@@ -295,11 +297,7 @@ pub async fn discover_available(repos: Vec<SkillRepo>) -> Vec<DiscoverableSkill>
     let tasks: Vec<_> = enabled.iter().map(|r| fetch_repo_skills(r)).collect();
     let results = futures::future::join_all(tasks).await;
 
-    let mut all: Vec<DiscoverableSkill> = results
-        .into_iter()
-        .flatten()
-        .flatten()
-        .collect();
+    let mut all: Vec<DiscoverableSkill> = results.into_iter().flatten().flatten().collect();
 
     // 去重（按 key）
     let mut seen = std::collections::HashSet::new();

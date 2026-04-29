@@ -73,9 +73,14 @@ pub fn add_provider_to_db(db: &Arc<Database>, provider: Provider) -> Result<(), 
 }
 
 /// 更新 provider（更新数据库并同步 active provider 到应用配置）
-pub fn update_provider_in_db(db: &Arc<Database>, id: &str, updated: Provider) -> Result<(), String> {
+pub fn update_provider_in_db(
+    db: &Arc<Database>,
+    id: &str,
+    updated: Provider,
+) -> Result<(), String> {
     // 先获取原有记录，保留 is_active 和 created_at
-    let existing = db.get_provider(id)?
+    let existing = db
+        .get_provider(id)?
         .ok_or_else(|| format!("Provider {} not found", id))?;
 
     let mut provider = updated;
@@ -99,7 +104,11 @@ pub fn delete_provider_from_db(db: &Arc<Database>, id: &str) -> Result<(), Strin
 }
 
 /// 切换 provider（更新数据库并同步到应用配置）
-pub fn switch_provider_in_db(db: &Arc<Database>, app: AppType, provider_id: &str) -> Result<(), String> {
+pub fn switch_provider_in_db(
+    db: &Arc<Database>,
+    app: AppType,
+    provider_id: &str,
+) -> Result<(), String> {
     use chrono::Utc;
 
     // 1. 获取所有 providers
@@ -121,7 +130,8 @@ pub fn switch_provider_in_db(db: &Arc<Database>, app: AppType, provider_id: &str
     }
 
     // 4. 同步到应用配置
-    let active = db.get_provider(provider_id)?
+    let active = db
+        .get_provider(provider_id)?
         .ok_or_else(|| format!("Provider {} not found", provider_id))?;
     sync_provider_to_app_config(&active).map_err(|e| e.to_string())?;
 
@@ -129,9 +139,15 @@ pub fn switch_provider_in_db(db: &Arc<Database>, app: AppType, provider_id: &str
 }
 
 /// 移动 provider 位置（更新数据库顺序）
-pub fn move_provider_in_db(db: &Arc<Database>, provider_id: &str, target_index: usize) -> Result<(), String> {
+pub fn move_provider_in_db(
+    db: &Arc<Database>,
+    provider_id: &str,
+    target_index: usize,
+) -> Result<(), String> {
     let mut all = db.list_providers()?;
-    let current = all.iter().position(|p| p.id == provider_id)
+    let current = all
+        .iter()
+        .position(|p| p.id == provider_id)
         .ok_or_else(|| format!("Provider {} not found", provider_id))?;
     if current == target_index {
         return Ok(());
@@ -206,34 +222,44 @@ pub fn move_provider(_provider_id: &str, _target_index: usize) -> Result<(), Str
 /// 本函数从 settings 中提取这些字段，写入 env 并从顶层移除。
 fn remap_settings_to_env(settings: &mut serde_json::Value) {
     // 提取所有需要映射到 env 的布尔字段
-    let teammates_enabled = settings.get("teammatesMode")
+    let teammates_enabled = settings
+        .get("teammatesMode")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_traffic = settings.get("disableNonessentialTraffic")
+    let disable_traffic = settings
+        .get("disableNonessentialTraffic")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_attribution = settings.get("disableAttributionHeader")
+    let disable_attribution = settings
+        .get("disableAttributionHeader")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_installation_checks = settings.get("disableInstallationChecks")
+    let disable_installation_checks = settings
+        .get("disableInstallationChecks")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let enable_tool_search = settings.get("enableToolSearch")
+    let enable_tool_search = settings
+        .get("enableToolSearch")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_telemetry = settings.get("disableTelemetry")
+    let disable_telemetry = settings
+        .get("disableTelemetry")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_bug_command = settings.get("disableBugCommand")
+    let disable_bug_command = settings
+        .get("disableBugCommand")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_autoupdater = settings.get("disableAutoupdater")
+    let disable_autoupdater = settings
+        .get("disableAutoupdater")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let disable_error_reporting = settings.get("disableErrorReporting")
+    let disable_error_reporting = settings
+        .get("disableErrorReporting")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let max_output = settings.get("maxOutputTokens")
+    let max_output = settings
+        .get("maxOutputTokens")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .trim()
@@ -258,71 +284,91 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
     if let Some(env) = settings.get_mut("env").and_then(|e| e.as_object_mut()) {
         // teammatesMode → CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
         if teammates_enabled {
-            env.insert("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS");
         }
         // disableNonessentialTraffic → CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
         if disable_traffic {
-            env.insert("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC");
         }
         // disableAttributionHeader → CLAUDE_CODE_ATTRIBUTION_HEADER
         if disable_attribution {
-            env.insert("CLAUDE_CODE_ATTRIBUTION_HEADER".to_string(),
-                serde_json::Value::String("0".to_string()));
+            env.insert(
+                "CLAUDE_CODE_ATTRIBUTION_HEADER".to_string(),
+                serde_json::Value::String("0".to_string()),
+            );
         } else {
             env.remove("CLAUDE_CODE_ATTRIBUTION_HEADER");
         }
         // disableInstallationChecks → DISABLE_INSTALLATION_CHECKS
         if disable_installation_checks {
-            env.insert("DISABLE_INSTALLATION_CHECKS".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "DISABLE_INSTALLATION_CHECKS".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("DISABLE_INSTALLATION_CHECKS");
         }
         // enableToolSearch → ENABLE_TOOL_SEARCH
         if enable_tool_search {
-            env.insert("ENABLE_TOOL_SEARCH".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "ENABLE_TOOL_SEARCH".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("ENABLE_TOOL_SEARCH");
         }
         // disableTelemetry → DISABLE_TELEMETRY
         if disable_telemetry {
-            env.insert("DISABLE_TELEMETRY".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "DISABLE_TELEMETRY".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("DISABLE_TELEMETRY");
         }
         // disableBugCommand → DISABLE_BUG_COMMAND
         if disable_bug_command {
-            env.insert("DISABLE_BUG_COMMAND".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "DISABLE_BUG_COMMAND".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("DISABLE_BUG_COMMAND");
         }
         // disableAutoupdater → DISABLE_AUTOUPDATER
         if disable_autoupdater {
-            env.insert("DISABLE_AUTOUPDATER".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "DISABLE_AUTOUPDATER".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("DISABLE_AUTOUPDATER");
         }
         // disableErrorReporting → DISABLE_ERROR_REPORTING
         if disable_error_reporting {
-            env.insert("DISABLE_ERROR_REPORTING".to_string(),
-                serde_json::Value::String("1".to_string()));
+            env.insert(
+                "DISABLE_ERROR_REPORTING".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
         } else {
             env.remove("DISABLE_ERROR_REPORTING");
         }
         // maxOutputTokens → CLAUDE_CODE_MAX_OUTPUT_TOKENS（用户自定义值）
         if !max_output.is_empty() {
-            env.insert("CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string(),
-                serde_json::Value::String(max_output.clone()));
+            env.insert(
+                "CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string(),
+                serde_json::Value::String(max_output.clone()),
+            );
         } else {
             env.remove("CLAUDE_CODE_MAX_OUTPUT_TOKENS");
         }
@@ -337,8 +383,7 @@ pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
     let settings_path = get_claude_settings_path()?;
     let settings: serde_json::Value = if settings_path.exists() {
         let content = fs::read_to_string(&settings_path)?;
-        serde_json::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+        serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
     } else {
         serde_json::json!({})
     };
@@ -428,11 +473,7 @@ fn build_toml_preview(
     let toml_str = toml::to_string_pretty(&doc)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-    Ok((
-        path.to_string_lossy().to_string(),
-        toml_str,
-        baseline_str,
-    ))
+    Ok((path.to_string_lossy().to_string(), toml_str, baseline_str))
 }
 
 /// 构建 env 文件预览（带基线）
@@ -443,11 +484,7 @@ fn build_env_preview(
     let baseline = read_file_content(path, "");
     let content = build_lines().join("\n");
 
-    Ok((
-        path.to_string_lossy().to_string(),
-        content,
-        baseline,
-    ))
+    Ok((path.to_string_lossy().to_string(), content, baseline))
 }
 
 // ── 配置同步辅助函数 ──────────────────────────────────────────────
@@ -487,19 +524,30 @@ fn write_codex_toml_config(
     };
 
     if let toml::Value::Table(ref mut t) = doc {
-        t.insert("model_provider".into(), toml::Value::String("newapi".into()));
+        t.insert(
+            "model_provider".into(),
+            toml::Value::String("newapi".into()),
+        );
         t.insert("model".into(), toml::Value::String(model.into()));
 
-        let mp = t.entry("model_providers")
+        let mp = t
+            .entry("model_providers")
             .or_insert(toml::Value::Table(toml::Table::new()));
         if let toml::Value::Table(ref mut mp_table) = mp {
-            let newapi = mp_table.entry("newapi")
+            let newapi = mp_table
+                .entry("newapi")
                 .or_insert(toml::Value::Table(toml::Table::new()));
             if let toml::Value::Table(ref mut newapi_table) = newapi {
                 newapi_table.insert("base_url".into(), toml::Value::String(base_url.to_string()));
-                newapi_table.entry("name").or_insert(toml::Value::String("Custom".into()));
-                newapi_table.entry("wire_api").or_insert(toml::Value::String("responses".into()));
-                newapi_table.entry("requires_openai_auth").or_insert(toml::Value::Boolean(true));
+                newapi_table
+                    .entry("name")
+                    .or_insert(toml::Value::String("Custom".into()));
+                newapi_table
+                    .entry("wire_api")
+                    .or_insert(toml::Value::String("responses".into()));
+                newapi_table
+                    .entry("requires_openai_auth")
+                    .or_insert(toml::Value::Boolean(true));
             }
         }
     }
@@ -539,7 +587,9 @@ fn write_gemini_env(
 
 /// 预览 provider 切换后的完整配置文件内容（不写入磁盘）
 /// 返回 Vec<(文件标题，预览内容，基线内容)>，基线是同一序列化器处理的原始文件，确保 diff 只反映真实差异
-pub fn preview_provider_sync(provider: &Provider) -> Result<Vec<(String, String, String)>, io::Error> {
+pub fn preview_provider_sync(
+    provider: &Provider,
+) -> Result<Vec<(String, String, String)>, io::Error> {
     match provider.app_type {
         AppType::Claude => preview_claude_settings(provider),
         AppType::Codex => preview_codex_config(provider),
@@ -549,12 +599,13 @@ pub fn preview_provider_sync(provider: &Provider) -> Result<Vec<(String, String,
 }
 
 /// 预览 Claude settings.json 合并结果
-fn preview_claude_settings(provider: &Provider) -> Result<Vec<(String, String, String)>, io::Error> {
+fn preview_claude_settings(
+    provider: &Provider,
+) -> Result<Vec<(String, String, String)>, io::Error> {
     let settings_path = get_claude_settings_path()?;
     let mut settings: serde_json::Value = if settings_path.exists() {
         let content = fs::read_to_string(&settings_path)?;
-        serde_json::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+        serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
     } else {
         serde_json::json!({})
     };
@@ -575,16 +626,26 @@ fn preview_claude_settings(provider: &Provider) -> Result<Vec<(String, String, S
     if settings.get("env").is_none() {
         settings["env"] = serde_json::json!({});
     }
-    let env = settings["env"].as_object_mut()
+    let env = settings["env"]
+        .as_object_mut()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "env is not an object"))?;
 
     // 合并 provider 配置
     let optional_fields = [
         ("ANTHROPIC_BASE_URL", &provider.url),
-        ("ANTHROPIC_DEFAULT_SONNET_MODEL", &provider.default_sonnet_model),
+        (
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            &provider.default_sonnet_model,
+        ),
         ("ANTHROPIC_DEFAULT_OPUS_MODEL", &provider.default_opus_model),
-        ("ANTHROPIC_DEFAULT_HAIKU_MODEL", &provider.default_haiku_model),
-        ("ANTHROPIC_REASONING_MODEL", &provider.default_reasoning_model),
+        (
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            &provider.default_haiku_model,
+        ),
+        (
+            "ANTHROPIC_REASONING_MODEL",
+            &provider.default_reasoning_model,
+        ),
     ];
     merge_provider_to_env(env, &provider.api_key, &optional_fields);
 
@@ -600,7 +661,11 @@ fn preview_claude_settings(provider: &Provider) -> Result<Vec<(String, String, S
 
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    Ok(vec![(".claude/settings.json".to_string(), content, baseline)])
+    Ok(vec![(
+        ".claude/settings.json".to_string(),
+        content,
+        baseline,
+    )])
 }
 
 /// 预览 Codex 配置合并结果
@@ -619,30 +684,45 @@ fn preview_codex_config(provider: &Provider) -> Result<Vec<(String, String, Stri
     // config.toml
     if let Some(ref url) = provider.url {
         let base_url = normalize_codex_base_url(url);
-        let model = provider.default_sonnet_model.as_deref().unwrap_or("o4-mini");
+        let model = provider
+            .default_sonnet_model
+            .as_deref()
+            .unwrap_or("o4-mini");
         let config_path = codex_dir.join("config.toml");
 
-        let (config_title, config_content, config_baseline) = build_toml_preview(&config_path, |baseline_doc| {
-            let mut doc = baseline_doc.clone();
-            if let toml::Value::Table(ref mut t) = doc {
-                t.insert("model_provider".into(), toml::Value::String("newapi".into()));
-                t.insert("model".into(), toml::Value::String(model.into()));
+        let (config_title, config_content, config_baseline) =
+            build_toml_preview(&config_path, |baseline_doc| {
+                let mut doc = baseline_doc.clone();
+                if let toml::Value::Table(ref mut t) = doc {
+                    t.insert(
+                        "model_provider".into(),
+                        toml::Value::String("newapi".into()),
+                    );
+                    t.insert("model".into(), toml::Value::String(model.into()));
 
-                let mp = t.entry("model_providers")
-                    .or_insert(toml::Value::Table(toml::Table::new()));
-                if let toml::Value::Table(ref mut mp_table) = mp {
-                    let newapi = mp_table.entry("newapi")
+                    let mp = t
+                        .entry("model_providers")
                         .or_insert(toml::Value::Table(toml::Table::new()));
-                    if let toml::Value::Table(ref mut newapi_table) = newapi {
-                        newapi_table.insert("base_url".into(), toml::Value::String(base_url));
-                        newapi_table.entry("name").or_insert(toml::Value::String("Custom".into()));
-                        newapi_table.entry("wire_api").or_insert(toml::Value::String("responses".into()));
-                        newapi_table.entry("requires_openai_auth").or_insert(toml::Value::Boolean(true));
+                    if let toml::Value::Table(ref mut mp_table) = mp {
+                        let newapi = mp_table
+                            .entry("newapi")
+                            .or_insert(toml::Value::Table(toml::Table::new()));
+                        if let toml::Value::Table(ref mut newapi_table) = newapi {
+                            newapi_table.insert("base_url".into(), toml::Value::String(base_url));
+                            newapi_table
+                                .entry("name")
+                                .or_insert(toml::Value::String("Custom".into()));
+                            newapi_table
+                                .entry("wire_api")
+                                .or_insert(toml::Value::String("responses".into()));
+                            newapi_table
+                                .entry("requires_openai_auth")
+                                .or_insert(toml::Value::Boolean(true));
+                        }
                     }
                 }
-            }
-            doc
-        })?;
+                doc
+            })?;
         files.push((config_title, config_content, config_baseline));
     }
 
@@ -679,7 +759,9 @@ fn preview_gemini_config(provider: &Provider) -> Result<Vec<(String, String, Str
 }
 
 /// 预览通用应用配置合并结果
-fn preview_generic_settings(provider: &Provider) -> Result<Vec<(String, String, String)>, io::Error> {
+fn preview_generic_settings(
+    provider: &Provider,
+) -> Result<Vec<(String, String, String)>, io::Error> {
     let home = dirs::home_dir()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home directory not found"))?;
     let config_dir = home.join(format!(".{}", provider.app_type.as_str()));
@@ -700,7 +782,8 @@ fn preview_generic_settings(provider: &Provider) -> Result<Vec<(String, String, 
     }
 
     let prefix = provider.app_type.env_prefix();
-    let env = settings["env"].as_object_mut()
+    let env = settings["env"]
+        .as_object_mut()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "env is not an object"))?;
 
     env.insert(
@@ -717,7 +800,11 @@ fn preview_generic_settings(provider: &Provider) -> Result<Vec<(String, String, 
         env.remove(&format!("{}_BASE_URL", prefix));
     }
 
-    let title = format!(".{}/{}", provider.app_type.as_str(), provider.app_type.config_file_name());
+    let title = format!(
+        ".{}/{}",
+        provider.app_type.as_str(),
+        provider.app_type.config_file_name()
+    );
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     Ok(vec![(title, content, baseline)])
@@ -740,8 +827,7 @@ fn sync_to_claude_settings(provider: &Provider) -> Result<(), io::Error> {
     let settings_path = get_claude_settings_path()?;
     let mut settings: serde_json::Value = if settings_path.exists() {
         let content = fs::read_to_string(&settings_path)?;
-        serde_json::from_str(&content)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+        serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
     } else {
         serde_json::json!({})
     };
@@ -759,16 +845,26 @@ fn sync_to_claude_settings(provider: &Provider) -> Result<(), io::Error> {
     if settings.get("env").is_none() {
         settings["env"] = serde_json::json!({});
     }
-    let env = settings["env"].as_object_mut()
+    let env = settings["env"]
+        .as_object_mut()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "env is not an object"))?;
 
     // 合并 provider 配置
     let optional_fields = [
         ("ANTHROPIC_BASE_URL", &provider.url),
-        ("ANTHROPIC_DEFAULT_SONNET_MODEL", &provider.default_sonnet_model),
+        (
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+            &provider.default_sonnet_model,
+        ),
         ("ANTHROPIC_DEFAULT_OPUS_MODEL", &provider.default_opus_model),
-        ("ANTHROPIC_DEFAULT_HAIKU_MODEL", &provider.default_haiku_model),
-        ("ANTHROPIC_REASONING_MODEL", &provider.default_reasoning_model),
+        (
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+            &provider.default_haiku_model,
+        ),
+        (
+            "ANTHROPIC_REASONING_MODEL",
+            &provider.default_reasoning_model,
+        ),
     ];
     merge_provider_to_env(env, &provider.api_key, &optional_fields);
 
@@ -805,7 +901,8 @@ fn sync_to_generic_settings(provider: &Provider) -> Result<(), io::Error> {
     }
 
     let prefix = provider.app_type.env_prefix();
-    let env = settings["env"].as_object_mut()
+    let env = settings["env"]
+        .as_object_mut()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "env is not an object"))?;
 
     env.insert(
@@ -843,7 +940,10 @@ fn sync_to_codex_config(provider: &Provider) -> Result<(), io::Error> {
     // config.toml
     if let Some(ref url) = provider.url {
         let base_url = normalize_codex_base_url(url);
-        let model = provider.default_sonnet_model.as_deref().unwrap_or("o4-mini");
+        let model = provider
+            .default_sonnet_model
+            .as_deref()
+            .unwrap_or("o4-mini");
         let config_path = codex_dir.join("config.toml");
         write_codex_toml_config(&config_path, &base_url, model)?;
     }

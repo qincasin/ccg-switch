@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,9 @@ pub struct RequestLogEvent {
     pub error: Option<String>,
 }
 
-fn default_status() -> u16 { 200 }
+fn default_status() -> u16 {
+    200
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderDailySummary {

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
@@ -16,8 +16,12 @@ pub struct ProxyConfig {
     pub auth_token: Option<String>,
 }
 
-fn default_port() -> u16 { 8080 }
-fn default_host() -> String { "0.0.0.0".to_string() }
+fn default_port() -> u16 {
+    8080
+}
+fn default_host() -> String {
+    "0.0.0.0".to_string()
+}
 
 impl Default for ProxyConfig {
     fn default() -> Self {
@@ -41,9 +45,15 @@ pub struct CircuitBreakerConfig {
     pub half_open_max_requests: u32,
 }
 
-fn default_failure_threshold() -> u32 { 5 }
-fn default_recovery_timeout() -> u64 { 60 }
-fn default_half_open_max() -> u32 { 1 }
+fn default_failure_threshold() -> u32 {
+    5
+}
+fn default_recovery_timeout() -> u64 {
+    60
+}
+fn default_half_open_max() -> u32 {
+    1
+}
 
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
@@ -64,7 +74,9 @@ pub enum CircuitBreakerState {
 }
 
 impl Default for CircuitBreakerState {
-    fn default() -> Self { Self::Closed }
+    fn default() -> Self {
+        Self::Closed
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

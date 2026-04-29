@@ -32,9 +32,15 @@ pub struct UnifiedSessionMessage {
 /// 按项目路径扫描会话，合并所有 provider 并按 last_active_at 降序排序
 pub fn scan_sessions_for_project(project_path: &str) -> Vec<SessionMeta> {
     let mut all = Vec::new();
-    all.extend(providers::claude::scan_claude_sessions_for_project(project_path));
-    all.extend(providers::codex::scan_codex_sessions_for_project(project_path));
-    all.extend(providers::gemini::scan_gemini_sessions_for_project(project_path));
+    all.extend(providers::claude::scan_claude_sessions_for_project(
+        project_path,
+    ));
+    all.extend(providers::codex::scan_codex_sessions_for_project(
+        project_path,
+    ));
+    all.extend(providers::gemini::scan_gemini_sessions_for_project(
+        project_path,
+    ));
     all.sort_by(|a, b| b.last_active_at.cmp(&a.last_active_at));
     all
 }

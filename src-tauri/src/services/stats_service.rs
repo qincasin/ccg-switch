@@ -1,9 +1,9 @@
+use chrono::{DateTime, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use chrono::{DateTime, Utc, Timelike};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -197,12 +197,15 @@ pub fn refresh_stats_cache() -> Result<StatsCache, io::Error> {
                     let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or("");
 
                     if let Some(date_str) = &date {
-                        let activity = daily_activity_map.entry(date_str.clone()).or_insert(DailyActivity {
-                            date: date_str.clone(),
-                            message_count: 0,
-                            session_count: 0,
-                            tool_call_count: 0,
-                        });
+                        let activity =
+                            daily_activity_map
+                                .entry(date_str.clone())
+                                .or_insert(DailyActivity {
+                                    date: date_str.clone(),
+                                    message_count: 0,
+                                    session_count: 0,
+                                    tool_call_count: 0,
+                                });
 
                         // 统计消息
                         if msg_type == "user" || msg_type == "assistant" {
@@ -220,20 +223,38 @@ pub fn refresh_stats_cache() -> Result<StatsCache, io::Error> {
                     // Claude Code JSONL: usage 和 model 嵌套在 message 对象内（优先）
                     // 顶层 model 字段可能为无效值（如字面量 "model"），仅作回退
                     let message = json.get("message");
-                    let usage = message.and_then(|m| m.get("usage"))
+                    let usage = message
+                        .and_then(|m| m.get("usage"))
                         .or_else(|| json.get("usage"));
-                    let model = message.and_then(|m| m.get("model")).and_then(|v| v.as_str())
+                    let model = message
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
                         .or_else(|| json.get("model").and_then(|v| v.as_str()))
                         .filter(|m| !m.is_empty() && *m != "model");
 
                     if let (Some(usage), Some(model)) = (usage, model) {
-                        let input_tokens = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        let cache_read = usage.get("cache_read_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        let cache_creation = usage.get("cache_creation_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                        let input_tokens = usage
+                            .get("input_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let output_tokens = usage
+                            .get("output_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let cache_read = usage
+                            .get("cache_read_input_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+                        let cache_creation = usage
+                            .get("cache_creation_input_tokens")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
 
                         // 更新模型总体使用
-                        let model_usage = cache.model_usage.entry(model.to_string()).or_insert(ModelUsage::default());
+                        let model_usage = cache
+                            .model_usage
+                            .entry(model.to_string())
+                            .or_insert(ModelUsage::default());
                         model_usage.input_tokens += input_tokens;
                         model_usage.output_tokens += output_tokens;
                         model_usage.cache_read_input_tokens += cache_read;
@@ -241,8 +262,11 @@ pub fn refresh_stats_cache() -> Result<StatsCache, io::Error> {
 
                         // 更新每日模型 token
                         if let Some(date_str) = &date {
-                            let daily_tokens = daily_tokens_map.entry(date_str.clone()).or_insert(HashMap::new());
-                            *daily_tokens.entry(model.to_string()).or_insert(0) += input_tokens + output_tokens;
+                            let daily_tokens = daily_tokens_map
+                                .entry(date_str.clone())
+                                .or_insert(HashMap::new());
+                            *daily_tokens.entry(model.to_string()).or_insert(0) +=
+                                input_tokens + output_tokens;
                         }
                     }
                 }
@@ -262,7 +286,10 @@ pub fn refresh_stats_cache() -> Result<StatsCache, io::Error> {
     // 转换 daily_tokens_map
     let mut daily_model_tokens: Vec<DailyModelTokens> = daily_tokens_map
         .into_iter()
-        .map(|(date, tokens_by_model)| DailyModelTokens { date, tokens_by_model })
+        .map(|(date, tokens_by_model)| DailyModelTokens {
+            date,
+            tokens_by_model,
+        })
         .collect();
     daily_model_tokens.sort_by(|a, b| a.date.cmp(&b.date));
     cache.daily_model_tokens = daily_model_tokens;

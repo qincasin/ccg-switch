@@ -54,8 +54,7 @@ fn read_mcp_servers() -> HashMap<String, Value> {
 }
 
 fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
-    let path = get_claude_json_path()
-        .ok_or_else(|| "Home directory not found".to_string())?;
+    let path = get_claude_json_path().ok_or_else(|| "Home directory not found".to_string())?;
 
     let mut root: Value = if path.exists() {
         let text = std::fs::read_to_string(&path)
@@ -82,18 +81,16 @@ fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
 fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
     use std::io::Write;
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {e}"))?;
     }
     let tmp = path.with_extension("tmp");
-    let mut f = std::fs::File::create(&tmp)
-        .map_err(|e| format!("Failed to create temp file: {e}"))?;
+    let mut f =
+        std::fs::File::create(&tmp).map_err(|e| format!("Failed to create temp file: {e}"))?;
     f.write_all(content.as_bytes())
         .map_err(|e| format!("Failed to write temp file: {e}"))?;
     f.flush().map_err(|e| format!("Failed to flush: {e}"))?;
     drop(f);
-    std::fs::rename(&tmp, path)
-        .map_err(|e| format!("Failed to rename temp file: {e}"))
+    std::fs::rename(&tmp, path).map_err(|e| format!("Failed to rename temp file: {e}"))
 }
 
 /// 将单个 MCP 服务器同步到 ~/.claude.json

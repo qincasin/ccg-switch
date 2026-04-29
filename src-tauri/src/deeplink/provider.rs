@@ -1,19 +1,17 @@
+use super::DeepLinkImportRequest;
 use crate::database::Database;
 use crate::error::AppError;
 use crate::models::app_type::AppType;
 use crate::models::provider::Provider;
 use crate::services::provider_service;
-use super::DeepLinkImportRequest;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
 /// 将 DeepLinkImportRequest 映射为 CCG Switch 的 Provider 结构
 pub fn build_provider_from_deeplink(request: &DeepLinkImportRequest) -> Result<Provider, AppError> {
-    let app_type = AppType::from_str(
-        &request.app.clone().unwrap_or_default(),
-    )
-    .map_err(|e| AppError::InvalidInput(e))?;
+    let app_type = AppType::from_str(&request.app.clone().unwrap_or_default())
+        .map_err(|e| AppError::InvalidInput(e))?;
 
     // endpoint: 取逗号分隔的第一个 URL
     let url = request
@@ -68,8 +66,7 @@ pub fn import_provider_from_deeplink(
     let provider_id = provider.id.clone();
     let app_type = provider.app_type;
 
-    provider_service::add_provider_to_db(db, provider)
-        .map_err(|e| AppError::Message(e))?;
+    provider_service::add_provider_to_db(db, provider).map_err(|e| AppError::Message(e))?;
 
     if request.enabled == Some(true) {
         provider_service::switch_provider_in_db(db, app_type, &provider_id)

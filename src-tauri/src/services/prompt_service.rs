@@ -34,7 +34,8 @@ pub fn list_prompts() -> Result<Vec<PromptPreset>, io::Error> {
         let entry = entry?;
         let path = entry.path();
         if path.extension().map_or(false, |ext| ext == "md") {
-            let name = path.file_stem()
+            let name = path
+                .file_stem()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
@@ -86,7 +87,10 @@ pub fn sync_prompt_to_app(name: &str, app: &str) -> Result<(), io::Error> {
     // 读取 prompt 内容
     let source_path = get_prompts_dir()?.join(format!("{}.md", name));
     if !source_path.exists() {
-        return Err(io::Error::new(io::ErrorKind::NotFound, format!("Prompt '{}' not found", name)));
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Prompt '{}' not found", name),
+        ));
     }
     let content = fs::read_to_string(&source_path)?;
 

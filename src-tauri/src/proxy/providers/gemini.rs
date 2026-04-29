@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+use super::ProviderAdapter;
 use crate::models::provider::Provider;
 use crate::proxy::error::ProxyError;
-use super::ProviderAdapter;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 
 /// Google Gemini 协议适配器
 /// 支持路径：/v1beta/... 或 /gemini/...
@@ -15,7 +15,12 @@ impl ProviderAdapter for GeminiAdapter {
         path.starts_with("/v1beta") || path.starts_with("/gemini")
     }
 
-    fn build_target_url(&self, provider: &Provider, path: &str, query: &str) -> Result<String, ProxyError> {
+    fn build_target_url(
+        &self,
+        provider: &Provider,
+        path: &str,
+        query: &str,
+    ) -> Result<String, ProxyError> {
         let base = provider
             .url
             .as_deref()

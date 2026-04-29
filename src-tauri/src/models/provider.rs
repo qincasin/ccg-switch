@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
-use std::collections::HashMap;
 use super::app_type::AppType;
 use super::token::ApiToken;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// 供应商单独的代理配置
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

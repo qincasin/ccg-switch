@@ -3,11 +3,7 @@ use crate::proxy::error::ProxyError;
 use serde_json::Value;
 
 // budget 相关错误关键字
-const BUDGET_ERROR_MESSAGES: &[&str] = &[
-    "budget_tokens",
-    "budget",
-    "token budget",
-];
+const BUDGET_ERROR_MESSAGES: &[&str] = &["budget_tokens", "budget", "token budget"];
 
 /// 检测响应是否包含 budget_tokens 相关错误
 pub fn is_budget_error(status: u16, body: &[u8]) -> bool {

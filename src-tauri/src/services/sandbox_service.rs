@@ -1,8 +1,8 @@
+use crate::database::Database;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::database::Database;
 use std::sync::Arc;
-use reqwest::Client;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SandboxRequest {
@@ -54,7 +54,8 @@ async fn make_request(
                 .header("x-api-key", api_key)
                 .header("anthropic-version", "2023-06-01");
         } else {
-            request_builder = request_builder.header("Authorization", format!("Bearer {}", api_key));
+            request_builder =
+                request_builder.header("Authorization", format!("Bearer {}", api_key));
         }
     }
 
@@ -66,7 +67,9 @@ async fn make_request(
     let status = resp.status();
     let is_success = status.is_success();
 
-    let body_text = resp.text().await
+    let body_text = resp
+        .text()
+        .await
         .map_err(|e| format!("读取响应体失败: {}", e))?;
 
     // 尝试解析 JSON，针对错误进行智能降级提取
@@ -79,11 +82,19 @@ async fn make_request(
                 return Err(format!("接口返回错误 [{}]: {}", status, error_msg));
             }
         }
-        return Err(format!("接口返回错误 [{}]: {}", status, &body_text[..body_text.len().min(500)]));
+        return Err(format!(
+            "接口返回错误 [{}]: {}",
+            status,
+            &body_text[..body_text.len().min(500)]
+        ));
     }
 
     let json_val = json_val_opt.ok_or_else(|| {
-        format!("返回值非有效 JSON 格式\nHTTP状态码: {}\n原始响应: {}", status, &body_text[..body_text.len().min(500)])
+        format!(
+            "返回值非有效 JSON 格式\nHTTP状态码: {}\n原始响应: {}",
+            status,
+            &body_text[..body_text.len().min(500)]
+        )
     })?;
 
     let content = match protocol {
@@ -96,7 +107,10 @@ async fn make_request(
         if !potential_err.is_empty() {
             format!("网关提示: {}", potential_err)
         } else {
-            format!("模型未返回标准格式内容\n原始响应: {}", &body_text[..body_text.len().min(500)])
+            format!(
+                "模型未返回标准格式内容\n原始响应: {}",
+                &body_text[..body_text.len().min(500)]
+            )
         }
     })
 }
@@ -106,7 +120,8 @@ pub async fn run_sandbox_test(
     req: SandboxRequest,
 ) -> Result<SandboxResponse, String> {
     // 1. 获取对应的 Provider 信息
-    let provider = db.get_provider(&req.provider_id)
+    let provider = db
+        .get_provider(&req.provider_id)
         .map_err(|e| format!("数据库查询失败: {}", e))?
         .ok_or_else(|| format!("未找到指定的模型服务提供商: {}", req.provider_id))?;
 
@@ -167,10 +182,9 @@ pub async fn run_sandbox_test(
             });
 
             if !req.system_prompt.trim().is_empty() {
-                p.as_object_mut().unwrap().insert(
-                    "system".to_string(),
-                    json!(req.system_prompt)
-                );
+                p.as_object_mut()
+                    .unwrap()
+                    .insert("system".to_string(), json!(req.system_prompt));
             }
             payload = p;
         }
@@ -196,7 +210,8 @@ pub async fn run_sandbox_test(
                 }
             }
             ProtocolType::Anthropic => {
-                payload_without_skill.as_object_mut()
+                payload_without_skill
+                    .as_object_mut()
                     .unwrap()
                     .remove("system");
             }
@@ -205,7 +220,13 @@ pub async fn run_sandbox_test(
         // 并行请求
         let (with_skill, without_skill) = tokio::join!(
             make_request(&client, &endpoint, &payload, &protocol, &api_key),
-            make_request(&client, &endpoint, &payload_without_skill, &protocol, &api_key)
+            make_request(
+                &client,
+                &endpoint,
+                &payload_without_skill,
+                &protocol,
+                &api_key
+            )
         );
 
         let content = with_skill.map_err(|e| format!("有技能请求失败: {}", e))?;
@@ -249,10 +270,12 @@ fn extract_error_message(json_val: &Value) -> String {
 }
 
 fn extract_openai_content(json_val: &Value) -> Option<String> {
-    json_val.get("choices")
+    json_val
+        .get("choices")
         .and_then(|c| c.get(0))
         .and_then(|first_choice| {
-            first_choice.get("message")
+            first_choice
+                .get("message")
                 .and_then(|m| m.get("content"))
                 .or_else(|| first_choice.get("delta").and_then(|d| d.get("content")))
         })
@@ -261,7 +284,8 @@ fn extract_openai_content(json_val: &Value) -> Option<String> {
 }
 
 fn extract_anthropic_content(json_val: &Value) -> Option<String> {
-    json_val.get("content")
+    json_val
+        .get("content")
         .and_then(|arr| arr.get(0))
         .and_then(|first_item| first_item.get("text"))
         .and_then(|v| v.as_str())

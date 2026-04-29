@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use super::ProviderAdapter;
 use crate::models::provider::Provider;
 use crate::proxy::error::ProxyError;
-use super::ProviderAdapter;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 
 /// OpenAI 兼容协议适配器
 /// 支持路径：/v1/chat/completions、/v1/completions、/v1/embeddings 等
@@ -15,7 +15,12 @@ impl ProviderAdapter for OpenAIAdapter {
         path.starts_with("/v1/")
     }
 
-    fn build_target_url(&self, provider: &Provider, path: &str, query: &str) -> Result<String, ProxyError> {
+    fn build_target_url(
+        &self,
+        provider: &Provider,
+        path: &str,
+        query: &str,
+    ) -> Result<String, ProxyError> {
         let base = provider.url.as_deref().unwrap_or("https://api.openai.com");
         let base = base.trim_end_matches('/');
         Ok(format!("{}{}{}", base, path, query))

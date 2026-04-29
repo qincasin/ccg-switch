@@ -22,9 +22,8 @@ pub struct WebDavConfig {
 
 /// 获取 WebDAV 配置文件路径：`~/.ccg-switch/webdav.json`
 fn get_webdav_config_path() -> Result<PathBuf, io::Error> {
-    let home = dirs::home_dir().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "Home not found")
-    })?;
+    let home = dirs::home_dir()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Home not found"))?;
     Ok(home.join(".ccg-switch").join("webdav.json"))
 }
 
@@ -35,8 +34,7 @@ pub fn get_webdav_config() -> Result<WebDavConfig, io::Error> {
         return Ok(WebDavConfig::default());
     }
     let content = fs::read_to_string(&path)?;
-    serde_json::from_str(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// 保存 WebDAV 配置到文件

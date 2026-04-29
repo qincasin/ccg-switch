@@ -21,19 +21,13 @@ pub fn resolve_upstream(request_path: &str) -> Result<RouteResult, ProxyError> {
         .ok_or(ProxyError::NoAvailableProvider)?;
 
     // 构建目标 URL
-    let base_url = active
-        .url
-        .as_deref()
-        .unwrap_or("https://api.anthropic.com");
+    let base_url = active.url.as_deref().unwrap_or("https://api.anthropic.com");
     let base_url = base_url.trim_end_matches('/');
     let target_url = format!("{}{}", base_url, request_path);
 
     // 构建请求头
     let mut headers = HeaderMap::new();
-    headers.insert(
-        CONTENT_TYPE,
-        HeaderValue::from_static("application/json"),
-    );
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
     // 根据 URL 判断认证方式
     if base_url.contains("anthropic.com") {

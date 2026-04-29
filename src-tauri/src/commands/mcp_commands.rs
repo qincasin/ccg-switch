@@ -14,18 +14,12 @@ pub fn get_mcp_servers(
 }
 
 #[tauri::command]
-pub fn upsert_mcp_server(
-    state: State<'_, AppState>,
-    server: McpServerRow,
-) -> Result<(), String> {
+pub fn upsert_mcp_server(state: State<'_, AppState>, server: McpServerRow) -> Result<(), String> {
     McpService::upsert(&state.db, server)
 }
 
 #[tauri::command]
-pub fn delete_mcp_server_v2(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<bool, String> {
+pub fn delete_mcp_server_v2(state: State<'_, AppState>, id: String) -> Result<bool, String> {
     McpService::delete(&state.db, &id)
 }
 

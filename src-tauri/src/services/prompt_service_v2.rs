@@ -12,8 +12,7 @@ const PROMPT_APPS: &[&str] = &["claude", "codex", "gemini"];
 impl PromptServiceV2 {
     /// 获取 live 文件路径
     fn get_live_file_path(app_type: &str) -> Result<PathBuf, String> {
-        let home =
-            dirs::home_dir().ok_or_else(|| "Home directory not found".to_string())?;
+        let home = dirs::home_dir().ok_or_else(|| "Home directory not found".to_string())?;
         match app_type {
             "claude" => Ok(home.join(".claude").join("CLAUDE.md")),
             "codex" => Ok(home.join(".codex").join("AGENTS.md")),
@@ -30,15 +29,13 @@ impl PromptServiceV2 {
                 .map_err(|e| format!("Failed to create directory: {e}"))?;
         }
         let tmp = path.with_extension("tmp");
-        let mut f = std::fs::File::create(&tmp)
-            .map_err(|e| format!("Failed to create temp file: {e}"))?;
+        let mut f =
+            std::fs::File::create(&tmp).map_err(|e| format!("Failed to create temp file: {e}"))?;
         f.write_all(content.as_bytes())
             .map_err(|e| format!("Failed to write temp file: {e}"))?;
-        f.flush()
-            .map_err(|e| format!("Failed to flush: {e}"))?;
+        f.flush().map_err(|e| format!("Failed to flush: {e}"))?;
         drop(f);
-        std::fs::rename(&tmp, path)
-            .map_err(|e| format!("Failed to rename temp file: {e}"))
+        std::fs::rename(&tmp, path).map_err(|e| format!("Failed to rename temp file: {e}"))
     }
 
     /// 获取指定应用的所有 prompts

@@ -1,14 +1,14 @@
 #![allow(dead_code)]
-use crate::models::token::TokensConfig;
-use crate::models::provider::{Provider, ProvidersConfig};
-use crate::services::storage::json_store;
 use crate::database::Database;
+use crate::models::provider::{Provider, ProvidersConfig};
+use crate::models::token::TokensConfig;
+use crate::services::storage::json_store;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
 
 /// 迁移配置：记录 schemaVersion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,7 +232,6 @@ pub fn check_and_run_migration() -> Result<(), io::Error> {
 
 /// v2 → v3 迁移：将 JSON 配置文件迁移到 SQLite 数据库
 pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
-
     let config_path = get_config_path();
 
     // 读取当前 schema version
@@ -256,14 +255,19 @@ pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
     let _backup_dir = backup_for_v3().map_err(|e| format!("Backup failed: {e}"))?;
 
     // 开启事务
-    let mut conn = db.conn.lock().map_err(|e| format!("Mutex lock failed: {e}"))?;
-    let tx = conn.transaction().map_err(|e| format!("Transaction failed: {e}"))?;
+    let mut conn = db
+        .conn
+        .lock()
+        .map_err(|e| format!("Mutex lock failed: {e}"))?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("Transaction failed: {e}"))?;
 
     // 1. 迁移 config.json → app_configs
     if let Ok(path) = &config_path {
         if path.exists() {
-            let config_content = fs::read_to_string(path)
-                .map_err(|e| format!("Read config.json failed: {e}"))?;
+            let config_content =
+                fs::read_to_string(path).map_err(|e| format!("Read config.json failed: {e}"))?;
             let config_value: serde_json::Value = serde_json::from_str(&config_content)
                 .map_err(|e| format!("Parse config.json failed: {e}"))?;
 
@@ -274,7 +278,8 @@ pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
             tx.execute(
                 "INSERT OR REPLACE INTO app_configs (key, value, updated_at) VALUES (?1, ?2, ?3)",
                 rusqlite::params!["app_config", config_json, Utc::now().timestamp()],
-            ).map_err(|e| format!("Insert app_configs failed: {e}"))?;
+            )
+            .map_err(|e| format!("Insert app_configs failed: {e}"))?;
         }
     }
 
@@ -287,11 +292,23 @@ pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
 
             for provider in providers_config.providers {
                 // 使用 DAO 的 upsert 逻辑（需要适配 transaction）
-                let custom_params_str = provider.custom_params.as_ref().and_then(|v| serde_json::to_string(v).ok());
-                let settings_config_str = provider.settings_config.as_ref().and_then(|v| serde_json::to_string(v).ok());
-                let meta_str = provider.meta.as_ref().and_then(|v| serde_json::to_string(v).ok());
+                let custom_params_str = provider
+                    .custom_params
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok());
+                let settings_config_str = provider
+                    .settings_config
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok());
+                let meta_str = provider
+                    .meta
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok());
                 let tags_str = serde_json::to_string(&provider.tags).ok();
-                let proxy_config_str = provider.proxy_config.as_ref().and_then(|v| serde_json::to_string(v).ok());
+                let proxy_config_str = provider
+                    .proxy_config
+                    .as_ref()
+                    .and_then(|v| serde_json::to_string(v).ok());
 
                 tx.execute(
                     "INSERT OR REPLACE INTO providers (id, name, app_type, api_key, url, default_sonnet_model, default_opus_model, default_haiku_model, default_reasoning_model, custom_params, settings_config, meta, icon, in_failover_queue, description, tags, is_active, created_at, last_used, proxy_config) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
@@ -351,7 +368,8 @@ pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
             tx.execute(
                 "INSERT OR REPLACE INTO app_configs (key, value, updated_at) VALUES (?1, ?2, ?3)",
                 rusqlite::params!["proxy_server_config", config_json, Utc::now().timestamp()],
-            ).map_err(|e| format!("Insert proxy_config failed: {e}"))?;
+            )
+            .map_err(|e| format!("Insert proxy_config failed: {e}"))?;
         }
     }
 
@@ -369,12 +387,14 @@ pub fn migrate_v2_to_v3(db: &Arc<Database>) -> Result<(), String> {
             tx.execute(
                 "INSERT OR REPLACE INTO app_configs (key, value, updated_at) VALUES (?1, ?2, ?3)",
                 rusqlite::params!["skill_apps_legacy", config_json, Utc::now().timestamp()],
-            ).map_err(|e| format!("Insert skill_apps failed: {e}"))?;
+            )
+            .map_err(|e| format!("Insert skill_apps failed: {e}"))?;
         }
     }
 
     // 提交事务
-    tx.commit().map_err(|e| format!("Commit transaction failed: {e}"))?;
+    tx.commit()
+        .map_err(|e| format!("Commit transaction failed: {e}"))?;
 
     // 更新 schema version
     if let Ok(path) = &config_path {

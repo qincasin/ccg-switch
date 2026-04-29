@@ -11,20 +11,20 @@ mod store;
 mod tray;
 mod utils;
 
-use tauri::Manager;
+use commands::advanced_commands;
+use commands::backup_commands;
+use commands::deeplink_commands;
+use commands::mcp_commands;
+use commands::prompt_commands;
 use commands::provider_commands;
 use commands::proxy_commands;
-use commands::utility_commands;
-use commands::advanced_commands;
-use commands::mcp_commands;
-use commands::skill_commands;
-use commands::prompt_commands;
-use commands::deeplink_commands;
-use commands::backup_commands;
 use commands::session_commands;
-use tauri::Emitter;
-use tauri::State;
+use commands::skill_commands;
+use commands::utility_commands;
 use store::AppState;
+use tauri::Emitter;
+use tauri::Manager;
+use tauri::State;
 
 use models::config::Config;
 use models::prompt::PromptPreset;
@@ -33,15 +33,19 @@ use models::subagent::Subagent;
 use models::token::ApiToken;
 use services::dashboard_service::{DashboardStats, HistoryEntry, ProjectInfo, ProjectTokenStat};
 use services::stats_service::StatsCache;
-use services::{config_service, dashboard_service, migration_service, prompt_service, skill_service, stats_service, subagent_service, token_service, universal_provider_service};
-use services::universal_provider_service::UniversalProviderConfig;
 use services::tool_version_service::ToolVersion;
+use services::universal_provider_service::UniversalProviderConfig;
+use services::{
+    config_service, dashboard_service, migration_service, prompt_service, skill_service,
+    stats_service, subagent_service, token_service, universal_provider_service,
+};
 
 // 剪贴板写入（arboard 直接写系统级剪贴板，规避 WebView 权限限制）
 #[tauri::command]
 fn write_clipboard(text: String) -> Result<(), String> {
     let mut ctx = arboard::Clipboard::new().map_err(|e| format!("剪贴板初始化失败: {}", e))?;
-    ctx.set_text(&text).map_err(|e| format!("写入剪贴板失败: {}", e))
+    ctx.set_text(&text)
+        .map_err(|e| format!("写入剪贴板失败: {}", e))
 }
 
 // 配置管理命令
@@ -78,7 +82,10 @@ fn delete_prompt(name: String) -> Result<(), String> {
 
 // Skill 技能管理命令
 #[tauri::command]
-fn list_skills(project_dir: Option<String>, state: State<'_, AppState>) -> Result<Vec<Skill>, String> {
+fn list_skills(
+    project_dir: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<Skill>, String> {
     skill_service::list_skills_from_db(&state.db, project_dir.as_deref())
 }
 
@@ -98,7 +105,11 @@ fn delete_skill(name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn update_skill_apps(name: String, apps: SkillApps, state: State<'_, AppState>) -> Result<(), String> {
+fn update_skill_apps(
+    name: String,
+    apps: SkillApps,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     skill_service::update_skill_apps_to_db(&state.db, &name, apps)
 }
 
@@ -193,25 +204,43 @@ fn refresh_stats_cache() -> Result<StatsCache, String> {
 
 // 在终端中打开目录
 #[tauri::command]
-async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<String>) -> Result<(), String> {
+async fn open_in_terminal(
+    app: tauri::AppHandle,
+    path: String,
+    terminal: Option<String>,
+) -> Result<(), String> {
     let terminal_app = terminal.unwrap_or_else(|| {
         // 默认终端配置
         #[cfg(target_os = "windows")]
-        { "cmd".to_string() }
+        {
+            "cmd".to_string()
+        }
         #[cfg(target_os = "macos")]
         {
             use std::process::Command;
             // macOS 优先级: iTerm2 > Warp > Terminal
-            if Command::new("ls").arg("/Applications/iTerm.app").output().map(|o| o.status.success()).unwrap_or(false) {
+            if Command::new("ls")
+                .arg("/Applications/iTerm.app")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+            {
                 "iterm".to_string()
-            } else if Command::new("ls").arg("/Applications/Warp.app").output().map(|o| o.status.success()).unwrap_or(false) {
+            } else if Command::new("ls")
+                .arg("/Applications/Warp.app")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+            {
                 "warp".to_string()
             } else {
                 "terminal".to_string()
             }
         }
         #[cfg(target_os = "linux")]
-        { "xterm".to_string() }
+        {
+            "xterm".to_string()
+        }
     });
 
     #[cfg(target_os = "windows")]
@@ -220,20 +249,34 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
         let shell = app.shell();
         match terminal_app.as_str() {
             "powershell" => {
-                shell.command("cmd")
-                    .args(["/c", "start", "powershell", "-NoExit", "-Command",
-                           &format!("Set-Location '{}'; cd {}", path.replace('\\', "\\\\").replace('\'', "''"), path)])
+                shell
+                    .command("cmd")
+                    .args([
+                        "/c",
+                        "start",
+                        "powershell",
+                        "-NoExit",
+                        "-Command",
+                        &format!(
+                            "Set-Location '{}'; cd {}",
+                            path.replace('\\', "\\\\").replace('\'', "''"),
+                            path
+                        ),
+                    ])
                     .spawn()
                     .map_err(|e: tauri_plugin_shell::Error| e.to_string())?;
             }
             "wt" => {
-                shell.command("wt")
+                shell
+                    .command("wt")
                     .args(["new-tab", "-d", &path, "powershell"])
                     .spawn()
                     .map_err(|e: tauri_plugin_shell::Error| e.to_string())?;
             }
-            _ => { // cmd
-                shell.command("cmd")
+            _ => {
+                // cmd
+                shell
+                    .command("cmd")
                     .args(["/c", "start", "cmd", "/k", &format!("cd /d {}", path)])
                     .spawn()
                     .map_err(|e: tauri_plugin_shell::Error| e.to_string())?;
@@ -299,7 +342,8 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
                     .spawn()
                     .map_err(|e: std::io::Error| e.to_string())?;
             }
-            _ => { // Terminal (默认)
+            _ => {
+                // Terminal (默认)
                 let escaped_path = escape_apple_script(&path);
                 let script = format!(
                     "tell application \"Terminal\"\n\
@@ -333,19 +377,35 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
         match terminal_app.as_str() {
             "gnome-terminal" => {
                 Command::new("gnome-terminal")
-                    .args(["--", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .args([
+                        "--",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && exec bash", escaped_path),
+                    ])
                     .spawn()
                     .map_err(|e| e.to_string())?;
             }
             "konsole" => {
                 Command::new("konsole")
-                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .args([
+                        "-e",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && exec bash", escaped_path),
+                    ])
                     .spawn()
                     .map_err(|e| e.to_string())?;
             }
-            _ => { // xterm (默认)
+            _ => {
+                // xterm (默认)
                 Command::new("xterm")
-                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && exec bash", escaped_path)])
+                    .args([
+                        "-e",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && exec bash", escaped_path),
+                    ])
                     .spawn()
                     .map_err(|e| e.to_string())?;
             }
@@ -357,7 +417,11 @@ async fn open_in_terminal(app: tauri::AppHandle, path: String, terminal: Option<
 
 // 在终端中恢复会话
 #[tauri::command]
-async fn launch_resume_session(command: String, cwd: Option<String>, state: tauri::State<'_, store::AppState>) -> Result<bool, String> {
+async fn launch_resume_session(
+    command: String,
+    cwd: Option<String>,
+    state: tauri::State<'_, store::AppState>,
+) -> Result<bool, String> {
     use std::process::Command;
 
     if command.trim().is_empty() {
@@ -385,14 +449,28 @@ async fn launch_resume_session(command: String, cwd: Option<String>, state: taur
                 let escaped_dir = work_dir.replace('\'', "''").replace('"', "`\"");
                 let escaped_cmd = command.replace('"', "`\"");
                 Command::new("cmd")
-                    .args(["/c", "start", "powershell", "-NoExit", "-Command",
-                           &format!("Set-Location '{}'; {}", escaped_dir, escaped_cmd)])
+                    .args([
+                        "/c",
+                        "start",
+                        "powershell",
+                        "-NoExit",
+                        "-Command",
+                        &format!("Set-Location '{}'; {}", escaped_dir, escaped_cmd),
+                    ])
                     .spawn()
                     .map_err(|e| format!("Failed to launch PowerShell: {e}"))?;
             }
             "wt" => {
                 Command::new("wt")
-                    .args(["new-tab", "-d", work_dir, "powershell", "-NoExit", "-Command", &command])
+                    .args([
+                        "new-tab",
+                        "-d",
+                        work_dir,
+                        "powershell",
+                        "-NoExit",
+                        "-Command",
+                        &command,
+                    ])
                     .spawn()
                     .map_err(|e| format!("Failed to launch Windows Terminal: {e}"))?;
             }
@@ -466,7 +544,8 @@ async fn launch_resume_session(command: String, cwd: Option<String>, state: taur
                     .spawn()
                     .map_err(|e| format!("Failed to launch Warp: {}", e))?;
             }
-            _ => { // Terminal (默认)
+            _ => {
+                // Terminal (默认)
                 let escaped_dir = escape_apple_script(work_dir);
                 let escaped_cmd = escape_apple_script(&command);
                 let script = format!(
@@ -503,19 +582,35 @@ async fn launch_resume_session(command: String, cwd: Option<String>, state: taur
             "gnome-terminal" => {
                 // gnome-terminal 支持 --working-directory，但 bash 中 cd 更可靠
                 Command::new("gnome-terminal")
-                    .args(["--", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .args([
+                        "--",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd),
+                    ])
                     .spawn()
                     .map_err(|e| format!("Failed to launch GNOME Terminal: {e}"))?;
             }
             "konsole" => {
                 Command::new("konsole")
-                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .args([
+                        "-e",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd),
+                    ])
                     .spawn()
                     .map_err(|e| format!("Failed to launch Konsole: {e}"))?;
             }
-            _ => { // xterm (默认)
+            _ => {
+                // xterm (默认)
                 Command::new("xterm")
-                    .args(["-e", "bash", "-c", &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd)])
+                    .args([
+                        "-e",
+                        "bash",
+                        "-c",
+                        &format!("cd \"{}\" && {} && exec bash", escaped_dir, escaped_cmd),
+                    ])
                     .spawn()
                     .map_err(|e| format!("Failed to launch XTerm: {e}"))?;
             }
@@ -554,8 +649,7 @@ async fn open_config_file(app: tauri::AppHandle, path: String) -> Result<bool, S
     if !full_path.exists() {
         // 确保父目录存在
         if let Some(parent) = full_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("创建目录失败: {e}"))?;
+            std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
         }
         // 创建空文件
         std::fs::write(&full_path, if path.ends_with(".json") { "{}" } else { "" })
@@ -581,12 +675,17 @@ async fn get_tool_versions(
     tools: Option<Vec<String>>,
     force: Option<bool>,
 ) -> Result<Vec<ToolVersion>, String> {
-    Ok(services::tool_version_service::get_tool_versions(tools, force.unwrap_or(false), Some(app)).await)
+    Ok(
+        services::tool_version_service::get_tool_versions(tools, force.unwrap_or(false), Some(app))
+            .await,
+    )
 }
 
 // 检查更新
 #[tauri::command]
-async fn check_for_updates(app: tauri::AppHandle) -> Result<services::updater_service::UpdateInfo, String> {
+async fn check_for_updates(
+    app: tauri::AppHandle,
+) -> Result<services::updater_service::UpdateInfo, String> {
     let version = app.package_info().version.to_string();
     services::updater_service::check_update(&version).await
 }
@@ -786,8 +885,7 @@ pub fn run() {
         ])
         .setup(|app| {
             // 初始化数据库
-            let db = database::Database::init()
-                .expect("Failed to initialize database");
+            let db = database::Database::init().expect("Failed to initialize database");
             let db_arc = std::sync::Arc::new(db);
             let db_for_backup = db_arc.clone();
 
@@ -832,7 +930,9 @@ pub fn run() {
                         if let Err(e) = services::updater_service::check_update_and_emit(
                             &app_handle,
                             &db_for_update,
-                        ).await {
+                        )
+                        .await
+                        {
                             tracing::warn!("Auto update check failed: {}", e);
                         }
 
@@ -843,7 +943,8 @@ pub fn run() {
 
                         tokio::time::sleep(std::time::Duration::from_secs(
                             sleep_hours as u64 * 3600,
-                        )).await;
+                        ))
+                        .await;
                     }
                 });
             }
@@ -881,7 +982,11 @@ pub fn run() {
         .run(|_app_handle, _event| {
             // macOS: 点击 dock 图标时恢复隐藏的窗口
             #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = _event {
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } = _event
+            {
                 if !has_visible_windows {
                     if let Some(window) = _app_handle.get_webview_window("main") {
                         let _ = window.show();

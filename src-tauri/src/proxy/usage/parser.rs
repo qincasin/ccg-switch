@@ -19,10 +19,12 @@ pub fn extract_usage(body: &[u8]) -> (u64, u64) {
     };
 
     // 尝试 Claude 格式：input_tokens / output_tokens
-    let input = usage.get("input_tokens")
+    let input = usage
+        .get("input_tokens")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let output = usage.get("output_tokens")
+    let output = usage
+        .get("output_tokens")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
 
@@ -31,10 +33,12 @@ pub fn extract_usage(body: &[u8]) -> (u64, u64) {
     }
 
     // 尝试 OpenAI 格式：prompt_tokens / completion_tokens
-    let input = usage.get("prompt_tokens")
+    let input = usage
+        .get("prompt_tokens")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let output = usage.get("completion_tokens")
+    let output = usage
+        .get("completion_tokens")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
 

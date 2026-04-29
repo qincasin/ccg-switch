@@ -8,9 +8,8 @@ use std::path::PathBuf;
 
 /// 获取日志目录路径：`~/.ccg-switch/proxy/logs`
 fn get_log_dir() -> Result<PathBuf, io::Error> {
-    let home = dirs::home_dir().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::NotFound, "无法获取用户主目录")
-    })?;
+    let home = dirs::home_dir()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "无法获取用户主目录"))?;
     Ok(home.join(".ccg-switch").join("proxy").join("logs"))
 }
 
@@ -83,14 +82,15 @@ fn aggregate_summary(date: &str, logs: &[RequestLogEvent]) -> UsageDailySummary 
         provider_entry.cost_usd += event.cost_usd;
 
         // 按 model 聚合
-        let model_entry = by_model
-            .entry(event.model.clone())
-            .or_insert_with(|| ModelDailySummary {
-                requests: 0,
-                input_tokens: 0,
-                output_tokens: 0,
-                cost_usd: 0.0,
-            });
+        let model_entry =
+            by_model
+                .entry(event.model.clone())
+                .or_insert_with(|| ModelDailySummary {
+                    requests: 0,
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    cost_usd: 0.0,
+                });
         model_entry.requests += 1;
         model_entry.input_tokens += event.input_tokens;
         model_entry.output_tokens += event.output_tokens;

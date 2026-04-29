@@ -34,7 +34,10 @@ impl Database {
     pub fn delete_app_config(&self, key: &str) -> Result<bool, String> {
         let conn = lock_conn!(self.conn);
         let affected = conn
-            .execute("DELETE FROM app_configs WHERE key = ?1", rusqlite::params![key])
+            .execute(
+                "DELETE FROM app_configs WHERE key = ?1",
+                rusqlite::params![key],
+            )
             .map_err(|e| format!("Failed to delete app_config: {e}"))?;
         Ok(affected > 0)
     }

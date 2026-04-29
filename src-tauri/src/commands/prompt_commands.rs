@@ -5,7 +5,10 @@ use tauri::State;
 
 /// 获取指定应用的所有 prompts
 #[tauri::command]
-pub fn get_prompts_v2(state: State<'_, AppState>, app_type: String) -> Result<Vec<PromptRow>, String> {
+pub fn get_prompts_v2(
+    state: State<'_, AppState>,
+    app_type: String,
+) -> Result<Vec<PromptRow>, String> {
     PromptServiceV2::get_prompts(&state.db, &app_type)
 }
 
@@ -17,25 +20,40 @@ pub fn upsert_prompt_v2(state: State<'_, AppState>, prompt: PromptRow) -> Result
 
 /// 删除 prompt
 #[tauri::command]
-pub fn delete_prompt_v2(state: State<'_, AppState>, id: String, app_type: String) -> Result<(), String> {
+pub fn delete_prompt_v2(
+    state: State<'_, AppState>,
+    id: String,
+    app_type: String,
+) -> Result<(), String> {
     PromptServiceV2::delete_prompt(&state.db, &id, &app_type)
 }
 
 /// 启用 prompt
 #[tauri::command]
-pub fn enable_prompt_v2(state: State<'_, AppState>, id: String, app_type: String) -> Result<(), String> {
+pub fn enable_prompt_v2(
+    state: State<'_, AppState>,
+    id: String,
+    app_type: String,
+) -> Result<(), String> {
     PromptServiceV2::enable_prompt(&state.db, &id, &app_type)
 }
 
 /// 禁用 prompt
 #[tauri::command]
-pub fn disable_prompt_v2(state: State<'_, AppState>, id: String, app_type: String) -> Result<(), String> {
+pub fn disable_prompt_v2(
+    state: State<'_, AppState>,
+    id: String,
+    app_type: String,
+) -> Result<(), String> {
     PromptServiceV2::disable_prompt(&state.db, &id, &app_type)
 }
 
 /// 从 live 文件导入 prompt
 #[tauri::command]
-pub fn import_prompt_from_file(state: State<'_, AppState>, app_type: String) -> Result<String, String> {
+pub fn import_prompt_from_file(
+    state: State<'_, AppState>,
+    app_type: String,
+) -> Result<String, String> {
     PromptServiceV2::import_from_file(&state.db, &app_type)
 }
 

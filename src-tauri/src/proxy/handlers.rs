@@ -1,18 +1,22 @@
-use axum::body::Body;
-use axum::extract::Request;
-use axum::response::{IntoResponse, Response};
-use axum::http::StatusCode;
 use crate::proxy::error::ProxyError;
 use crate::proxy::http_client;
 use crate::proxy::provider_router;
 use crate::proxy::server;
 use crate::proxy::thinking_rectifier;
+use axum::body::Body;
+use axum::extract::Request;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 
 /// 代理请求处理器：转发所有请求到上游 provider
 pub async fn proxy_handler(req: Request<Body>) -> Result<Response, ProxyError> {
     let method = req.method().clone();
     let path = req.uri().path().to_string();
-    let query = req.uri().query().map(|q| format!("?{}", q)).unwrap_or_default();
+    let query = req
+        .uri()
+        .query()
+        .map(|q| format!("?{}", q))
+        .unwrap_or_default();
     let request_path = format!("{}{}", path, query);
 
     // 收集原始请求头（排除 host 等 hop-by-hop 头）
@@ -37,8 +41,10 @@ pub async fn proxy_handler(req: Request<Body>) -> Result<Response, ProxyError> {
     for (key, value) in original_headers.iter() {
         let name = key.as_str().to_lowercase();
         // 跳过 hop-by-hop 头和已设置的头
-        if matches!(name.as_str(), "host" | "connection" | "transfer-encoding" | "content-length")
-        {
+        if matches!(
+            name.as_str(),
+            "host" | "connection" | "transfer-encoding" | "content-length"
+        ) {
             continue;
         }
         if !forward_headers.contains_key(key) {
@@ -50,21 +56,17 @@ pub async fn proxy_handler(req: Request<Body>) -> Result<Response, ProxyError> {
     let method = reqwest::Method::from_bytes(method.as_str().as_bytes())
         .map_err(|e| ProxyError::InvalidRequest(e.to_string()))?;
 
-    let upstream_resp = http_client::forward_request(
-        method,
-        &route.target_url,
-        forward_headers,
-        body_bytes,
-    )
-    .await
-    .map_err(|e| ProxyError::ForwardFailed(e.to_string()))?;
+    let upstream_resp =
+        http_client::forward_request(method, &route.target_url, forward_headers, body_bytes)
+            .await
+            .map_err(|e| ProxyError::ForwardFailed(e.to_string()))?;
 
     // 递增请求计数
     server::increment_request_count();
 
     // 构建响应
-    let status = StatusCode::from_u16(upstream_resp.status().as_u16())
-        .unwrap_or(StatusCode::BAD_GATEWAY);
+    let status =
+        StatusCode::from_u16(upstream_resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
     let resp_headers = upstream_resp.headers().clone();
 
     // 流式转发响应体

@@ -40,6 +40,9 @@ pub fn get_backup_settings(state: State<'_, AppState>) -> Result<BackupSettings,
 
 /// 保存备份设置
 #[tauri::command]
-pub fn save_backup_settings(state: State<'_, AppState>, settings: BackupSettings) -> Result<(), String> {
+pub fn save_backup_settings(
+    state: State<'_, AppState>,
+    settings: BackupSettings,
+) -> Result<(), String> {
     state.db.save_backup_settings(&settings)
 }

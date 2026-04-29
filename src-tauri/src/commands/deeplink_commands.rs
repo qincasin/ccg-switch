@@ -12,6 +12,5 @@ pub fn import_provider_from_deeplink(
     request: DeepLinkImportRequest,
     state: State<AppState>,
 ) -> Result<String, String> {
-    deeplink::import_provider_from_deeplink(&state.db, &request)
-        .map_err(|e| e.to_string())
+    deeplink::import_provider_from_deeplink(&state.db, &request).map_err(|e| e.to_string())
 }

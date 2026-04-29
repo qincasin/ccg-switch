@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 use chrono::Local;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 use crate::database::{lock_conn, Database};
 
@@ -22,8 +22,8 @@ pub struct BackupSettings {
 impl Default for BackupSettings {
     fn default() -> Self {
         Self {
-            interval_hours: 24,  // 默认每 24 小时
-            retain_count: 10,    // 默认保留 10 个
+            interval_hours: 24, // 默认每 24 小时
+            retain_count: 10,   // 默认保留 10 个
         }
     }
 }
@@ -31,8 +31,7 @@ impl Default for BackupSettings {
 impl Database {
     /// 获取备份目录路径，不存在则创建
     pub fn get_backups_dir() -> Result<PathBuf, String> {
-        let home = dirs::home_dir()
-            .ok_or_else(|| "Home directory not found".to_string())?;
+        let home = dirs::home_dir().ok_or_else(|| "Home directory not found".to_string())?;
         let dir = home.join(".ccg-switch").join("backups");
         if !dir.exists() {
             std::fs::create_dir_all(&dir)
@@ -44,7 +43,9 @@ impl Database {
     /// 校验备份文件名，拒绝路径遍历和非 .db 后缀
     pub fn validate_backup_filename(name: &str) -> Result<(), String> {
         if name.contains("..") || name.contains('/') || name.contains('\\') {
-            return Err("Invalid backup filename: path traversal characters not allowed".to_string());
+            return Err(
+                "Invalid backup filename: path traversal characters not allowed".to_string(),
+            );
         }
         if !name.ends_with(".db") {
             return Err("Invalid backup filename: must end with .db".to_string());
@@ -70,7 +71,8 @@ impl Database {
         let conn = lock_conn!(self.conn);
 
         // 使用 VACUUM INTO 创建一致性快照（SQLite 3.27+，rusqlite 0.31 bundled 满足）
-        let path_str = backup_path.to_str()
+        let path_str = backup_path
+            .to_str()
             .ok_or_else(|| "Backup path contains invalid UTF-8".to_string())?;
         conn.execute_batch(&format!("VACUUM INTO '{}';", path_str.replace('\'', "''")))
             .map_err(|e| format!("Backup failed (VACUUM INTO): {e}"))?;
@@ -94,15 +96,15 @@ impl Database {
             .map_err(|e| format!("Failed to read backups directory: {e}"))?;
 
         for entry in read_dir {
-            let entry = entry
-                .map_err(|e| format!("Failed to read directory entry: {e}"))?;
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
             let path = entry.path();
             if path.is_file() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     if name.ends_with(".db") {
                         let metadata = std::fs::metadata(&path)
                             .map_err(|e| format!("Failed to read file metadata: {e}"))?;
-                        let modified = metadata.modified()
+                        let modified = metadata
+                            .modified()
                             .map_err(|e| format!("Failed to read modification time: {e}"))?;
                         let datetime: chrono::DateTime<Local> = modified.into();
 
@@ -138,7 +140,8 @@ impl Database {
         // 由于当前连接持有锁，使用 SQL 方式将备份数据导入
         let conn = lock_conn!(self.conn);
 
-        let backup_path_str = backup_path.to_str()
+        let backup_path_str = backup_path
+            .to_str()
             .ok_or_else(|| "Backup path contains invalid UTF-8".to_string())?;
 
         // 使用 ATTACH + 逐表恢复的方式
@@ -191,8 +194,7 @@ impl Database {
         if !path.exists() {
             return Err(format!("Backup file not found: {filename}"));
         }
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("Failed to delete backup file: {e}"))?;
+        std::fs::remove_file(&path).map_err(|e| format!("Failed to delete backup file: {e}"))?;
         Ok(())
     }
 
@@ -237,7 +239,8 @@ impl Database {
 
         let should_backup = match last_run {
             Some(timestamp_str) => {
-                let last_ts: i64 = timestamp_str.parse()
+                let last_ts: i64 = timestamp_str
+                    .parse()
                     .map_err(|e| format!("Failed to parse backup_last_run: {e}"))?;
                 let last_time = chrono::DateTime::from_timestamp(last_ts, 0)
                     .ok_or_else(|| "Invalid backup_last_run timestamp".to_string())?;
@@ -263,13 +266,12 @@ impl Database {
 
     /// 清理旧备份，保留最新的 retain 个
     fn cleanup_db_backups(dir: &Path, retain: usize) -> Result<(), String> {
-        let read_dir = std::fs::read_dir(dir)
-            .map_err(|e| format!("Failed to read backups directory: {e}"))?;
+        let read_dir =
+            std::fs::read_dir(dir).map_err(|e| format!("Failed to read backups directory: {e}"))?;
 
         let mut files: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
         for entry in read_dir {
-            let entry = entry
-                .map_err(|e| format!("Failed to read directory entry: {e}"))?;
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
             let path = entry.path();
             if path.is_file() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
@@ -288,8 +290,7 @@ impl Database {
 
         // 删除超出 retain 数量的最旧文件
         for (path, _) in files.iter().skip(retain) {
-            std::fs::remove_file(path)
-                .map_err(|e| format!("Failed to delete old backup: {e}"))?;
+            std::fs::remove_file(path).map_err(|e| format!("Failed to delete old backup: {e}"))?;
         }
 
         Ok(())

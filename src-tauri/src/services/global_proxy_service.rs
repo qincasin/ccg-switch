@@ -1,9 +1,9 @@
+use crate::database::Database;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use crate::database::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GlobalProxyConfig {
@@ -42,7 +42,10 @@ pub fn get_global_proxy_from_db(db: &Arc<Database>) -> Result<GlobalProxyConfig,
 }
 
 /// 保存全局代理配置到数据库（v3+）
-pub fn set_global_proxy_to_db(db: &Arc<Database>, config: &GlobalProxyConfig) -> Result<(), String> {
+pub fn set_global_proxy_to_db(
+    db: &Arc<Database>,
+    config: &GlobalProxyConfig,
+) -> Result<(), String> {
     db.upsert_global_proxy(config)
 }
 
@@ -53,8 +56,7 @@ pub fn get_global_proxy() -> Result<GlobalProxyConfig, io::Error> {
         return Ok(GlobalProxyConfig::default());
     }
     let content = fs::read_to_string(&path)?;
-    serde_json::from_str(&content)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    serde_json::from_str(&content).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// 保存全局代理配置（保留兼容）

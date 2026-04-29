@@ -1,10 +1,10 @@
-use crate::models::config::Config;
 use crate::database::Database;
+use crate::models::config::Config;
+use serde_json;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde_json;
 
 fn get_config_path() -> Result<PathBuf, io::Error> {
     let home = dirs::home_dir()
@@ -17,8 +17,8 @@ pub fn load_config_from_db(db: &Arc<Database>) -> Result<Config, String> {
     let config_json = db.get_app_config("app_config")?;
     match config_json {
         Some(json) => {
-            let config: Config = serde_json::from_str(&json)
-                .map_err(|e| format!("Parse config failed: {e}"))?;
+            let config: Config =
+                serde_json::from_str(&json).map_err(|e| format!("Parse config failed: {e}"))?;
             Ok(config)
         }
         None => {
@@ -37,8 +37,8 @@ pub fn load_config_from_db(db: &Arc<Database>) -> Result<Config, String> {
 
 /// 保存配置到数据库（v3+）
 pub fn save_config_to_db(db: &Arc<Database>, config: &Config) -> Result<(), String> {
-    let config_json = serde_json::to_string(config)
-        .map_err(|e| format!("Serialize config failed: {e}"))?;
+    let config_json =
+        serde_json::to_string(config).map_err(|e| format!("Serialize config failed: {e}"))?;
     db.set_app_config("app_config", &config_json)
 }
 

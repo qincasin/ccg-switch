@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::database::{lock_conn, Database};
-use crate::models::provider::Provider;
 use crate::models::app_type::AppType;
+use crate::models::provider::Provider;
 use chrono::Utc;
 use indexmap::IndexMap;
 use rusqlite::OptionalExtension;
@@ -26,7 +26,8 @@ impl Database {
                 Ok(Provider {
                     id: row.get(0)?,
                     name: row.get(1)?,
-                    app_type: AppType::from_str(&row.get::<_, String>(2)?).unwrap_or(AppType::Claude),
+                    app_type: AppType::from_str(&row.get::<_, String>(2)?)
+                        .unwrap_or(AppType::Claude),
                     api_key: row.get(3)?,
                     url: row.get(4)?,
                     default_sonnet_model: row.get(5)?,
@@ -34,15 +35,20 @@ impl Database {
                     default_haiku_model: row.get(7)?,
                     default_reasoning_model: row.get(8)?,
                     custom_params: custom_params_str.and_then(|s| serde_json::from_str(&s).ok()),
-                    settings_config: settings_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    settings_config: settings_config_str
+                        .and_then(|s| serde_json::from_str(&s).ok()),
                     meta: meta_str.and_then(|s| serde_json::from_str(&s).ok()),
                     icon: row.get(12)?,
                     in_failover_queue: row.get(13)?,
                     description: row.get(14)?,
-                    tags: tags_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
+                    tags: tags_str
+                        .and_then(|s| serde_json::from_str(&s).ok())
+                        .unwrap_or_default(),
                     is_active: row.get(16)?,
-                    created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0).unwrap_or_default(),
-                    last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0).or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
+                    created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0)
+                        .unwrap_or_default(),
+                    last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0)
+                        .or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
                     proxy_config: proxy_config_str.and_then(|s| serde_json::from_str(&s).ok()),
                 })
             })
@@ -199,7 +205,8 @@ impl Database {
                 Ok(Provider {
                     id: row.get(0)?,
                     name: row.get(1)?,
-                    app_type: AppType::from_str(&row.get::<_, String>(2)?).unwrap_or(AppType::Claude),
+                    app_type: AppType::from_str(&row.get::<_, String>(2)?)
+                        .unwrap_or(AppType::Claude),
                     api_key: row.get(3)?,
                     url: row.get(4)?,
                     default_sonnet_model: row.get(5)?,
@@ -207,15 +214,20 @@ impl Database {
                     default_haiku_model: row.get(7)?,
                     default_reasoning_model: row.get(8)?,
                     custom_params: custom_params_str.and_then(|s| serde_json::from_str(&s).ok()),
-                    settings_config: settings_config_str.and_then(|s| serde_json::from_str(&s).ok()),
+                    settings_config: settings_config_str
+                        .and_then(|s| serde_json::from_str(&s).ok()),
                     meta: meta_str.and_then(|s| serde_json::from_str(&s).ok()),
                     icon: row.get(12)?,
                     in_failover_queue: row.get(13)?,
                     description: row.get(14)?,
-                    tags: tags_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
+                    tags: tags_str
+                        .and_then(|s| serde_json::from_str(&s).ok())
+                        .unwrap_or_default(),
                     is_active: row.get(16)?,
-                    created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0).unwrap_or_default(),
-                    last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0).or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
+                    created_at: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(17)?, 0)
+                        .unwrap_or_default(),
+                    last_used: chrono::DateTime::<Utc>::from_timestamp(row.get::<_, i64>(18)?, 0)
+                        .or_else(|| chrono::DateTime::<Utc>::from_timestamp(0, 0)),
                     proxy_config: proxy_config_str.and_then(|s| serde_json::from_str(&s).ok()),
                 })
             })
@@ -229,7 +241,11 @@ impl Database {
     }
 
     /// 获取指定应用类型的单个 Provider
-    pub fn get_provider_by_app(&self, id: &str, app_type: &str) -> Result<Option<Provider>, String> {
+    pub fn get_provider_by_app(
+        &self,
+        id: &str,
+        app_type: &str,
+    ) -> Result<Option<Provider>, String> {
         let conn = lock_conn!(self.conn);
         let provider = conn
             .query_row(
@@ -307,7 +323,10 @@ impl Database {
     }
 
     /// 获取指定应用类型的所有 Provider，以 IndexMap 返回（按 id 索引）
-    pub fn get_all_providers_map(&self, app_type: &str) -> Result<IndexMap<String, Provider>, String> {
+    pub fn get_all_providers_map(
+        &self,
+        app_type: &str,
+    ) -> Result<IndexMap<String, Provider>, String> {
         let providers = self.list_providers_by_app(app_type)?;
         let mut map = IndexMap::new();
         for provider in providers {

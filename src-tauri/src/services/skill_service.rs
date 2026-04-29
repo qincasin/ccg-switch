@@ -23,8 +23,8 @@ fn get_skill_apps_path() -> Result<PathBuf, io::Error> {
 fn load_skill_apps_from_db(db: &Arc<Database>) -> Result<HashMap<String, SkillApps>, String> {
     match db.get_app_config("skill_apps_legacy")? {
         Some(json) => {
-            let apps: HashMap<String, SkillApps> = serde_json::from_str(&json)
-                .map_err(|e| format!("Parse skill apps failed: {e}"))?;
+            let apps: HashMap<String, SkillApps> =
+                serde_json::from_str(&json).map_err(|e| format!("Parse skill apps failed: {e}"))?;
             Ok(apps)
         }
         None => {
@@ -44,9 +44,12 @@ fn load_skill_apps_from_db(db: &Arc<Database>) -> Result<HashMap<String, SkillAp
 }
 
 /// 保存 skill apps 到数据库（v3+）
-fn save_skill_apps_to_db(db: &Arc<Database>, apps: &HashMap<String, SkillApps>) -> Result<(), String> {
-    let config_json = serde_json::to_string(apps)
-        .map_err(|e| format!("Serialize skill apps failed: {e}"))?;
+fn save_skill_apps_to_db(
+    db: &Arc<Database>,
+    apps: &HashMap<String, SkillApps>,
+) -> Result<(), String> {
+    let config_json =
+        serde_json::to_string(apps).map_err(|e| format!("Serialize skill apps failed: {e}"))?;
     db.set_app_config("skill_apps_legacy", &config_json)
 }
 
@@ -72,7 +75,10 @@ fn save_skill_apps(apps: &HashMap<String, SkillApps>) -> Result<(), io::Error> {
     Ok(())
 }
 
-pub fn list_skills_from_db(db: &Arc<Database>, project_dir: Option<&str>) -> Result<Vec<Skill>, String> {
+pub fn list_skills_from_db(
+    db: &Arc<Database>,
+    project_dir: Option<&str>,
+) -> Result<Vec<Skill>, String> {
     let mut skills = Vec::new();
 
     // 扫描用户级技能
@@ -85,7 +91,8 @@ pub fn list_skills_from_db(db: &Arc<Database>, project_dir: Option<&str>) -> Res
     if let Some(dir) = project_dir {
         let project_skills = PathBuf::from(dir).join(".claude").join("commands");
         if project_skills.exists() {
-            scan_skills_dir(&project_skills, SkillSource::Project, &mut skills).map_err(|e| e.to_string())?;
+            scan_skills_dir(&project_skills, SkillSource::Project, &mut skills)
+                .map_err(|e| e.to_string())?;
         }
     }
 
@@ -130,12 +137,17 @@ pub fn list_skills(project_dir: Option<&str>) -> Result<Vec<Skill>, io::Error> {
     Ok(skills)
 }
 
-fn scan_skills_dir(dir: &PathBuf, source: SkillSource, skills: &mut Vec<Skill>) -> Result<(), io::Error> {
+fn scan_skills_dir(
+    dir: &PathBuf,
+    source: SkillSource,
+    skills: &mut Vec<Skill>,
+) -> Result<(), io::Error> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
         if path.extension().map_or(false, |ext| ext == "md") {
-            let name = path.file_stem()
+            let name = path
+                .file_stem()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .to_string();
@@ -209,7 +221,11 @@ pub fn list_skills_for_app(project_dir: Option<&str>, app: &str) -> Result<Vec<S
 }
 
 /// 更新 Skill 的 per-app 开关（数据库版本 v3+）
-pub fn update_skill_apps_to_db(db: &Arc<Database>, name: &str, apps: SkillApps) -> Result<(), String> {
+pub fn update_skill_apps_to_db(
+    db: &Arc<Database>,
+    name: &str,
+    apps: SkillApps,
+) -> Result<(), String> {
     let mut skill_apps = load_skill_apps_from_db(db).unwrap_or_default();
     skill_apps.insert(name.to_string(), apps);
     save_skill_apps_to_db(db, &skill_apps)

@@ -3,15 +3,9 @@ use crate::proxy::error::ProxyError;
 use serde_json::Value;
 
 // thinking 相关错误关键字（API 返回的 error type 或 message）
-const THINKING_ERROR_TYPES: &[&str] = &[
-    "invalid_request_error",
-];
+const THINKING_ERROR_TYPES: &[&str] = &["invalid_request_error"];
 
-const THINKING_ERROR_MESSAGES: &[&str] = &[
-    "thinking",
-    "extended_thinking",
-    "budget_tokens",
-];
+const THINKING_ERROR_MESSAGES: &[&str] = &["thinking", "extended_thinking", "budget_tokens"];
 
 /// 检测响应是否包含 thinking 相关错误
 pub fn is_thinking_error(status: u16, body: &[u8]) -> bool {
@@ -59,7 +53,8 @@ pub fn normalize_thinking_type(body: &[u8]) -> Result<Option<Vec<u8>>, ProxyErro
     let mut modified = false;
 
     // 先读取 max_tokens（避免后续可变借用冲突）
-    let max_tokens = val.get("max_tokens")
+    let max_tokens = val
+        .get("max_tokens")
         .and_then(|v| v.as_u64())
         .unwrap_or(16384);
 

@@ -111,9 +111,7 @@ pub fn has_thinking_enabled(body: &Value) -> bool {
         Some("enabled") | Some("adaptive") => true,
         Some("disabled") | None => false,
         Some(other) => {
-            tracing::warn!(
-                "[ModelMapper] 未知 thinking.type='{other}'，按 disabled 处理"
-            );
+            tracing::warn!("[ModelMapper] 未知 thinking.type='{other}'，按 disabled 处理");
             false
         }
     }

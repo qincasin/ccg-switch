@@ -74,7 +74,10 @@ impl Database {
     pub fn delete_mcp_server(&self, id: &str) -> Result<bool, String> {
         let conn = lock_conn!(self.conn);
         let affected = conn
-            .execute("DELETE FROM mcp_servers WHERE id = ?1", rusqlite::params![id])
+            .execute(
+                "DELETE FROM mcp_servers WHERE id = ?1",
+                rusqlite::params![id],
+            )
             .map_err(|e| format!("Failed to delete mcp_server: {e}"))?;
         Ok(affected > 0)
     }

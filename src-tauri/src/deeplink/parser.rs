@@ -1,12 +1,11 @@
-use crate::error::AppError;
-use super::DeepLinkImportRequest;
 use super::utils::validate_url;
+use super::DeepLinkImportRequest;
+use crate::error::AppError;
 
 /// 解析 deep link URL 为 DeepLinkImportRequest
 pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppError> {
-    let parsed = url::Url::parse(url_str).map_err(|e| {
-        AppError::InvalidInput(format!("URL 解析失败: {} ({})", url_str, e))
-    })?;
+    let parsed = url::Url::parse(url_str)
+        .map_err(|e| AppError::InvalidInput(format!("URL 解析失败: {} ({})", url_str, e)))?;
 
     // 校验 scheme 必须为 ccswitch 或 ccgswitch
     match parsed.scheme() {
@@ -40,14 +39,13 @@ pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppErr
     // 提取 query params
     let params: std::collections::HashMap<String, String> = parsed
         .query_pairs()
-        .map(|(k, v): (std::borrow::Cow<str>, std::borrow::Cow<str>)| (k.to_string(), v.to_string()))
+        .map(|(k, v): (std::borrow::Cow<str>, std::borrow::Cow<str>)| {
+            (k.to_string(), v.to_string())
+        })
         .collect();
 
     // resource 必须为 provider
-    let resource = params
-        .get("resource")
-        .cloned()
-        .unwrap_or_default();
+    let resource = params.get("resource").cloned().unwrap_or_default();
     if resource != "provider" {
         return Err(AppError::InvalidInput(format!(
             "不支持的 resource 类型: {}，当前仅支持 provider",
@@ -68,17 +66,13 @@ pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppErr
             )));
         }
     } else {
-        return Err(AppError::InvalidInput(
-            "缺少必填参数: app".to_string(),
-        ));
+        return Err(AppError::InvalidInput("缺少必填参数: app".to_string()));
     }
 
     // 必填参数: name
     let name = params.get("name").cloned();
     if name.is_none() || name.as_deref() == Some("") {
-        return Err(AppError::InvalidInput(
-            "缺少必填参数: name".to_string(),
-        ));
+        return Err(AppError::InvalidInput("缺少必填参数: name".to_string()));
     }
 
     // 可选参数

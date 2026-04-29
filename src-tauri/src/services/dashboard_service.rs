@@ -138,9 +138,7 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, io::Error> {
         let session_count = jsonl_files.len();
 
         let last_active = latest_modified.map(|t| {
-            let duration = t
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default();
+            let duration = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
             let secs = duration.as_secs() as i64;
             // 简单格式化为 ISO 字符串
             format_timestamp(secs)
@@ -230,7 +228,8 @@ pub fn get_activity_history() -> Result<Vec<HistoryEntry>, io::Error> {
     }
 
     let content = fs::read_to_string(&history_file)?;
-    let mut date_counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    let mut date_counts: std::collections::BTreeMap<String, usize> =
+        std::collections::BTreeMap::new();
 
     for line in content.lines() {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
@@ -258,10 +257,7 @@ fn decode_project_path(encoded: &str) -> String {
         let drive = &encoded[0..1];
         let rest = &encoded[3..];
         let root = PathBuf::from(format!("{}:\\", drive));
-        let parts: Vec<&str> = rest
-            .split('-')
-            .filter(|p| !p.is_empty())
-            .collect();
+        let parts: Vec<&str> = rest.split('-').filter(|p| !p.is_empty()).collect();
 
         if let Some(resolved) = resolve_encoded_parts(&root, &parts) {
             return resolved.to_string_lossy().to_string();
@@ -343,7 +339,10 @@ fn sum_session_tokens(path: &std::path::Path) -> Result<(u64, u64), io::Error> {
         };
 
         // usage 主要记录在 assistant 消息上；过滤后可显著减少误计。
-        let msg_type = json.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+        let msg_type = json
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
         if msg_type != "assistant" {
             continue;
         }

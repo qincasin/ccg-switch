@@ -4,9 +4,7 @@ use std::path::PathBuf;
 
 /// 获取 Codex 配置目录
 fn get_codex_config_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_default()
-        .join(".codex")
+    dirs::home_dir().unwrap_or_default().join(".codex")
 }
 
 /// 获取 codex 配置文件路径: ~/.codex/config.toml
@@ -156,9 +154,7 @@ fn json_to_toml_value(val: &Value) -> toml::Value {
             }
         }
         Value::String(s) => toml::Value::String(s.clone()),
-        Value::Array(arr) => {
-            toml::Value::Array(arr.iter().map(json_to_toml_value).collect())
-        }
+        Value::Array(arr) => toml::Value::Array(arr.iter().map(json_to_toml_value).collect()),
         Value::Object(map) => {
             let mut table = toml::map::Map::new();
             for (k, v) in map {
@@ -227,8 +223,7 @@ fn read_mcp_servers() -> HashMap<String, Value> {
 /// 写入 MCP 服务器到 ~/.codex/config.toml 的 [mcp_servers] 段
 /// 保留其他根配置不变
 fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
-    let path = get_codex_config_path()
-        .ok_or_else(|| "Home directory not found".to_string())?;
+    let path = get_codex_config_path().ok_or_else(|| "Home directory not found".to_string())?;
 
     // 如果 ~/.codex 目录不存在，不创建
     if !should_sync_codex_mcp() {
@@ -280,18 +275,16 @@ fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
 fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
     use std::io::Write;
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {e}"))?;
     }
     let tmp = path.with_extension("tmp");
-    let mut f = std::fs::File::create(&tmp)
-        .map_err(|e| format!("Failed to create temp file: {e}"))?;
+    let mut f =
+        std::fs::File::create(&tmp).map_err(|e| format!("Failed to create temp file: {e}"))?;
     f.write_all(content.as_bytes())
         .map_err(|e| format!("Failed to write temp file: {e}"))?;
     f.flush().map_err(|e| format!("Failed to flush: {e}"))?;
     drop(f);
-    std::fs::rename(&tmp, path)
-        .map_err(|e| format!("Failed to rename temp file: {e}"))
+    std::fs::rename(&tmp, path).map_err(|e| format!("Failed to rename temp file: {e}"))
 }
 
 /// 将单个 MCP 服务器同步到 ~/.codex/config.toml

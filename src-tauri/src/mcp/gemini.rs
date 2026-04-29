@@ -67,8 +67,7 @@ fn read_mcp_servers() -> HashMap<String, Value> {
 /// 写入 MCP 服务器到 ~/.gemini/settings.json
 /// 执行正向格式转换：统一 MCP 格式 → Gemini 特有格式
 fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
-    let path = get_gemini_settings_path()
-        .ok_or_else(|| "Home directory not found".to_string())?;
+    let path = get_gemini_settings_path().ok_or_else(|| "Home directory not found".to_string())?;
 
     if !should_sync_gemini_mcp() {
         return Ok(());
@@ -91,7 +90,10 @@ fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
         };
 
         // 正向格式转换：统一格式 → Gemini 格式
-        let transport_type = obj.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let transport_type = obj
+            .get("type")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
         if transport_type.as_deref() == Some("http") {
             // HTTP: 将 url 重命名为 httpUrl
             if let Some(url_value) = obj.remove("url") {
@@ -121,14 +123,11 @@ fn write_mcp_servers(servers: &HashMap<String, Value>) -> Result<(), String> {
         .map_err(|e| format!("Failed to serialize gemini settings: {e}"))?;
 
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create directory: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {e}"))?;
     }
     let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, content)
-        .map_err(|e| format!("Failed to write temp file: {e}"))?;
-    std::fs::rename(&tmp, &path)
-        .map_err(|e| format!("Failed to rename temp file: {e}"))
+    std::fs::write(&tmp, content).map_err(|e| format!("Failed to write temp file: {e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("Failed to rename temp file: {e}"))
 }
 
 /// 将单个 MCP 服务器同步到 ~/.gemini/settings.json
