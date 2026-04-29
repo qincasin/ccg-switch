@@ -12,6 +12,14 @@ interface Version {
 }
 
 const versions: Version[] = [
+  {
+    version: '1.5.0',
+    date: '2026-04-29',
+    type: 'minor',
+    changes: [
+      { type: 'feature', text: '修复配置导入导出数据库存储流程' }
+    ]
+  },
     {
     version: '1.3.1',
     date: '2026-03-17',

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, Upload, Loader2 } from 'lucide-react';
 import { exportConfigToFile, importConfigFromFile } from '../../services/configTransferService';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 function ImportExportPanel() {
     const { t } = useTranslation();
+    const loadConfig = useConfigStore((state) => state.loadConfig);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -29,6 +31,7 @@ function ImportExportPanel() {
             if (result.cancelled) {
                 return;
             }
+            await loadConfig();
             setMessage({ type: 'success', text: `${t('settings.importSuccess')}: ${result.importedFiles.join(', ')}` });
         } catch (e) {
             setMessage({ type: 'error', text: String(e) });

@@ -1,10 +1,10 @@
-use std::sync::Mutex;
 use rusqlite::Connection;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
-mod schema;
-pub mod dao;
 pub mod backup;
+pub mod dao;
+mod schema;
 
 pub struct Database {
     pub(crate) conn: Mutex<Connection>,
@@ -12,7 +12,9 @@ pub struct Database {
 
 macro_rules! lock_conn {
     ($mutex:expr) => {
-        $mutex.lock().map_err(|e| format!("Mutex lock failed: {}", e))?
+        $mutex
+            .lock()
+            .map_err(|e| format!("Mutex lock failed: {}", e))?
     };
 }
 pub(crate) use lock_conn;
@@ -26,8 +28,8 @@ impl Database {
                 .map_err(|e| format!("Failed to create db directory: {e}"))?;
         }
 
-        let conn = Connection::open(&db_path)
-            .map_err(|e| format!("Failed to open database: {e}"))?;
+        let conn =
+            Connection::open(&db_path).map_err(|e| format!("Failed to open database: {e}"))?;
 
         conn.execute_batch("PRAGMA foreign_keys = ON;")
             .map_err(|e| format!("Failed to enable foreign keys: {e}"))?;
@@ -43,14 +45,31 @@ impl Database {
     }
 
     fn get_db_path() -> Result<PathBuf, String> {
-        let home = dirs::home_dir()
-            .ok_or_else(|| "Home directory not found".to_string())?;
+        let home = dirs::home_dir().ok_or_else(|| "Home directory not found".to_string())?;
         Ok(home.join(".ccg-switch").join("ccg-switch.db"))
     }
 
     fn create_tables(&self) -> Result<(), String> {
         let conn = lock_conn!(self.conn);
         schema::create_tables(&conn)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn in_memory() -> Result<Self, String> {
+        let conn = Connection::open_in_memory()
+            .map_err(|e| format!("Failed to open in-memory database: {e}"))?;
+
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .map_err(|e| format!("Failed to enable foreign keys: {e}"))?;
+
+        let db = Self {
+            conn: Mutex::new(conn),
+        };
+
+        db.create_tables()?;
+        db.init_default_skill_repos()?;
+
+        Ok(db)
     }
 
     /// 首次启动时插入默认 skill 仓库，并修正已知仓库的分支名
