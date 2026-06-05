@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { showToast } from '../common/ToastContainer';
 import { LogIn, KeyRound, Upload } from 'lucide-react';
 import ModalDialog from '../common/ModalDialog';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
@@ -130,7 +131,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
     if (errors.length > 0) {
       parts.push(errors.join('\n'));
     }
-    alert(parts.join('\n'));
+    showToast(parts.join('\n'), imported > 0 ? 'success' : 'warning', 5000);
 
     if (imported > 0) onClose();
   };

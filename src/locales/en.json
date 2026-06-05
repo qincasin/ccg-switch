@@ -1029,6 +1029,7 @@
         "disabled": "Disabled",
         "switch": "Switch",
         "switch_to": "Switch to",
+        "switching_to": "Switching to {{target}}...",
         "switch_antigravity": "Antigravity",
         "switch_antigravity_ide": "Antigravity IDE",
         "quota": "Quota",

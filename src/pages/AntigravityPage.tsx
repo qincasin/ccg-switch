@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { showToast } from '../components/common/ToastContainer';
 import { Plus, RefreshCw, Search, Shield, Loader2, Users, CheckCircle, XCircle, Activity, Crown, Download, CheckSquare, Trash2, Zap } from 'lucide-react';
 import { useAntigravityStore } from '../stores/useAntigravityStore';
 import AccountCard from '../components/antigravity/AccountCard';
@@ -130,12 +131,12 @@ export default function AntigravityPage() {
         parts.push(t('antigravity.import_errors', { count: result.errors.length }));
       }
       if (parts.length === 0) {
-        alert(t('antigravity.import_nothing'));
+        showToast(t('antigravity.import_nothing'), 'info');
       } else {
-        alert(parts.join('\n'));
+        showToast(parts.join('\n'), result.imported.length > 0 ? 'success' : 'warning', 5000);
       }
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), 'error');
     } finally {
       setImporting(false);
     }
@@ -145,9 +146,9 @@ export default function AntigravityPage() {
     setWarmingUpAll(true);
     try {
       const result = await warmupAllAccounts();
-      alert(result);
+      showToast(result, 'success', 5000);
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), 'error');
     } finally {
       setWarmingUpAll(false);
     }
@@ -186,9 +187,9 @@ export default function AntigravityPage() {
       setSelectedIds(new Set());
       setSelectMode(false);
       setConfirmBatchDelete(false);
-      alert(t('antigravity.batch_delete_success', { count: deleted }));
+      showToast(t('antigravity.batch_delete_success', { count: deleted }), 'success');
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), 'error');
     } finally {
       setDeletingBatch(false);
     }

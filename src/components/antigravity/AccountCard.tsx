@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Eye, Zap, Power, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
+import { showToast } from '../common/ToastContainer';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
 
@@ -60,7 +61,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
     try {
       await deleteAccount(account.id);
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), "error");
     }
   };
 
@@ -76,10 +77,13 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
 
   const handleSwitch = async (targetIde?: string) => {
     setSwitching(true);
+    const label = targetIde ? 'Antigravity IDE' : 'Antigravity';
+    showToast(t('antigravity.switching_to', { target: label }), 'info', 30000);
     try {
       await switchAccount(account.id, targetIde);
+      showToast(t('antigravity.switch_success', { target: label }), 'success');
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), 'error', 8000);
     } finally {
       setSwitching(false);
     }
@@ -89,7 +93,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
     try {
       await toggleAccount(account.id, account.disabled);
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), "error");
     }
   };
 
@@ -99,7 +103,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
       try {
         await updateLabel(account.id, trimmed || null);
       } catch (e) {
-        alert(String(e));
+        showToast(String(e), "error");
       }
     }
     setIsEditingLabel(false);
@@ -122,7 +126,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(String(e));
+      showToast(String(e), "error");
     }
   };
 
