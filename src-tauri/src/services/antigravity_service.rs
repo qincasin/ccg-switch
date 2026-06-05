@@ -504,19 +504,45 @@ pub async fn refresh_all_quotas(db: &Arc<Database>) -> Result<RefreshStats, Stri
     })
 }
 
-pub fn switch_account(db: &Arc<Database>, id: &str) -> Result<(), String> {
-    let account = get_account(db, id)?;
+pub async fn switch_account(
+    db: &Arc<Database>,
+    id: &str,
+    target_ide: Option<&str>,
+) -> Result<(), String> {
+    let mut account = get_account(db, id)?;
+
+    // 1. Ensure token is fresh before switching
+    if account.is_token_expired() {
+        tracing::info!("Token expired, refreshing before switch...");
+        account = refresh_account_token(db, id).await?;
+    }
+
     db.set_active_antigravity_account(id)?;
 
-    // Update Antigravity Manager's accounts.json if it exists
+    // 2. Execute local app switch: close → inject credentials → restart
+    let switch_data = crate::services::ag_integration::SwitchAccountData {
+        email: account.email.clone(),
+        access_token: account.access_token.clone(),
+        refresh_token: account.refresh_token.clone(),
+        expiry_timestamp: account.expiry_timestamp,
+    };
+
+    crate::services::ag_integration::execute_local_switch(&switch_data, target_ide)?;
+
+    // 3. Update Antigravity Manager's accounts.json if it exists
     update_antigravity_manager_current_account(&account.email);
 
-    // Copy refresh_token to system clipboard
+    // 4. Copy refresh_token to system clipboard
     if let Err(e) = copy_refresh_token_to_clipboard(&account.refresh_token) {
         tracing::warn!("Failed to copy refresh token to clipboard: {}", e);
     }
 
-    if let Err(e) = db.log_ag_operation(&account.id, &account.email, "account_switch", None) {
+    if let Err(e) = db.log_ag_operation(
+        &account.id,
+        &account.email,
+        "account_switch",
+        target_ide,
+    ) {
         tracing::warn!("Failed to log account_switch operation: {}", e);
     }
 

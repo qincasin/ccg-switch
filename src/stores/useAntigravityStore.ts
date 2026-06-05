@@ -14,7 +14,7 @@ interface AntigravityState {
   refreshToken: (id: string) => Promise<void>;
   fetchQuota: (id: string) => Promise<AntigravityQuotaData>;
   refreshAllQuotas: () => Promise<RefreshStats>;
-  switchAccount: (id: string) => Promise<void>;
+  switchAccount: (id: string, targetIde?: string) => Promise<void>;
   updateLabel: (id: string, label: string | null) => Promise<void>;
   reorderAccounts: (orderedIds: string[]) => Promise<void>;
   exportAccounts: (ids: string[]) => Promise<[string, string][]>;
@@ -78,8 +78,8 @@ export const useAntigravityStore = create<AntigravityState>((set, get) => ({
     return stats;
   },
 
-  switchAccount: async (id) => {
-    await invoke('ag_switch_account', { id });
+  switchAccount: async (id, targetIde) => {
+    await invoke('ag_switch_account', { id, targetIde: targetIde || null });
     await get().loadAccounts(true);
   },
 

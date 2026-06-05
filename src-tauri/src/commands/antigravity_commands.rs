@@ -56,8 +56,17 @@ pub async fn ag_refresh_all_quotas(
 }
 
 #[tauri::command]
-pub async fn ag_switch_account(id: String, state: State<'_, AppState>) -> Result<(), String> {
-    crate::services::antigravity_service::switch_account(&state.db, &id)
+pub async fn ag_switch_account(
+    id: String,
+    target_ide: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    crate::services::antigravity_service::switch_account(
+        &state.db,
+        &id,
+        target_ide.as_deref(),
+    )
+    .await
 }
 
 #[tauri::command]

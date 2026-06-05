@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Eye, Power, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle } from 'lucide-react';
+import { Trash2, RefreshCw, Eye, Power, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ChevronDown } from 'lucide-react';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
 
@@ -51,9 +51,20 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
     await deleteAccount(account.id);
   };
 
-  const handleSwitch = async () => {
-    await switchAccount(account.id);
+  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
+
+  const handleSwitch = async (targetIde?: string) => {
+    setShowSwitchMenu(false);
+    await switchAccount(account.id, targetIde);
   };
+
+  // Close switch menu when clicking outside
+  useEffect(() => {
+    if (!showSwitchMenu) return;
+    const handler = () => setShowSwitchMenu(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [showSwitchMenu]);
 
   const handleToggle = async () => {
     await toggleAccount(account.id, account.disabled);
@@ -249,13 +260,34 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
             {account.disabled ? t('antigravity.enable') : t('antigravity.disable')}
           </button>
           {!account.disabled && !account.isActive && (
-            <button
-              className="btn btn-xs btn-ghost gap-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
-              onClick={handleSwitch}
-            >
-              <Zap className="w-3 h-3" />
-              {t('antigravity.switch')}
-            </button>
+            <div className="relative">
+              <button
+                className="btn btn-xs btn-ghost gap-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                onClick={() => setShowSwitchMenu(!showSwitchMenu)}
+              >
+                <Zap className="w-3 h-3" />
+                {t('antigravity.switch')}
+                <ChevronDown className="w-2.5 h-2.5" />
+              </button>
+              {showSwitchMenu && (
+                <div className="absolute left-0 bottom-full mb-1 bg-white dark:bg-base-200 rounded-lg shadow-lg border border-gray-100 dark:border-base-300 py-1 z-50 min-w-[140px]">
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-base-300 flex items-center gap-2"
+                    onClick={() => handleSwitch()}
+                  >
+                    <Zap className="w-3 h-3" />
+                    Antigravity
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-base-300 flex items-center gap-2"
+                    onClick={() => handleSwitch('ide')}
+                  >
+                    <Zap className="w-3 h-3" />
+                    Antigravity IDE
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           <div className="flex-1" />
           <button
