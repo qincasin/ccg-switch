@@ -16,6 +16,10 @@ fn default_check_update_interval_hours() -> u32 {
     24
 }
 
+fn default_update_source() -> String {
+    "cus45/ccg-switch".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub theme: String,
@@ -31,6 +35,8 @@ pub struct Config {
         rename = "checkUpdateIntervalHours"
     )]
     pub check_update_interval_hours: u32,
+    #[serde(default = "default_update_source", rename = "updateSource")]
+    pub update_source: String,
 }
 
 impl Default for Config {
@@ -42,6 +48,7 @@ impl Default for Config {
             preferred_terminal: "powershell".to_string(),
             auto_check_update: default_auto_check_update(),
             check_update_interval_hours: default_check_update_interval_hours(),
+            update_source: default_update_source(),
         }
     }
 }

@@ -9,7 +9,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
-const GITHUB_REPO: &str = "cus45/ccg-switch";
+pub const UPDATE_SOURCES: [&str; 2] = ["cus45/ccg-switch", "qincasin/ccg-switch"];
 const AUTO_UPDATE_AVAILABLE_EVENT: &str = "auto-update-available";
 const UPDATE_CHECK_LAST_RUN_KEY: &str = "update_check_last_run";
 
@@ -44,11 +44,18 @@ pub struct InstallProgress {
     pub percentage: f64,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceUpdateInfo {
+    pub repo: String,
+    pub update_info: UpdateInfo,
+}
+
 /// 检查 GitHub Release 是否有新版本
-pub async fn check_update(current_version: &str) -> Result<UpdateInfo, String> {
+pub async fn check_update(current_version: &str, repo: &str) -> Result<UpdateInfo, String> {
     let url = format!(
         "https://api.github.com/repos/{}/releases/latest",
-        GITHUB_REPO
+        repo
     );
 
     let client = reqwest::Client::builder()
@@ -91,6 +98,34 @@ pub async fn check_update(current_version: &str) -> Result<UpdateInfo, String> {
         file_size,
         published_at: Some(published_at.to_string()),
     })
+}
+
+/// 同时检查所有更新源
+pub async fn check_update_all_sources(current_version: &str) -> Vec<SourceUpdateInfo> {
+    let futures: Vec<_> = UPDATE_SOURCES
+        .iter()
+        .map(|repo| {
+            let repo = repo.to_string();
+            let version = current_version.to_string();
+            async move {
+                let result = check_update(&version, &repo).await;
+                SourceUpdateInfo {
+                    repo,
+                    update_info: result.unwrap_or(UpdateInfo {
+                        has_update: false,
+                        current_version: version,
+                        latest_version: String::new(),
+                        release_notes: String::new(),
+                        download_url: None,
+                        file_size: None,
+                        published_at: None,
+                    }),
+                }
+            }
+        })
+        .collect();
+
+    futures::future::join_all(futures).await
 }
 
 /// 从 Release assets 中找到当前平台对应的安装包
@@ -396,7 +431,7 @@ pub async fn check_update_and_emit(app: &AppHandle, db: &Arc<Database>) -> Resul
     }
 
     let current_version = app.package_info().version.to_string();
-    let update_info = check_update(&current_version).await?;
+    let update_info = check_update(&current_version, &config.update_source).await?;
 
     // 记录本次检查时间
     let now_ts = Utc::now().timestamp().to_string();

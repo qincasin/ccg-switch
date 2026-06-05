@@ -8,6 +8,7 @@ export interface Config {
     preferredTerminal: TerminalType;
     autoCheckUpdate?: boolean;
     checkUpdateIntervalHours?: number;
+    updateSource?: string;
 }
 
 export interface ApiConfig {

@@ -119,6 +119,11 @@ function Settings() {
         await saveConfig({ ...config, checkUpdateIntervalHours: hours });
     };
 
+    const handleUpdateSourceChange = async (source: string) => {
+        if (!config) return;
+        await saveConfig({ ...config, updateSource: source });
+    };
+
     const sidebarOptions: { value: SidebarPosition; label: string; icon: typeof PanelLeft }[] = [
         { value: 'left', label: t('settings.sidebarLeft', '左侧'), icon: PanelLeft },
         { value: 'right', label: t('settings.sidebarRight', '右侧'), icon: PanelRight },
@@ -301,6 +306,26 @@ function Settings() {
                                     </select>
                                 </div>
                             )}
+
+                                {/* 更新源选择 */}
+                                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-base-200">
+                                    <div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                            {t('settings.updateSource', '更新源')}
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            {t('settings.updateSourceHint', '自动检查更新时使用的源，手动检查时可切换')}
+                                        </p>
+                                    </div>
+                                    <select
+                                        value={config?.updateSource || 'cus45/ccg-switch'}
+                                        onChange={(e) => handleUpdateSourceChange(e.target.value)}
+                                        className="px-3 py-1.5 bg-gray-100 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[160px]"
+                                    >
+                                        <option value="cus45/ccg-switch">cus45/ccg-switch</option>
+                                        <option value="qincasin/ccg-switch">qincasin/ccg-switch</option>
+                                    </select>
+                                </div>
                         </div>
 
                         {/* 开机自启动 */}

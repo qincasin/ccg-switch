@@ -685,9 +685,20 @@ async fn get_tool_versions(
 #[tauri::command]
 async fn check_for_updates(
     app: tauri::AppHandle,
+    state: tauri::State<'_, store::AppState>,
 ) -> Result<services::updater_service::UpdateInfo, String> {
     let version = app.package_info().version.to_string();
-    services::updater_service::check_update(&version).await
+    let config = config_service::load_config_from_db(&state.db)?;
+    services::updater_service::check_update(&version, &config.update_source).await
+}
+
+// 检查所有更新源的版本信息
+#[tauri::command]
+async fn check_for_updates_all_sources(
+    app: tauri::AppHandle,
+) -> Result<Vec<services::updater_service::SourceUpdateInfo>, String> {
+    let version = app.package_info().version.to_string();
+    Ok(services::updater_service::check_update_all_sources(&version).await)
 }
 
 // 下载更新安装包
@@ -821,6 +832,7 @@ pub fn run() {
             // 工具版本 & 更新
             get_tool_versions,
             check_for_updates,
+            check_for_updates_all_sources,
             download_update,
             install_update,
             // Utility 命令
