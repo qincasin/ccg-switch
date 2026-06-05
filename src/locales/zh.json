@@ -558,6 +558,7 @@
         "reset_time": "重置时间",
         "tokens": "K tokens",
         "token_status": "Token 状态",
+        "refresh_token_btn": "刷新 Token",
         "token_valid": "有效",
         "token_expired": "已过期",
         "expires_in": "剩余时间",

@@ -1083,6 +1083,7 @@
         "reset_time": "Resets",
         "tokens": "K tokens",
         "token_status": "Token Status",
+        "refresh_token_btn": "Refresh Token",
         "token_valid": "Valid",
         "token_expired": "Expired",
         "expires_in": "Expires In",

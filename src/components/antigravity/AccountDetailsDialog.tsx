@@ -261,7 +261,7 @@ export default function AccountDetailsDialog({ account, open, onClose }: Props) 
               disabled={tokenRefreshing}
             >
               <RefreshCw className={`w-3 h-3 ${tokenRefreshing ? 'animate-spin' : ''}`} />
-              {t('antigravity.refresh_quota')}
+              {t('antigravity.refresh_token_btn')}
             </button>
           </div>
           {tokenExpanded && (

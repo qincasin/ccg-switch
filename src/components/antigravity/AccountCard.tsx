@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Eye, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
+import { Trash2, RefreshCw, Eye, Zap, Power, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
 
@@ -359,19 +359,21 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
           >
             {account.disabled
               ? <Zap className="w-3.5 h-3.5" />
-              : <Zap className="w-3.5 h-3.5" />
+              : <Power className="w-3.5 h-3.5" />
             }
           </button>
-          {!account.disabled && !account.isActive && (
+          {!account.disabled && (
             <>
-              <button
-                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
-                onClick={() => handleSwitch()}
-                disabled={switching}
-                title={t('antigravity.switch_antigravity')}
-              >
-                <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
-              </button>
+              {!account.isActive && (
+                <button
+                  className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                  onClick={() => handleSwitch()}
+                  disabled={switching}
+                  title={t('antigravity.switch_antigravity')}
+                >
+                  <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
+                </button>
+              )}
               <button
                 className={`p-1.5 rounded-lg transition-all ${switching ? 'text-sky-500' : 'text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
                 onClick={() => handleSwitch('ide')}
