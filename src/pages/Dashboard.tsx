@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { Activity, BarChart3, Clock, Coins, FolderOpen, Hash, MessageSquare, PieChart, RefreshCw, TrendingUp } from 'lucide-react';
+import { Activity, BarChart3, Clock, Coins, FolderOpen, Hash, MessageSquare, PieChart, RefreshCw, TrendingUp, Users, ArrowRight } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useDashboardStore } from '../stores/useDashboardStore';
+import { useAntigravityStore } from '../stores/useAntigravityStore';
 
 interface PieShareItem {
     name: string;
@@ -17,6 +19,7 @@ interface DonutSegment extends PieShareItem {
 function Dashboard() {
     const { t } = useTranslation();
     const { stats, activity, tokenStats, projectTokenStats, hasLoaded, loading, loadData, refreshStatsCache, refreshingStats } = useDashboardStore();
+    const { accounts, hasLoaded: agHasLoaded, loadAccounts } = useAntigravityStore();
     const [hoveredPieName, setHoveredPieName] = useState<string | null>(null);
 
     useEffect(() => {
@@ -24,6 +27,12 @@ function Dashboard() {
             void loadData();
         }
     }, [hasLoaded, loadData]);
+
+    useEffect(() => {
+        if (!agHasLoaded) {
+            void loadAccounts();
+        }
+    }, [agHasLoaded, loadAccounts]);
 
     const recentActivity = useMemo(() => activity.slice(-30), [activity]);
     const maxCount = useMemo(() => Math.max(...recentActivity.map(a => a.count), 1), [recentActivity]);
@@ -184,6 +193,48 @@ function Dashboard() {
                         <StatCard icon={BarChart3} label={t('dashboard.stats_history')} value={stats.total_history} color="text-amber-500" />
                     </div>
                 )}
+
+                {/* Antigravity Account Summary */}
+                <Link
+                    to="/antigravity"
+                    className="block bg-white dark:bg-base-100 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-base-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 group"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-lg bg-violet-50 dark:bg-violet-900/20">
+                                <Users className="w-5 h-5 text-violet-500" />
+                            </div>
+                            <div>
+                                <h2 className="font-semibold text-gray-900 dark:text-base-content">
+                                    {t('dashboard.antigravity_accounts')}
+                                </h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {t('dashboard.antigravity_desc')}
+                                </p>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <div className="mt-4 flex items-center gap-6">
+                        <div>
+                            <div className="text-2xl font-bold text-gray-900 dark:text-base-content">
+                                {accounts.length}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {t('antigravity.stats_total')}
+                            </div>
+                        </div>
+                        <div className="h-8 w-px bg-gray-200 dark:bg-base-300" />
+                        <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-base-content truncate max-w-[200px]">
+                                {accounts.find(a => a.isActive)?.email || t('dashboard.antigravity_no_active')}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {t('dashboard.antigravity_active_account')}
+                            </div>
+                        </div>
+                    </div>
+                </Link>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     {recentActivity.length > 0 && (

@@ -12,6 +12,7 @@ mod tray;
 mod utils;
 
 use commands::advanced_commands;
+use commands::antigravity_commands;
 use commands::backup_commands;
 use commands::deeplink_commands;
 use commands::mcp_commands;
@@ -894,6 +895,28 @@ pub fn run() {
             backup_commands::rename_db_backup,
             backup_commands::get_backup_settings,
             backup_commands::save_backup_settings,
+            // Antigravity 账号管理
+            antigravity_commands::ag_list_accounts,
+            antigravity_commands::ag_get_account,
+            antigravity_commands::ag_add_account,
+            antigravity_commands::ag_delete_account,
+            antigravity_commands::ag_refresh_token,
+            antigravity_commands::ag_fetch_quota,
+            antigravity_commands::ag_refresh_all_quotas,
+            antigravity_commands::ag_switch_account,
+            antigravity_commands::ag_update_label,
+            antigravity_commands::ag_oauth_login,
+            antigravity_commands::ag_reorder_accounts,
+            antigravity_commands::ag_toggle_account,
+            antigravity_commands::ag_batch_delete_accounts,
+            antigravity_commands::ag_move_account,
+            antigravity_commands::ag_export_accounts,
+            antigravity_commands::ag_import_from_manager,
+            antigravity_commands::ag_warmup_account,
+            antigravity_commands::ag_warmup_all_accounts,
+            antigravity_commands::ag_get_operation_logs,
+            antigravity_commands::ag_get_all_operation_logs,
+            antigravity_commands::ag_get_token_status,
         ])
         .setup(|app| {
             // 初始化数据库

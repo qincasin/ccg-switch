@@ -1,3 +1,4 @@
+pub mod antigravity_service;
 pub mod auto_launch_service;
 pub mod config_service;
 pub mod dashboard_service;

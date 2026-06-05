@@ -50,7 +50,14 @@
       "Bash(cd \"C:/guodevelop/claude-switch-v1/claude-switch-1.0\" && node -e \"console.log\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\).version\\)\")",
       "Bash(cp:*)",
       "Bash(find:*)",
-      "Bash(xxd /Users/jiaxing/code/github/ccg-switch/src/pages/Settings.tsx)"
+      "Bash(xxd /Users/jiaxing/code/github/ccg-switch/src/pages/Settings.tsx)",
+      "mcp__chrome-devtools__list_pages",
+      "Bash(pkill -f \"target/debug/tauri-app\")",
+      "mcp__idea__execute_terminal_command",
+      "mcp__idea__search_in_files_by_text",
+      "mcp__idea__read_file",
+      "mcp__idea__get_file_problems",
+      "Read(//Users/jiaxing/.ccg-switch/**)"
     ]
   }
 }

@@ -1,3 +1,4 @@
+pub mod antigravity;
 pub mod app_type;
 pub mod config;
 pub mod mcp;
