@@ -685,9 +685,11 @@ async fn get_tool_versions(
 #[tauri::command]
 async fn check_for_updates(
     app: tauri::AppHandle,
+    state: tauri::State<'_, store::AppState>,
 ) -> Result<services::updater_service::UpdateInfo, String> {
     let version = app.package_info().version.to_string();
-    services::updater_service::check_update(&version).await
+    let config = config_service::load_config_from_db(&state.db)?;
+    services::updater_service::check_update(&version, &config.update_source).await
 }
 
 // 下载更新安装包
