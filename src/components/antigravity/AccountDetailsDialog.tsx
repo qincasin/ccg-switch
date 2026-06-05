@@ -127,12 +127,12 @@ export default function AccountDetailsDialog({ account, open, onClose }: Props) 
   };
 
   const tierBadge = () => {
-    const tier = account.subscriptionTier || 'FREE';
-    if (tier === 'PRO') {
-      return <span className="badge badge-primary badge-sm">PRO</span>;
-    }
-    if (tier === 'ULTRA') {
+    const tier = (account.subscriptionTier || 'FREE').toLowerCase();
+    if (tier.includes('ultra')) {
       return <span className="badge badge-secondary badge-sm">ULTRA</span>;
+    }
+    if (tier.includes('pro')) {
+      return <span className="badge badge-primary badge-sm">PRO</span>;
     }
     return <span className="badge badge-ghost badge-sm">FREE</span>;
   };

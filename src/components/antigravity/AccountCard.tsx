@@ -131,18 +131,18 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   };
 
   const tierBadge = () => {
-    const tier = account.subscriptionTier || 'FREE';
-    if (tier === 'PRO') {
-      return (
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-          PRO
-        </span>
-      );
-    }
-    if (tier === 'ULTRA') {
+    const tier = (account.subscriptionTier || 'FREE').toLowerCase();
+    if (tier.includes('ultra')) {
       return (
         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
           ULTRA
+        </span>
+      );
+    }
+    if (tier.includes('pro')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+          PRO
         </span>
       );
     }

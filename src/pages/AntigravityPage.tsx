@@ -68,8 +68,8 @@ export default function AntigravityPage() {
     let result = accounts;
     if (tierFilter !== 'all') {
       result = result.filter(a => {
-        const tier = a.subscriptionTier || 'FREE';
-        return tier === tierFilter;
+        const tier = (a.subscriptionTier || 'FREE').toLowerCase();
+        tier.includes(tierFilter.toLowerCase())
       });
     }
     const query = searchQuery.trim().toLowerCase();
@@ -89,8 +89,8 @@ export default function AntigravityPage() {
     const disabled = accounts.filter(a => a.disabled).length;
     const active = total - disabled;
     const paidCount = accounts.filter(a => {
-      const tier = a.subscriptionTier || 'FREE';
-      return tier === 'PRO' || tier === 'ULTRA';
+      const tier = (a.subscriptionTier || 'FREE').toLowerCase();
+      tier.includes('pro') || tier.includes('ultra')
     }).length;
 
     // Average quota health: average percentage across all accounts that have quota data
