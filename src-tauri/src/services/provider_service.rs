@@ -242,6 +242,10 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         .get("enableToolSearch")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let enable_powershell_tool = settings
+        .get("enablePowerShellTool")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let disable_telemetry = settings
         .get("disableTelemetry")
         .and_then(|v| v.as_bool())
@@ -264,6 +268,84 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         .unwrap_or("")
         .trim()
         .to_string();
+    let effort_level = settings
+        .get("effortLevel")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let ripgrep_mode = settings
+        .get("ripgrepMode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let api_timeout_ms = settings
+        .get("apiTimeoutMs")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let bash_default_timeout_ms = settings
+        .get("bashDefaultTimeoutMs")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let mcp_timeout_ms = settings
+        .get("mcpTimeoutMs")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let mcp_tool_timeout_ms = settings
+        .get("mcpToolTimeoutMs")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let task_max_output_length = settings
+        .get("taskMaxOutputLength")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let anthropic_betas = settings
+        .get("anthropicBetas")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let anthropic_custom_headers = settings
+        .get("anthropicCustomHeaders")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let custom_model_option = settings
+        .get("customModelOption")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let custom_model_option_name = settings
+        .get("customModelOptionName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let custom_model_option_description = settings
+        .get("customModelOptionDescription")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let custom_model_option_capabilities = settings
+        .get("customModelOptionCapabilities")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
 
     // 从顶层移除（不属于 settings.json 原生字段）
     if let Some(obj) = settings.as_object_mut() {
@@ -272,12 +354,25 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         obj.remove("disableAttributionHeader");
         obj.remove("disableInstallationChecks");
         obj.remove("enableToolSearch");
+        obj.remove("enablePowerShellTool");
         obj.remove("disableTelemetry");
         obj.remove("disableBugCommand");
         obj.remove("disableAutoupdater");
         obj.remove("disableErrorReporting");
         obj.remove("maxOutputTokens");
-        obj.remove("hideSignature"); // 已废弃，清理残留
+        obj.remove("effortLevel");
+        obj.remove("ripgrepMode");
+        obj.remove("apiTimeoutMs");
+        obj.remove("bashDefaultTimeoutMs");
+        obj.remove("mcpTimeoutMs");
+        obj.remove("mcpToolTimeoutMs");
+        obj.remove("taskMaxOutputLength");
+        obj.remove("anthropicBetas");
+        obj.remove("anthropicCustomHeaders");
+        obj.remove("customModelOption");
+        obj.remove("customModelOptionName");
+        obj.remove("customModelOptionDescription");
+        obj.remove("customModelOptionCapabilities");
     }
 
     // 写入 env
@@ -327,6 +422,33 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         } else {
             env.remove("ENABLE_TOOL_SEARCH");
         }
+        // ripgrepMode → USE_BUILTIN_RIPGREP
+        match ripgrep_mode.as_str() {
+            "builtin" => {
+                env.insert(
+                    "USE_BUILTIN_RIPGREP".to_string(),
+                    serde_json::Value::String("1".to_string()),
+                );
+            }
+            "system" => {
+                env.insert(
+                    "USE_BUILTIN_RIPGREP".to_string(),
+                    serde_json::Value::String("0".to_string()),
+                );
+            }
+            _ => {
+                env.remove("USE_BUILTIN_RIPGREP");
+            }
+        }
+        // enablePowerShellTool → CLAUDE_CODE_USE_POWERSHELL_TOOL
+        if enable_powershell_tool {
+            env.insert(
+                "CLAUDE_CODE_USE_POWERSHELL_TOOL".to_string(),
+                serde_json::Value::String("1".to_string()),
+            );
+        } else {
+            env.remove("CLAUDE_CODE_USE_POWERSHELL_TOOL");
+        }
         // disableTelemetry → DISABLE_TELEMETRY
         if disable_telemetry {
             env.insert(
@@ -372,6 +494,111 @@ fn remap_settings_to_env(settings: &mut serde_json::Value) {
         } else {
             env.remove("CLAUDE_CODE_MAX_OUTPUT_TOKENS");
         }
+        // effortLevel → CLAUDE_CODE_EFFORT_LEVEL
+        if !effort_level.is_empty() {
+            env.insert(
+                "CLAUDE_CODE_EFFORT_LEVEL".to_string(),
+                serde_json::Value::String(effort_level.clone()),
+            );
+        } else {
+            env.remove("CLAUDE_CODE_EFFORT_LEVEL");
+        }
+        // apiTimeoutMs → API_TIMEOUT_MS
+        if !api_timeout_ms.is_empty() {
+            env.insert(
+                "API_TIMEOUT_MS".to_string(),
+                serde_json::Value::String(api_timeout_ms.clone()),
+            );
+        } else {
+            env.remove("API_TIMEOUT_MS");
+        }
+        // bashDefaultTimeoutMs → BASH_DEFAULT_TIMEOUT_MS
+        if !bash_default_timeout_ms.is_empty() {
+            env.insert(
+                "BASH_DEFAULT_TIMEOUT_MS".to_string(),
+                serde_json::Value::String(bash_default_timeout_ms.clone()),
+            );
+        } else {
+            env.remove("BASH_DEFAULT_TIMEOUT_MS");
+        }
+        // mcpTimeoutMs → MCP_TIMEOUT
+        if !mcp_timeout_ms.is_empty() {
+            env.insert(
+                "MCP_TIMEOUT".to_string(),
+                serde_json::Value::String(mcp_timeout_ms.clone()),
+            );
+        } else {
+            env.remove("MCP_TIMEOUT");
+        }
+        // mcpToolTimeoutMs → MCP_TOOL_TIMEOUT
+        if !mcp_tool_timeout_ms.is_empty() {
+            env.insert(
+                "MCP_TOOL_TIMEOUT".to_string(),
+                serde_json::Value::String(mcp_tool_timeout_ms.clone()),
+            );
+        } else {
+            env.remove("MCP_TOOL_TIMEOUT");
+        }
+        // taskMaxOutputLength → TASK_MAX_OUTPUT_LENGTH
+        if !task_max_output_length.is_empty() {
+            env.insert(
+                "TASK_MAX_OUTPUT_LENGTH".to_string(),
+                serde_json::Value::String(task_max_output_length.clone()),
+            );
+        } else {
+            env.remove("TASK_MAX_OUTPUT_LENGTH");
+        }
+        // anthropicBetas → ANTHROPIC_BETAS
+        if !anthropic_betas.is_empty() {
+            env.insert(
+                "ANTHROPIC_BETAS".to_string(),
+                serde_json::Value::String(anthropic_betas.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_BETAS");
+        }
+        // anthropicCustomHeaders → ANTHROPIC_CUSTOM_HEADERS
+        if !anthropic_custom_headers.is_empty() {
+            env.insert(
+                "ANTHROPIC_CUSTOM_HEADERS".to_string(),
+                serde_json::Value::String(anthropic_custom_headers.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_CUSTOM_HEADERS");
+        }
+        // customModelOption* → ANTHROPIC_CUSTOM_MODEL_OPTION*
+        if !custom_model_option.is_empty() {
+            env.insert(
+                "ANTHROPIC_CUSTOM_MODEL_OPTION".to_string(),
+                serde_json::Value::String(custom_model_option.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_CUSTOM_MODEL_OPTION");
+        }
+        if !custom_model_option_name.is_empty() {
+            env.insert(
+                "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME".to_string(),
+                serde_json::Value::String(custom_model_option_name.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_CUSTOM_MODEL_OPTION_NAME");
+        }
+        if !custom_model_option_description.is_empty() {
+            env.insert(
+                "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION".to_string(),
+                serde_json::Value::String(custom_model_option_description.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION");
+        }
+        if !custom_model_option_capabilities.is_empty() {
+            env.insert(
+                "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES".to_string(),
+                serde_json::Value::String(custom_model_option_capabilities.clone()),
+            );
+        } else {
+            env.remove("ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES");
+        }
     }
 }
 
@@ -390,6 +617,17 @@ pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
 
     let env = settings.get("env").and_then(|e| e.as_object());
 
+    let mut deprecated_fields = Vec::new();
+    if settings.get("hideSignature").is_some() {
+        deprecated_fields.push("hideSignature");
+    }
+    if settings.get("enabledPlugins").is_some() {
+        deprecated_fields.push("enabledPlugins");
+    }
+    if env.and_then(|e| e.get("ANTHROPIC_REASONING_MODEL")).is_some() {
+        deprecated_fields.push("env.ANTHROPIC_REASONING_MODEL");
+    }
+
     Ok(serde_json::json!({
         "alwaysThinkingEnabled": settings.get("alwaysThinkingEnabled")
             .and_then(|v| v.as_bool()).unwrap_or(false),
@@ -403,6 +641,13 @@ pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
             .and_then(|v| v.as_str()) == Some("1"),
         "enableToolSearch": env.and_then(|e| e.get("ENABLE_TOOL_SEARCH"))
             .and_then(|v| v.as_str()) == Some("1"),
+        "ripgrepMode": match env.and_then(|e| e.get("USE_BUILTIN_RIPGREP")).and_then(|v| v.as_str()) {
+            Some("0") => "system",
+            Some(_) => "builtin",
+            None => "",
+        },
+        "enablePowerShellTool": env.and_then(|e| e.get("CLAUDE_CODE_USE_POWERSHELL_TOOL"))
+            .and_then(|v| v.as_str()) == Some("1"),
         "disableTelemetry": env.and_then(|e| e.get("DISABLE_TELEMETRY"))
             .and_then(|v| v.as_str()) == Some("1"),
         "disableBugCommand": env.and_then(|e| e.get("DISABLE_BUG_COMMAND"))
@@ -413,6 +658,31 @@ pub fn get_claude_settings_state() -> Result<serde_json::Value, io::Error> {
             .and_then(|v| v.as_str()) == Some("1"),
         "maxOutputTokens": env.and_then(|e| e.get("CLAUDE_CODE_MAX_OUTPUT_TOKENS"))
             .and_then(|v| v.as_str()).unwrap_or(""),
+        "effortLevel": env.and_then(|e| e.get("CLAUDE_CODE_EFFORT_LEVEL"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "apiTimeoutMs": env.and_then(|e| e.get("API_TIMEOUT_MS"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "bashDefaultTimeoutMs": env.and_then(|e| e.get("BASH_DEFAULT_TIMEOUT_MS"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "mcpTimeoutMs": env.and_then(|e| e.get("MCP_TIMEOUT"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "mcpToolTimeoutMs": env.and_then(|e| e.get("MCP_TOOL_TIMEOUT"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "taskMaxOutputLength": env.and_then(|e| e.get("TASK_MAX_OUTPUT_LENGTH"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "anthropicBetas": env.and_then(|e| e.get("ANTHROPIC_BETAS"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "anthropicCustomHeaders": env.and_then(|e| e.get("ANTHROPIC_CUSTOM_HEADERS"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "customModelOption": env.and_then(|e| e.get("ANTHROPIC_CUSTOM_MODEL_OPTION"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "customModelOptionName": env.and_then(|e| e.get("ANTHROPIC_CUSTOM_MODEL_OPTION_NAME"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "customModelOptionDescription": env.and_then(|e| e.get("ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "customModelOptionCapabilities": env.and_then(|e| e.get("ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES"))
+            .and_then(|v| v.as_str()).unwrap_or(""),
+        "deprecatedFields": deprecated_fields,
     }))
 }
 
@@ -975,4 +1245,143 @@ fn sync_to_gemini_config(provider: &Provider) -> Result<(), io::Error> {
     crate::services::storage::json_store::write_json(&settings_path, &settings)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn test_provider(settings_config: serde_json::Value) -> Provider {
+        Provider {
+            id: "test-provider".to_string(),
+            name: "Test Provider".to_string(),
+            app_type: AppType::Claude,
+            api_key: "test-api-key".to_string(),
+            url: Some("https://api.example.com".to_string()),
+            default_sonnet_model: Some("claude-sonnet-test".to_string()),
+            default_opus_model: None,
+            default_haiku_model: None,
+            default_reasoning_model: None,
+            custom_params: None,
+            settings_config: Some(settings_config),
+            meta: None,
+            icon: None,
+            in_failover_queue: false,
+            description: None,
+            tags: None,
+            is_active: false,
+            created_at: Utc::now(),
+            last_used: None,
+            proxy_config: None,
+        }
+    }
+
+    #[test]
+    fn remap_claude_advanced_controls_to_env() {
+        let mut settings = serde_json::json!({
+            "env": {
+                "ENABLE_TOOL_SEARCH": "1",
+                "USE_BUILTIN_RIPGREP": "stale"
+            },
+            "enableToolSearch": true,
+            "enablePowerShellTool": true,
+            "ripgrepMode": "builtin",
+            "effortLevel": "xhigh",
+            "maxOutputTokens": "100000",
+            "apiTimeoutMs": "1200000",
+            "bashDefaultTimeoutMs": "300000",
+            "mcpTimeoutMs": "30000",
+            "mcpToolTimeoutMs": "100000",
+            "taskMaxOutputLength": "32000",
+            "anthropicBetas": "beta-a,beta-b",
+            "anthropicCustomHeaders": "X-Test: 1",
+            "customModelOption": "provider/model",
+            "customModelOptionName": "Provider Model",
+            "customModelOptionDescription": "Manual model",
+            "customModelOptionCapabilities": "thinking,vision"
+        });
+
+        remap_settings_to_env(&mut settings);
+        let env = settings.get("env").and_then(|v| v.as_object()).unwrap();
+
+        assert_eq!(env.get("ENABLE_TOOL_SEARCH").and_then(|v| v.as_str()), Some("1"));
+        assert_eq!(env.get("CLAUDE_CODE_USE_POWERSHELL_TOOL").and_then(|v| v.as_str()), Some("1"));
+        assert_eq!(env.get("USE_BUILTIN_RIPGREP").and_then(|v| v.as_str()), Some("1"));
+        assert_eq!(env.get("CLAUDE_CODE_EFFORT_LEVEL").and_then(|v| v.as_str()), Some("xhigh"));
+        assert_eq!(env.get("CLAUDE_CODE_MAX_OUTPUT_TOKENS").and_then(|v| v.as_str()), Some("100000"));
+        assert_eq!(env.get("API_TIMEOUT_MS").and_then(|v| v.as_str()), Some("1200000"));
+        assert_eq!(env.get("BASH_DEFAULT_TIMEOUT_MS").and_then(|v| v.as_str()), Some("300000"));
+        assert_eq!(env.get("MCP_TIMEOUT").and_then(|v| v.as_str()), Some("30000"));
+        assert_eq!(env.get("MCP_TOOL_TIMEOUT").and_then(|v| v.as_str()), Some("100000"));
+        assert_eq!(env.get("TASK_MAX_OUTPUT_LENGTH").and_then(|v| v.as_str()), Some("32000"));
+        assert_eq!(env.get("ANTHROPIC_BETAS").and_then(|v| v.as_str()), Some("beta-a,beta-b"));
+        assert_eq!(env.get("ANTHROPIC_CUSTOM_HEADERS").and_then(|v| v.as_str()), Some("X-Test: 1"));
+        assert_eq!(env.get("ANTHROPIC_CUSTOM_MODEL_OPTION").and_then(|v| v.as_str()), Some("provider/model"));
+        assert_eq!(env.get("ANTHROPIC_CUSTOM_MODEL_OPTION_NAME").and_then(|v| v.as_str()), Some("Provider Model"));
+        assert_eq!(env.get("ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION").and_then(|v| v.as_str()), Some("Manual model"));
+        assert_eq!(env.get("ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES").and_then(|v| v.as_str()), Some("thinking,vision"));
+        assert!(settings.get("ripgrepMode").is_none());
+        assert!(settings.get("effortLevel").is_none());
+    }
+
+    #[test]
+    fn local_claude_settings_preview_preserves_existing_env_and_adds_new_controls() {
+        let settings_path = get_claude_settings_path().expect("home directory should exist");
+        if !settings_path.exists() {
+            return;
+        }
+
+        let original = fs::read_to_string(&settings_path).expect("local Claude settings should be readable");
+        let original_json: serde_json::Value =
+            serde_json::from_str(&original).expect("local Claude settings should be valid JSON");
+        let original_env = original_json
+            .get("env")
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default();
+
+        let mut settings_config = get_claude_settings_state()
+            .expect("local Claude settings state should be readable");
+        if let Some(obj) = settings_config.as_object_mut() {
+            obj.insert("enableToolSearch".to_string(), serde_json::json!(true));
+            obj.insert("ripgrepMode".to_string(), serde_json::json!("system"));
+            obj.insert("effortLevel".to_string(), serde_json::json!("max"));
+            obj.insert("apiTimeoutMs".to_string(), serde_json::json!("1200000"));
+        }
+
+        let files = preview_provider_sync(&test_provider(settings_config))
+        .expect("preview should read and merge local Claude settings");
+
+        let (_, content, _) = files
+            .iter()
+            .find(|(title, _, _)| title == ".claude/settings.json")
+            .expect("Claude preview should include settings.json");
+        let preview: serde_json::Value =
+            serde_json::from_str(content).expect("preview should be valid JSON");
+        let env = preview.get("env").and_then(|v| v.as_object()).unwrap();
+
+        for key in original_env.keys() {
+            if !matches!(
+                key.as_str(),
+                "ANTHROPIC_AUTH_TOKEN"
+                    | "ANTHROPIC_BASE_URL"
+                    | "ANTHROPIC_DEFAULT_SONNET_MODEL"
+                    | "ANTHROPIC_DEFAULT_OPUS_MODEL"
+                    | "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+                    | "ANTHROPIC_REASONING_MODEL"
+                    | "ENABLE_TOOL_SEARCH"
+                    | "USE_BUILTIN_RIPGREP"
+                    | "CLAUDE_CODE_EFFORT_LEVEL"
+                    | "API_TIMEOUT_MS"
+            ) {
+                assert!(env.contains_key(key), "existing env key {key} should be preserved");
+            }
+        }
+
+        assert_eq!(env.get("ENABLE_TOOL_SEARCH").and_then(|v| v.as_str()), Some("1"));
+        assert_eq!(env.get("USE_BUILTIN_RIPGREP").and_then(|v| v.as_str()), Some("0"));
+        assert_eq!(env.get("CLAUDE_CODE_EFFORT_LEVEL").and_then(|v| v.as_str()), Some("max"));
+        assert_eq!(env.get("API_TIMEOUT_MS").and_then(|v| v.as_str()), Some("1200000"));
+    }
 }

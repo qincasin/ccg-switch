@@ -45,11 +45,25 @@ interface InternalSettings {
     disableAttributionHeader?: boolean;
     disableInstallationChecks?: boolean;
     enableToolSearch?: boolean;
+    enablePowerShellTool?: boolean;
     disableTelemetry?: boolean;
     disableBugCommand?: boolean;
     disableAutoupdater?: boolean;
     disableErrorReporting?: boolean;
+    effortLevel?: string;
+    ripgrepMode?: string;
     maxOutputTokens?: string;
+    apiTimeoutMs?: string;
+    bashDefaultTimeoutMs?: string;
+    mcpTimeoutMs?: string;
+    mcpToolTimeoutMs?: string;
+    taskMaxOutputLength?: string;
+    anthropicBetas?: string;
+    anthropicCustomHeaders?: string;
+    customModelOption?: string;
+    customModelOptionName?: string;
+    customModelOptionDescription?: string;
+    customModelOptionCapabilities?: string;
 }
 
 const CLAUDE_SETTINGS_DEFAULTS: InternalSettings = {
@@ -59,27 +73,98 @@ const CLAUDE_SETTINGS_DEFAULTS: InternalSettings = {
     disableAttributionHeader: false,
     disableInstallationChecks: false,
     enableToolSearch: false,
+    enablePowerShellTool: false,
     disableTelemetry: false,
     disableBugCommand: false,
     disableAutoupdater: false,
     disableErrorReporting: false,
+    effortLevel: '',
+    ripgrepMode: '',
     maxOutputTokens: '',
+    apiTimeoutMs: '',
+    bashDefaultTimeoutMs: '',
+    mcpTimeoutMs: '',
+    mcpToolTimeoutMs: '',
+    taskMaxOutputLength: '',
+    anthropicBetas: '',
+    anthropicCustomHeaders: '',
+    customModelOption: '',
+    customModelOptionName: '',
+    customModelOptionDescription: '',
+    customModelOptionCapabilities: '',
 };
 
 const CLAUDE_SETTING_KEYS = Object.keys(CLAUDE_SETTINGS_DEFAULTS) as (keyof InternalSettings)[];
 
-const CLAUDE_BOOLEAN_TOGGLES: Array<{ key: Exclude<keyof InternalSettings, 'maxOutputTokens'>; label: string }> = [
-    { key: 'alwaysThinkingEnabled', label: '扩展思考' },
-    { key: 'teammatesMode', label: 'Teammates 模式' },
-    { key: 'disableNonessentialTraffic', label: '禁用非必要流量' },
-    { key: 'disableAttributionHeader', label: '禁用归因头' },
-    { key: 'disableInstallationChecks', label: '禁用安装检查' },
-    { key: 'enableToolSearch', label: '启用 Tool Search' },
-    { key: 'disableTelemetry', label: '禁用遥测' },
-    { key: 'disableBugCommand', label: '禁用 /bug 命令' },
-    { key: 'disableAutoupdater', label: '禁用自动升级' },
-    { key: 'disableErrorReporting', label: '禁用错误报告' },
+type ClaudeBooleanKey =
+    | 'alwaysThinkingEnabled'
+    | 'teammatesMode'
+    | 'disableNonessentialTraffic'
+    | 'disableAttributionHeader'
+    | 'disableInstallationChecks'
+    | 'enableToolSearch'
+    | 'enablePowerShellTool'
+    | 'disableTelemetry'
+    | 'disableBugCommand'
+    | 'disableAutoupdater'
+    | 'disableErrorReporting';
+
+const CLAUDE_SETTING_GROUPS: Array<{ title: string; toggles: Array<{ key: ClaudeBooleanKey; label: string; hint?: string }> }> = [
+    {
+        title: '能力增强',
+        toggles: [
+            { key: 'alwaysThinkingEnabled', label: '扩展思考', hint: 'Always thinking enabled' },
+            { key: 'teammatesMode', label: 'Teammates 模式', hint: 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS' },
+            { key: 'enableToolSearch', label: '启用工具搜索', hint: 'ENABLE_TOOL_SEARCH' },
+            { key: 'enablePowerShellTool', label: '启用 PowerShell 工具', hint: 'CLAUDE_CODE_USE_POWERSHELL_TOOL' },
+        ],
+    },
+    {
+        title: '执行与性能',
+        toggles: [],
+    },
+    {
+        title: '隐私与网络',
+        toggles: [
+            { key: 'disableNonessentialTraffic', label: '禁用非必要流量', hint: 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC' },
+            { key: 'disableAttributionHeader', label: '禁用归因头', hint: 'CLAUDE_CODE_ATTRIBUTION_HEADER=0' },
+            { key: 'disableTelemetry', label: '禁用遥测', hint: 'DISABLE_TELEMETRY' },
+            { key: 'disableErrorReporting', label: '禁用错误报告', hint: 'DISABLE_ERROR_REPORTING' },
+        ],
+    },
+    {
+        title: '维护开关',
+        toggles: [
+            { key: 'disableInstallationChecks', label: '禁用安装检查', hint: 'DISABLE_INSTALLATION_CHECKS' },
+            { key: 'disableBugCommand', label: '禁用 /bug 命令', hint: 'DISABLE_BUG_COMMAND' },
+            { key: 'disableAutoupdater', label: '禁用自动升级', hint: 'DISABLE_AUTOUPDATER' },
+        ],
+    },
 ];
+
+const CLAUDE_NUMERIC_INPUTS: Array<{ key: keyof InternalSettings; label: string; placeholder: string; hint: string }> = [
+    { key: 'maxOutputTokens', label: '最大输出 Tokens', placeholder: '如 100000', hint: 'CLAUDE_CODE_MAX_OUTPUT_TOKENS' },
+    { key: 'apiTimeoutMs', label: 'API 超时 ms', placeholder: '如 1200000', hint: 'API_TIMEOUT_MS' },
+    { key: 'bashDefaultTimeoutMs', label: 'Bash 默认超时 ms', placeholder: '如 300000', hint: 'BASH_DEFAULT_TIMEOUT_MS' },
+    { key: 'mcpTimeoutMs', label: 'MCP 启动超时 ms', placeholder: '如 30000', hint: 'MCP_TIMEOUT' },
+    { key: 'mcpToolTimeoutMs', label: 'MCP 工具超时 ms', placeholder: '如 100000', hint: 'MCP_TOOL_TIMEOUT' },
+    { key: 'taskMaxOutputLength', label: 'Subagent 输出上限', placeholder: '如 32000', hint: 'TASK_MAX_OUTPUT_LENGTH' },
+];
+
+const CLAUDE_TEXT_INPUTS: Array<{ key: keyof InternalSettings; label: string; placeholder: string; hint: string; multiline?: boolean }> = [
+    { key: 'anthropicBetas', label: 'Beta Headers', placeholder: '如 beta-a,beta-b', hint: 'ANTHROPIC_BETAS' },
+    { key: 'anthropicCustomHeaders', label: '自定义 Headers', placeholder: 'Header-Name: value', hint: 'ANTHROPIC_CUSTOM_HEADERS', multiline: true },
+    { key: 'customModelOption', label: '自定义模型 ID', placeholder: 'provider/model-name', hint: 'ANTHROPIC_CUSTOM_MODEL_OPTION' },
+    { key: 'customModelOptionName', label: '模型显示名', placeholder: 'My Model', hint: 'ANTHROPIC_CUSTOM_MODEL_OPTION_NAME' },
+    { key: 'customModelOptionDescription', label: '模型描述', placeholder: '显示在 /model 中的描述', hint: 'ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION' },
+    { key: 'customModelOptionCapabilities', label: '模型能力', placeholder: '如 thinking,vision', hint: 'ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES' },
+];
+
+const CLAUDE_DEPRECATED_FIELD_LABELS: Record<string, string> = {
+    hideSignature: '隐藏签名',
+    enabledPlugins: '旧版插件启用列表',
+    'env.ANTHROPIC_REASONING_MODEL': '旧版推理模型',
+};
 
 const CLAUDE_SETTING_CONTROL_CLASS = "flex min-h-[36px] items-center rounded-md border border-transparent px-2";
 
@@ -126,6 +211,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
     const [fetchModelsLoading, setFetchModelsLoading] = useState(false);
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; latencyMs?: number; error?: string } | null>(null);
+    const [claudeDeprecatedFields, setClaudeDeprecatedFields] = useState<string[]>([]);
 
     // Internal settings (settingsConfig)
     const [internalSettings, setInternalSettings] = useState<InternalSettings>(() => {
@@ -154,6 +240,7 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
             }
             setShowKey(false);
             setFetchedModels([]);
+            setClaudeDeprecatedFields([]);
             
             if (editingProvider?.settingsConfig) {
                 setInternalSettings(JSON.parse(JSON.stringify(editingProvider.settingsConfig)));
@@ -177,6 +264,10 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                         }
                         return merged;
                     });
+                    const fromFile = Array.isArray(fileState?.deprecatedFields) ? fileState.deprecatedFields : [];
+                    const fromProvider = Object.keys(editingProvider?.settingsConfig || {})
+                        .filter((key) => key === 'hideSignature' || key === 'enabledPlugins');
+                    setClaudeDeprecatedFields(Array.from(new Set([...fromFile, ...fromProvider])));
                 }).catch(() => {});
             }
         }
@@ -583,31 +674,119 @@ export default function ProviderForm({ isOpen, editingProvider, onClose, default
                     {/* 快捷配置按钮组 */}
                     {appType === 'claude' && (
                         <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700/50 dark:bg-slate-800/50">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 xl:grid-cols-4">
-                            {CLAUDE_BOOLEAN_TOGGLES.map((toggle) => (
-                                <label key={toggle.key} className={cn(CLAUDE_SETTING_CONTROL_CLASS, "cursor-pointer group")}>
-                                    <input
-                                        type="checkbox"
-                                        className="mt-px h-4 w-4 shrink-0 rounded border-gray-300 bg-white text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:border-slate-600 dark:bg-slate-900/50 dark:focus:ring-offset-slate-900"
-                                        checked={!!internalSettings[toggle.key]}
-                                        onChange={(e) => handleCheckboxChange(toggle.key, e.target.checked)}
-                                    />
-                                    <span className="text-xs leading-5 text-gray-600 transition-colors group-hover:text-gray-900 dark:text-slate-300 dark:group-hover:text-slate-200">{toggle.label}</span>
-                                </label>
-                            ))}
-                            <label className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group col-span-2 xl:col-span-1")}>
-                                <span className="whitespace-nowrap text-xs leading-5 text-gray-600 dark:text-slate-300">最大输出 Tokens</span>
-                                <input
-                                    type="text"
-                                    className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500"
-                                    placeholder="如 100000"
-                                    value={internalSettings.maxOutputTokens || ''}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/[^0-9]/g, '');
-                                        setInternalSettings((prev: any) => ({ ...prev, maxOutputTokens: val }));
-                                    }}
-                                />
-                            </label>
+                            <div className="space-y-3">
+                                {CLAUDE_SETTING_GROUPS.map((group) => (
+                                    <div key={group.title} className="space-y-1.5">
+                                        <div className="text-[11px] font-medium text-gray-500 dark:text-slate-400">{group.title}</div>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 xl:grid-cols-3">
+                                            {group.title === '执行与性能' && (
+                                                <label className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group col-span-2 xl:col-span-1")}>
+                                                    <span className="whitespace-nowrap text-xs leading-5 text-gray-600 dark:text-slate-300" title="USE_BUILTIN_RIPGREP">Ripgrep</span>
+                                                    <select
+                                                        className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                                                        value={internalSettings.ripgrepMode || ''}
+                                                        onChange={(e) => setInternalSettings((prev: any) => ({ ...prev, ripgrepMode: e.target.value }))}
+                                                    >
+                                                        <option value="">默认</option>
+                                                        <option value="builtin">强制内置 rg</option>
+                                                        <option value="system">使用系统 rg</option>
+                                                    </select>
+                                                </label>
+                                            )}
+                                            {group.toggles.map((toggle) => (
+                                                <label key={toggle.key} className={cn(CLAUDE_SETTING_CONTROL_CLASS, "cursor-pointer gap-2 group")}>
+                                                    <input
+                                                        type="checkbox"
+                                                        className="mt-px h-4 w-4 shrink-0 rounded border-gray-300 bg-white text-blue-500 focus:ring-blue-500 focus:ring-offset-white dark:border-slate-600 dark:bg-slate-900/50 dark:focus:ring-offset-slate-900"
+                                                        checked={!!internalSettings[toggle.key]}
+                                                        onChange={(e) => handleCheckboxChange(toggle.key, e.target.checked)}
+                                                    />
+                                                    <span className="min-w-0 text-xs leading-5 text-gray-600 transition-colors group-hover:text-gray-900 dark:text-slate-300 dark:group-hover:text-slate-200" title={toggle.hint}>{toggle.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <div className="space-y-1.5">
+                                    <div className="text-[11px] font-medium text-gray-500 dark:text-slate-400">模型与限额</div>
+                                    <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+                                        <label className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group")}>
+                                            <span className="whitespace-nowrap text-xs leading-5 text-gray-600 dark:text-slate-300">Effort Level</span>
+                                            <select
+                                                className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200"
+                                                value={internalSettings.effortLevel || ''}
+                                                onChange={(e) => setInternalSettings((prev: any) => ({ ...prev, effortLevel: e.target.value }))}
+                                            >
+                                                <option value="">默认</option>
+                                                <option value="low">low</option>
+                                                <option value="medium">medium</option>
+                                                <option value="high">high</option>
+                                                <option value="max">max</option>
+                                                <option value="xhigh">xhigh</option>
+                                            </select>
+                                        </label>
+                                        {CLAUDE_NUMERIC_INPUTS.map((input) => (
+                                            <label key={input.key} className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group")}>
+                                                <span className="whitespace-nowrap text-xs leading-5 text-gray-600 dark:text-slate-300" title={input.hint}>{input.label}</span>
+                                                <input
+                                                    type="text"
+                                                    className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500"
+                                                    placeholder={input.placeholder}
+                                                    value={(internalSettings[input.key] as string) || ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/[^0-9]/g, '');
+                                                        setInternalSettings((prev: any) => ({ ...prev, [input.key]: val }));
+                                                    }}
+                                                />
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <div className="text-[11px] font-medium text-gray-500 dark:text-slate-400">推荐手动维护</div>
+                                    <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+                                        {CLAUDE_TEXT_INPUTS.map((input) => (
+                                            <label key={input.key} className={cn(CLAUDE_SETTING_CONTROL_CLASS, "gap-2 group", input.multiline && "items-start xl:col-span-2")}>
+                                                <span className="whitespace-nowrap text-xs leading-7 text-gray-600 dark:text-slate-300" title={input.hint}>{input.label}</span>
+                                                {input.multiline ? (
+                                                    <textarea
+                                                        className="min-h-[54px] min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500"
+                                                        placeholder={input.placeholder}
+                                                        value={(internalSettings[input.key] as string) || ''}
+                                                        onChange={(e) => setInternalSettings((prev: any) => ({ ...prev, [input.key]: e.target.value }))}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        className="h-7 min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 text-xs text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-200 dark:placeholder:text-slate-500"
+                                                        placeholder={input.placeholder}
+                                                        value={(internalSettings[input.key] as string) || ''}
+                                                        onChange={(e) => setInternalSettings((prev: any) => ({ ...prev, [input.key]: e.target.value }))}
+                                                    />
+                                                )}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {claudeDeprecatedFields.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-[11px] font-medium text-amber-600 dark:text-amber-300">废弃字段</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {claudeDeprecatedFields.map((field) => (
+                                                <span
+                                                    key={field}
+                                                    className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+                                                    title={`${field} 已废弃，建议确认无用后从 settings.json 手动删除`}
+                                                >
+                                                    {(CLAUDE_DEPRECATED_FIELD_LABELS[field] || field)} 已废弃
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

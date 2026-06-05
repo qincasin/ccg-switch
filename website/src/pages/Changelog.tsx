@@ -12,7 +12,15 @@ interface Version {
 }
 
 const versions: Version[] = [
-  {
+    {
+    version: '1.5.1',
+    date: '2026-06-05',
+    type: 'patch',
+    changes: [
+      { type: 'fix', text: "新增 Claude Code 高级参数分组" }
+    ]
+  },
+{
     version: '1.5.0',
     date: '2026-04-29',
     type: 'minor',
