@@ -89,7 +89,7 @@ pub async fn get_user_info(access_token: &str) -> Result<UserInfo, String> {
     }
 }
 
-async fn fetch_project_id(access_token: &str) -> Option<String> {
+async fn fetch_project_id_and_tier(access_token: &str) -> (Option<String>, Option<String>) {
     let client = reqwest::Client::new();
     let meta = json!({"metadata": {"ideType": "ANTIGRAVITY"}});
 
@@ -98,17 +98,76 @@ async fn fetch_project_id(access_token: &str) -> Option<String> {
         .header("Authorization", format!("Bearer {}", access_token))
         .json(&meta)
         .send()
-        .await
-        .ok()?;
+        .await;
 
-    if res.status().is_success() {
-        let data: serde_json::Value = res.json().await.ok()?;
-        data.get("cloudaicompanionProject")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-    } else {
-        None
+    match res {
+        Ok(response) => {
+            if response.status().is_success() {
+                let data: serde_json::Value = match response.json().await {
+                    Ok(d) => d,
+                    Err(_) => return (None, None),
+                };
+
+                let project_id = data
+                    .get("cloudaicompanionProject")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                // Tier extraction: paidTier → currentTier → allowedTiers fallback
+                let subscription_tier = extract_subscription_tier(&data);
+
+                (project_id, subscription_tier)
+            } else {
+                (None, None)
+            }
+        }
+        Err(_) => (None, None),
     }
+}
+
+/// Multi-level fallback: paidTier → currentTier → allowedTiers
+fn extract_subscription_tier(data: &serde_json::Value) -> Option<String> {
+    // 1. Paid Tier (e.g. "Google One AI Premium")
+    if let Some(name) = data
+        .get("paidTier")
+        .and_then(|t| t.get("name").and_then(|n| n.as_str()).or_else(|| t.get("id").and_then(|i| i.as_str())))
+    {
+        return Some(name.to_string());
+    }
+
+    // 2. Check ineligible
+    let is_ineligible = data
+        .get("ineligibleTiers")
+        .and_then(|v| v.as_array())
+        .map_or(false, |arr| !arr.is_empty());
+
+    if !is_ineligible {
+        // 3. Current Tier
+        if let Some(name) = data
+            .get("currentTier")
+            .and_then(|t| t.get("name").and_then(|n| n.as_str()).or_else(|| t.get("id").and_then(|i| i.as_str())))
+        {
+            return Some(name.to_string());
+        }
+    } else {
+        // 4. Allowed Tiers (Restricted)
+        if let Some(allowed) = data.get("allowedTiers").and_then(|v| v.as_array()) {
+            for tier in allowed {
+                let is_default = tier.get("isDefault").and_then(|v| v.as_bool()).unwrap_or(false);
+                if is_default {
+                    if let Some(name) = tier
+                        .get("name")
+                        .and_then(|n| n.as_str())
+                        .or_else(|| tier.get("id").and_then(|i| i.as_str()))
+                    {
+                        return Some(format!("{} (Restricted)", name));
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 #[derive(serde::Deserialize)]
@@ -321,7 +380,7 @@ pub async fn add_account(
         ));
     }
 
-    let project_id = fetch_project_id(&token_res.access_token).await;
+    let (project_id, subscription_tier) = fetch_project_id_and_tier(&token_res.access_token).await;
     let now = chrono::Utc::now().timestamp();
     let display_name = user_info.get_display_name();
     let email = user_info.email;
@@ -336,7 +395,7 @@ pub async fn add_account(
         expiry_timestamp: now + token_res.expires_in,
         oauth_client_key: None,
         project_id,
-        subscription_tier: None,
+        subscription_tier,
         custom_label: None,
         is_active: false,
         disabled: false,
@@ -436,9 +495,15 @@ pub async fn fetch_account_quota(
 
     let quota = fetch_quota(&account.access_token, account.project_id.as_deref()).await?;
 
-    // Save updated quota back to account
+    // Also refresh subscription tier from loadCodeAssist
+    let (_, fresh_tier) = fetch_project_id_and_tier(&account.access_token).await;
+
+    // Save updated quota + tier back to account
     let mut account = get_account(db, id)?;
     account.quota = Some(quota.clone());
+    if let Some(tier) = fresh_tier {
+        account.subscription_tier = Some(tier);
+    }
     account.last_used = chrono::Utc::now().timestamp();
     db.upsert_antigravity_account(&account)?;
     if let Err(e) = db.log_ag_operation(&account.id, &account.email, "quota_refresh", None) {
@@ -1145,7 +1210,7 @@ pub async fn start_oauth_login(
     }
 
     // 9. Create new account
-    let project_id = fetch_project_id(&token_res.access_token).await;
+    let (project_id, subscription_tier) = fetch_project_id_and_tier(&token_res.access_token).await;
     let now = chrono::Utc::now().timestamp();
 
     let mut account = AntigravityAccount {
@@ -1158,7 +1223,7 @@ pub async fn start_oauth_login(
         expiry_timestamp: now + token_res.expires_in,
         oauth_client_key: None,
         project_id,
-        subscription_tier: None,
+        subscription_tier,
         custom_label: None,
         is_active: false,
         disabled: false,
