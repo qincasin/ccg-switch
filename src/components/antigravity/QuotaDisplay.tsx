@@ -1,3 +1,9 @@
+/**
+ * 配额模型列表显示组件。
+ * 每个模型显示名称、能力徽章（Thinking/Image/Recommended）、
+ * 彩色进度条、thinking budget、最���输出 token、重置时间。
+ */
+
 import { useTranslation } from 'react-i18next';
 import { Brain, Image, Star, RotateCcw } from 'lucide-react';
 import { AntigravityModelQuota } from '../../types/antigravity';

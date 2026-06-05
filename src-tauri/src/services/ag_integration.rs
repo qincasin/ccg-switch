@@ -1,12 +1,21 @@
+//! Antigravity 本地应用集成层：进程管理、版本检测、凭据注入、账号切换。
+//!
+//! 职责：
+//! - 检测/关闭/启动 Antigravity 进程（含 IDE 变体）
+//! - 检测安装版本，选择凭据注入方式（Keychain >= 2.0.0，SQLite DB < 2.0.0）
+//! - 写入 macOS Keychain / Windows Credential Manager / Linux Secret Service
+//! - 编排完整的切换流程：关闭进程 → 注入凭据 → 重启进程
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use sysinfo::System;
 
-// ── Process Detection ──
+// ── 进程检测 ──
 
-/// Check if Antigravity (or Antigravity IDE) is currently running.
+/// 检��� Antigravity（或 Antigravity IDE）是否正在运行。
+/// 排除 Helper/Renderer/GPU 等子进程，只匹配主进程。
 pub fn is_antigravity_running(target_ide: Option<&str>) -> bool {
     let mut system = System::new();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All);
@@ -127,9 +136,9 @@ fn get_antigravity_pids(target_ide: Option<&str>) -> Vec<u32> {
     pids
 }
 
-// ── Process Management ──
+// ── 进程管理 ──
 
-/// Close Antigravity gracefully (SIGTERM) then force kill if needed.
+/// 关闭 Antigravity：先 SIGTERM 优雅关闭，超时后 SIGKILL 强制结束。
 pub fn close_antigravity(timeout_secs: u64, target_ide: Option<&str>) -> Result<(), String> {
     tracing::info!("Closing Antigravity ({:?})...", target_ide);
 
@@ -187,7 +196,7 @@ pub fn close_antigravity(timeout_secs: u64, target_ide: Option<&str>) -> Result<
     Ok(())
 }
 
-/// Find Antigravity executable path.
+/// 查找 Antigravity 安装路径（运行中进程 > 标准安装目录）。
 pub fn find_antigravity_path(target_ide: Option<&str>) -> Option<PathBuf> {
     // Strategy 1: From running process
     if let Some(path) = find_path_from_running_process(target_ide) {
@@ -320,7 +329,7 @@ fn find_standard_location(target_ide: Option<&str>) -> Option<PathBuf> {
     None
 }
 
-/// Start Antigravity application.
+/// 启动 Antigravity 应用（macOS 用 `open -a`，其他平台直接执行）。
 pub fn start_antigravity(target_ide: Option<&str>) -> Result<(), String> {
     tracing::info!("Starting Antigravity ({:?})...", target_ide);
 
@@ -361,9 +370,9 @@ pub fn start_antigravity(target_ide: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
-// ── Version Detection ──
+// ── 版本检测 ──
 
-/// Detect Antigravity version. Returns short version string (e.g. "2.1.0").
+/// 检测 Antigravity 版本号（macOS 读 Info.plist，其他平台尝试 --version）。
 fn get_antigravity_version(target_ide: Option<&str>) -> Option<String> {
     let exe_path = find_antigravity_path(target_ide)?;
 
@@ -452,9 +461,10 @@ fn compare_version(v1: &str, v2: &str) -> std::cmp::Ordering {
     std::cmp::Ordering::Equal
 }
 
-// ── Credential Injection ──
+// ── 凭据注入 ──
 
-/// Write token to macOS Keychain / Windows Credential Manager / Linux Secret Service.
+/// 将 token 写入系统凭据存储（macOS Keychain / Windows Credential Manager / Linux Secret Service）。
+/// 用于 Antigravity >= 2.0.0 版本。
 fn write_to_system_keyring(
     access_token: &str,
     refresh_token: &str,
@@ -685,9 +695,9 @@ fn inject_db_simple(
     Ok(())
 }
 
-// ── Main Switch Flow ──
+	// ── 主切换流程 ──
 
-/// Account data needed for switching.
+/// 账号切换所需的凭据数据。
 pub struct SwitchAccountData {
     pub email: String,
     pub access_token: String,
@@ -695,9 +705,9 @@ pub struct SwitchAccountData {
     pub expiry_timestamp: i64,
 }
 
-/// Execute the full account switch: close → inject credentials → restart.
+/// 执行完整的本地账号切换：关闭进程 → 注入凭据 → 重启进程。
 ///
-/// This operates the local Antigravity app directly, not just the internal DB state.
+/// 自动检测 Antigravity 版本选择注入方式（Keychain >= 2.0.0，SQLite < 2.0.0）。
 pub fn execute_local_switch(
     account: &SwitchAccountData,
     target_ide: Option<&str>,

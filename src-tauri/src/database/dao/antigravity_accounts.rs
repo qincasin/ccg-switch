@@ -1,3 +1,7 @@
+//! Antigravity 账号 SQLite 数据访问层。
+//!
+//! 提供账号的 CRUD、活跃状态切换、排序索引管理等操作。
+
 use crate::database::{lock_conn, Database};
 use crate::models::antigravity::AntigravityAccount;
 use rusqlite::params;

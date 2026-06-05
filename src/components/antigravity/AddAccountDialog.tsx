@@ -1,3 +1,8 @@
+/**
+ * 添加账号弹窗。
+ * 三个模式：OAuth 浏览器登录 / 手动输入 email+token / 批量 JSON 导入。
+ */
+
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogIn, KeyRound, Upload } from 'lucide-react';

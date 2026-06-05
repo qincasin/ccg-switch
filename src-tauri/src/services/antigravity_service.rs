@@ -1,3 +1,12 @@
+//! Antigravity 账号管理核心业务层。
+//!
+//! 提供所有账号相关的 Tauri 命令底层实现：
+//! - OAuth 浏览器登录（本地 TCP 回调服务器）
+//! - Token 刷新、配额获取（三端点降级）
+//! - 账号 CRUD、切换（含本地进程操控）、排序
+//! - 预热、批量操作、导入导出
+//! - 操作日志、Token 状态查询
+
 use crate::database::Database;
 use crate::models::antigravity::{
     AgOperationLog, AntigravityAccount, AntigravityModelQuota, AntigravityQuotaData, RefreshStats,
@@ -26,10 +35,11 @@ const QUOTA_ENDPOINTS: [&str; 3] = [
 ];
 const WARMUP_MODELS_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
-// Quota protection thresholds
+// 配额保护阈值：平均配额 <10% 警告，<5% 自动禁用
 const QUOTA_WARNING_THRESHOLD: i32 = 10; // percentage
 const QUOTA_EXHAUSTED_THRESHOLD: i32 = 5; // percentage
 
+/// 用 refresh_token 换取新的 access_token（Google OAuth2）。
 pub async fn refresh_access_token(refresh_token: &str) -> Result<TokenResponse, String> {
     let client = reqwest::Client::new();
     let params = [
@@ -58,6 +68,7 @@ pub async fn refresh_access_token(refresh_token: &str) -> Result<TokenResponse, 
     }
 }
 
+/// 获取 Google 用户信息（email, name, picture）。
 pub async fn get_user_info(access_token: &str) -> Result<UserInfo, String> {
     let client = reqwest::Client::new();
     let response = client
@@ -133,8 +144,8 @@ struct QuotaInfo {
     reset_time: Option<String>,
 }
 
-pub async fn fetch_quota(
-    access_token: &str,
+/// 获取账号配额数据，按 sandbox → daily → prod 三端点降级。
+pub async fn fetch_quota(    access_token: &str,
     project_id: Option<&str>,
 ) -> Result<AntigravityQuotaData, String> {
     let client = reqwest::Client::new();
@@ -378,6 +389,7 @@ pub fn delete_account(db: &Arc<Database>, id: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// 刷新单个账号的 token 并更新数据库（仅清除 token/quota 原因的禁用状态）。
 pub async fn refresh_account_token(
     db: &Arc<Database>,
     id: &str,
@@ -508,6 +520,7 @@ pub async fn refresh_all_quotas(db: &Arc<Database>) -> Result<RefreshStats, Stri
     })
 }
 
+/// 切换账号：刷新 token → 设为活跃 → 本地进程切换（关闭→注入→重启）→ 更新 accounts.json。
 pub async fn switch_account(
     db: &Arc<Database>,
     id: &str,

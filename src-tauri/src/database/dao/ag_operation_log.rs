@@ -1,3 +1,7 @@
+//! Antigravity 操作日志 SQLite 数据访问层。
+//!
+//! 记录 token 刷新、账号切换、配额刷新、预热等操作历史。
+
 #![allow(dead_code)]
 use crate::database::{lock_conn, Database};
 use crate::models::antigravity::AgOperationLog;

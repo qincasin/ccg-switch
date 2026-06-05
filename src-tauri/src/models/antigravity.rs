@@ -1,3 +1,7 @@
+//! Antigravity 账号相关的数据模型。
+//!
+//! 所有结构体使用 `camelCase` 序列化以匹配前端 TypeScript 接口。
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

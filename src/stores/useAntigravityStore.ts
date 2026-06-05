@@ -1,3 +1,8 @@
+/**
+ * Antigravity 账号管理 Zustand Store。
+ * 封装所有 ag_* Tauri 命令调用，提供响应式状态管理。
+ */
+
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { AntigravityAccount, AntigravityQuotaData, AgOperationLog, ImportResult, RefreshStats, TokenStatus } from '../types/antigravity';

@@ -1,3 +1,8 @@
+/**
+ * Antigravity 账号卡片组件。
+ * 显示账号头像、状态、配额预览、操作按钮（切换/刷新/删除/编辑标签/导出）。
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Eye, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';

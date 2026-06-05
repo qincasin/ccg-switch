@@ -1,3 +1,8 @@
+/**
+ * Antigravity 账号管理主页面。
+ * 包含统计栏、搜索筛选、账号卡片网格、批量操作、添加/详情弹窗。
+ */
+
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RefreshCw, Search, Shield, Loader2, Users, CheckCircle, XCircle, Activity, Crown, Download, CheckSquare, Trash2, Zap } from 'lucide-react';

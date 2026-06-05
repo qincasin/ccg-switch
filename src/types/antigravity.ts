@@ -1,3 +1,8 @@
+/**
+ * Antigravity 账号管理的 TypeScript 类型定义。
+ * 与 Rust 端 models/antigravity.rs 的 camelCase 序列化结构一一对应。
+ */
+
 export interface AntigravityAccount {
   id: string;
   email: string;

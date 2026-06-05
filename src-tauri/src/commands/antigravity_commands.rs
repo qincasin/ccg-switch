@@ -1,3 +1,7 @@
+//! Antigravity 账号管理 Tauri 命令层。
+//!
+//! 所有命令以 `ag_` 前缀注册，对应前端的 `invoke('ag_*')` 调用。
+
 use crate::models::antigravity::{AntigravityAccount, AntigravityQuotaData, RefreshStats};
 use crate::services::antigravity_service::{ImportResult, WarmupResult};
 use crate::store::AppState;

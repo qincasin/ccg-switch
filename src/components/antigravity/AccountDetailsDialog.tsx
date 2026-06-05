@@ -1,3 +1,8 @@
+/**
+ * 账号详情弹窗。
+ * 包含账号信息、Token 状态、配额详情、操作历史、预热操作。
+ */
+
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, ChevronDown, ChevronUp, Mail, Tag, Calendar, Clock, Shield, AlertTriangle, Activity, Power, Zap, Loader2, CheckCircle, XCircle, Thermometer } from 'lucide-react';
