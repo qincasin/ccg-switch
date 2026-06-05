@@ -701,21 +701,6 @@ async fn check_for_updates_all_sources(
     Ok(services::updater_service::check_update_all_sources(&version).await)
 }
 
-// 保存用户选择的更新源
-#[tauri::command]
-async fn save_update_source(
-    app: tauri::AppHandle,
-    source: String,
-) -> Result<(), String> {
-    use crate::services::config_service;
-    let db = app.state::<store::AppState>().db.clone();
-    let mut config = config_service::load_config_from_db(&db)
-        .map_err(|e| e.to_string())?;
-    config.update_source = source;
-    config_service::save_config_to_db(&db, &config)
-        .map_err(|e| e.to_string())
-}
-
 // 下载更新安装包
 #[tauri::command]
 async fn download_update(app: tauri::AppHandle, url: String) -> Result<String, String> {
@@ -848,7 +833,6 @@ pub fn run() {
             get_tool_versions,
             check_for_updates,
             check_for_updates_all_sources,
-            save_update_source,
             download_update,
             install_update,
             // Utility 命令

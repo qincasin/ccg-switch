@@ -49,7 +49,8 @@
       "Bash(cd \"C:\\\\guodevelop\\\\claude-switch-v1\\\\claude-switch-1.0\" && node -e \"console.log\\(require\\('./package.json'\\).version\\)\")",
       "Bash(cd \"C:/guodevelop/claude-switch-v1/claude-switch-1.0\" && node -e \"console.log\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('package.json','utf8'\\)\\).version\\)\")",
       "Bash(cp:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(xxd /Users/jiaxing/code/github/ccg-switch/src/pages/Settings.tsx)"
     ]
   }
 }

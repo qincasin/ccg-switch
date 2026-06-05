@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { ExternalLink, RefreshCw, CheckCircle, AlertCircle, Download, Info } from 'lucide-react';
 import { useAboutStore } from '../../../stores/useAboutStore';
+import { useConfigStore } from '../../../stores/useConfigStore';
 import appIcon from '../../../assets/app-icon.png';
 import UpdateBanner from './UpdateBanner';
 
@@ -11,13 +12,15 @@ function VersionInfoCard() {
         appVersion, updateInfo, checking, checkError, installing,
         downloading, checkForUpdates, setCheckError, setDownloadedPath, downloadUpdate,
     } = useAboutStore();
+    const config = useConfigStore((state) => state.config);
 
     const handleOpenChangelog = async () => {
         try {
+            const repo = config?.updateSource || 'cus45/ccg-switch';
             const displayVersion = appVersion ? `v${appVersion}` : '';
             const url = displayVersion
-                ? `https://github.com/cus45/ccg-switch/releases/tag/${displayVersion}`
-                : 'https://github.com/cus45/ccg-switch/releases';
+                ? `https://github.com/${repo}/releases/tag/${displayVersion}`
+                : `https://github.com/${repo}/releases`;
             await invoke('open_external', { url });
         } catch (e) {
             console.error('Failed to open changelog:', e);
