@@ -184,9 +184,12 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
           </div>
         ))}
         {account.quota.models.length > 3 && (
-          <div className="text-xs text-blue-500 dark:text-blue-400 pl-2.5 font-medium">
+          <button
+            className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 pl-2.5 font-medium cursor-pointer hover:underline"
+            onClick={(e) => { e.stopPropagation(); onViewDetails(account); }}
+          >
             +{account.quota.models.length - 3} {t('antigravity.more_models')}
-          </div>
+          </button>
         )}
       </div>
     );
