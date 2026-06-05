@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Eye, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
@@ -21,6 +21,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [labelInput, setLabelInput] = useState(account.customLabel || '');
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,29 +49,53 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   const handleDelete = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
+      deleteTimerRef.current = setTimeout(() => setConfirmDelete(false), 3000);
       return;
     }
-    await deleteAccount(account.id);
+    try {
+      await deleteAccount(account.id);
+    } catch (e) {
+      alert(String(e));
+    }
   };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current); };
+  }, []);
+
+  // Sync label input when external data changes
+  useEffect(() => {
+    if (!isEditingLabel) setLabelInput(account.customLabel || '');
+  }, [account.customLabel, isEditingLabel]);
 
   const handleSwitch = async (targetIde?: string) => {
     setSwitching(true);
     try {
       await switchAccount(account.id, targetIde);
+    } catch (e) {
+      alert(String(e));
     } finally {
       setSwitching(false);
     }
   };
 
   const handleToggle = async () => {
-    await toggleAccount(account.id, account.disabled);
+    try {
+      await toggleAccount(account.id, account.disabled);
+    } catch (e) {
+      alert(String(e));
+    }
   };
 
   const handleSaveLabel = async () => {
     const trimmed = labelInput.trim();
     if (trimmed !== (account.customLabel || '')) {
-      await updateLabel(account.id, trimmed || null);
+      try {
+        await updateLabel(account.id, trimmed || null);
+      } catch (e) {
+        alert(String(e));
+      }
     }
     setIsEditingLabel(false);
   };
@@ -81,15 +106,19 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   };
 
   const handleExport = async () => {
-    const pairs = await exportAccounts([account.id]);
-    const text = JSON.stringify(Object.fromEntries(pairs), null, 2);
-    const blob = new Blob([text], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `antigravity_${account.email}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const pairs = await exportAccounts([account.id]);
+      const text = JSON.stringify(Object.fromEntries(pairs), null, 2);
+      const blob = new Blob([text], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `antigravity_${account.email}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(String(e));
+    }
   };
 
   const tierBadge = () => {
@@ -141,7 +170,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
                   m.percentage >= 20 ? 'bg-orange-500' :
                   'bg-red-500'
                 }`}
-                style={{ width: `${m.percentage}%` }}
+                style={{ width: `${Math.max(0, Math.min(100, m.percentage))}%` }}
               />
             </div>
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-10 text-right">

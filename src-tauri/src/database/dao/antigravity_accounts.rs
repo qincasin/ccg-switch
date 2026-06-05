@@ -96,13 +96,15 @@ impl Database {
 
     pub fn set_active_antigravity_account(&self, id: &str) -> Result<(), String> {
         let conn = lock_conn!(self.conn);
-        conn.execute("UPDATE antigravity_accounts SET is_active = 0", [])
+        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        tx.execute("UPDATE antigravity_accounts SET is_active = 0", [])
             .map_err(|e| e.to_string())?;
-        conn.execute(
+        tx.execute(
             "UPDATE antigravity_accounts SET is_active = 1, last_used = ?1 WHERE id = ?2",
             params![chrono::Utc::now().timestamp(), id],
         )
         .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
         Ok(())
     }
 

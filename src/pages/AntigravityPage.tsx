@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, RefreshCw, Search, Shield, Loader2, Users, CheckCircle, XCircle, Activity, Crown, Download, CheckSquare, Trash2, Zap } from 'lucide-react';
-import { AntigravityAccount } from '../types/antigravity';
 import { useAntigravityStore } from '../stores/useAntigravityStore';
 import AccountCard from '../components/antigravity/AccountCard';
 import AddAccountDialog from '../components/antigravity/AddAccountDialog';
@@ -41,7 +40,8 @@ export default function AntigravityPage() {
   const { t } = useTranslation();
   const { accounts, loadAccounts, refreshAllQuotas, loading, hasLoaded, importFromManager, batchDeleteAccounts, warmupAllAccounts } = useAntigravityStore();
   const [showAdd, setShowAdd] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<AntigravityAccount | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const selectedAccount = selectedAccountId ? accounts.find(a => a.id === selectedAccountId) ?? null : null;
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [importing, setImporting] = useState(false);
   const [warmingUpAll, setWarmingUpAll] = useState(false);
@@ -385,7 +385,7 @@ export default function AntigravityPage() {
                 <AccountCard
                   key={account.id}
                   account={account}
-                  onViewDetails={setSelectedAccount}
+                  onViewDetails={(a) => setSelectedAccountId(a.id)}
                   selectMode={selectMode}
                   selected={selectedIds.has(account.id)}
                   onToggleSelect={handleToggleSelect}
@@ -402,7 +402,7 @@ export default function AntigravityPage() {
         <AccountDetailsDialog
           account={selectedAccount}
           open={!!selectedAccount}
-          onClose={() => setSelectedAccount(null)}
+          onClose={() => setSelectedAccountId(null)}
         />
       )}
     </div>

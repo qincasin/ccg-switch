@@ -393,8 +393,12 @@ pub async fn refresh_account_token(
     account.last_used = now;
 
     if account.disabled {
-        account.disabled = false;
-        account.disabled_reason = None;
+        if let Some(ref reason) = account.disabled_reason {
+            if reason.contains("Token refresh failed") || reason.contains("Quota protection") {
+                account.disabled = false;
+                account.disabled_reason = None;
+            }
+        }
     }
 
     if let Ok(user_info) = get_user_info(&account.access_token).await {
@@ -527,7 +531,12 @@ pub async fn switch_account(
         expiry_timestamp: account.expiry_timestamp,
     };
 
-    crate::services::ag_integration::execute_local_switch(&switch_data, target_ide)?;
+    let ide = target_ide.map(|s| s.to_string());
+    tokio::task::spawn_blocking(move || {
+        crate::services::ag_integration::execute_local_switch(&switch_data, ide.as_deref())
+    })
+    .await
+    .map_err(|e| format!("Switch task panicked: {}", e))??;
 
     // 3. Update Antigravity Manager's accounts.json if it exists
     update_antigravity_manager_current_account(&account.email);
@@ -822,12 +831,13 @@ pub async fn warmup_account(
     let mut errors = Vec::new();
 
     let client = reqwest::Client::new();
-    let warmup_url = format!("{}?key={}", WARMUP_MODELS_URL, account.access_token);
 
     for model in &models_to_warm {
         // Send a lightweight authenticated GET request to keep the token active
         // and "warm up" the quota counter
-        match client.get(&warmup_url).send().await {
+        match client.get(WARMUP_MODELS_URL)
+            .header("Authorization", format!("Bearer {}", account.access_token))
+            .send().await {
             Ok(response) => {
                 if response.status().is_success() {
                     tracing::info!("Warmup successful for model {}", model.name);

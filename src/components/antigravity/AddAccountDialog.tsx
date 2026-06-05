@@ -20,6 +20,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
   const [error, setError] = useState('');
 
   const handleOAuth = async () => {
+    if (loading) return;
     setLoading(true);
     setError('');
     try {
@@ -33,7 +34,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
   };
 
   const handleManual = async () => {
-    if (!email.trim() || !refreshToken.trim()) return;
+    if (!email.trim() || !refreshToken.trim() || loading) return;
     setLoading(true);
     setError('');
     try {
@@ -50,7 +51,7 @@ export default function AddAccountDialog({ open, onClose }: Props) {
 
   const handleBatch = async () => {
     const text = batchText.trim();
-    if (!text) return;
+    if (!text || loading) return;
 
     const entries: Array<{ email: string; refreshToken: string }> = [];
 

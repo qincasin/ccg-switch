@@ -104,7 +104,7 @@ export default function QuotaDisplay({ models }: Props) {
             <div className="flex-1 h-3 bg-gray-100 dark:bg-base-300 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${getBarColor(m.percentage)}`}
-                style={{ width: `${m.percentage}%` }}
+                style={{ width: `${Math.max(0, Math.min(100, m.percentage))}%` }}
               />
             </div>
           </div>
