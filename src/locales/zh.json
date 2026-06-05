@@ -575,6 +575,14 @@
         "warmup": "预热账号",
         "warmup_all": "全部预热",
         "warmup_success": "预热成功",
-        "warmup_failed": "预热失败"
+        "warmup_failed": "预热失败",
+        "batch_import": "批量导入",
+        "batch_import_desc": "粘贴 JSON 数组（包含 email 和 refresh_token 字段），或直接粘贴多个 1// 开头的 token",
+        "batch_no_tokens": "未找到有效的 refresh_token",
+        "batch_imported": "成功导入 {{count}} 个账号",
+        "batch_failed": "{{count}} 个导入失败",
+        "edit_label": "编辑标签",
+        "export": "导出",
+        "view_details": "查看详情"
     }
 }

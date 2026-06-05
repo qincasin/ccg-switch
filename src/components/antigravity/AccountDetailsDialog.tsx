@@ -172,7 +172,7 @@ export default function AccountDetailsDialog({ account, open, onClose }: Props) 
   };
 
   return (
-    <ModalDialog isOpen={open} onClose={onClose} onConfirm={onClose} title={account.customLabel || account.email} confirmText={t('common.cancel')} confirmClass="btn btn-ghost" maxWidthClass="max-w-lg">
+    <ModalDialog isOpen={open} onClose={onClose} onConfirm={onClose} title={account.customLabel || account.email} confirmText={t('common.cancel')} confirmClass="btn btn-ghost" maxWidthClass="max-w-2xl">
       <div className="space-y-5">
         {/* Account info grid */}
         <div className="grid grid-cols-2 gap-4">

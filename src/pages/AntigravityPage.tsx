@@ -13,22 +13,24 @@ function StatCard({
   icon: Icon,
   label,
   value,
-  color,
+  bgColor,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
-  color: string;
+  bgColor: string;
 }) {
   return (
-    <div className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-      <div className="flex items-center gap-3.5">
-        <Icon className={`w-4 h-4 ${color}`} />
-        <div>
-          <div className="text-lg font-bold text-gray-900 dark:text-base-content leading-tight">
+    <div className="bg-white dark:bg-base-100 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-base-200 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center shrink-0`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xl font-bold text-gray-900 dark:text-base-content leading-tight">
             {typeof value === 'number' ? value.toLocaleString() : value}
           </div>
-          <div className="text-[11px] text-gray-500 dark:text-gray-400">{label}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{label}</div>
         </div>
       </div>
     </div>
@@ -312,12 +314,12 @@ export default function AntigravityPage() {
 
           {/* Stats Bar */}
           {accounts.length > 0 && !selectMode && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              <StatCard icon={Users} label={t('antigravity.stats_total')} value={stats.total} color="text-gray-500" />
-              <StatCard icon={CheckCircle} label={t('antigravity.stats_active')} value={stats.active} color="text-green-500" />
-              <StatCard icon={XCircle} label={t('antigravity.stats_disabled')} value={stats.disabled} color="text-red-500" />
-              <StatCard icon={Activity} label={t('antigravity.stats_avg_quota')} value={`${stats.avgQuota}%`} color="text-blue-500" />
-              <StatCard icon={Crown} label={t('antigravity.stats_paid_accounts')} value={stats.paidCount} color="text-purple-500" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <StatCard icon={Users} label={t('antigravity.stats_total')} value={stats.total} bgColor="bg-gray-500" />
+              <StatCard icon={CheckCircle} label={t('antigravity.stats_active')} value={stats.active} bgColor="bg-green-500" />
+              <StatCard icon={XCircle} label={t('antigravity.stats_disabled')} value={stats.disabled} bgColor="bg-red-500" />
+              <StatCard icon={Activity} label={t('antigravity.stats_avg_quota')} value={`${stats.avgQuota}%`} bgColor="bg-blue-500" />
+              <StatCard icon={Crown} label={t('antigravity.stats_paid_accounts')} value={stats.paidCount} bgColor="bg-purple-500" />
             </div>
           )}
 

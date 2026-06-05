@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Eye, Power, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Trash2, RefreshCw, Eye, Zap, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
 
@@ -14,10 +14,13 @@ interface Props {
 
 export default function AccountCard({ account, onViewDetails, selectMode, selected, onToggleSelect }: Props) {
   const { t } = useTranslation();
-  const { deleteAccount, refreshToken, switchAccount, toggleAccount, getTokenStatus } = useAntigravityStore();
+  const { deleteAccount, refreshToken, switchAccount, toggleAccount, getTokenStatus, updateLabel, exportAccounts } = useAntigravityStore();
   const [refreshing, setRefreshing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [labelInput, setLabelInput] = useState(account.customLabel || '');
 
   useEffect(() => {
     let cancelled = false;
@@ -51,23 +54,42 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
     await deleteAccount(account.id);
   };
 
-  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
-
   const handleSwitch = async (targetIde?: string) => {
-    setShowSwitchMenu(false);
-    await switchAccount(account.id, targetIde);
+    setSwitching(true);
+    try {
+      await switchAccount(account.id, targetIde);
+    } finally {
+      setSwitching(false);
+    }
   };
-
-  // Close switch menu when clicking outside
-  useEffect(() => {
-    if (!showSwitchMenu) return;
-    const handler = () => setShowSwitchMenu(false);
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [showSwitchMenu]);
 
   const handleToggle = async () => {
     await toggleAccount(account.id, account.disabled);
+  };
+
+  const handleSaveLabel = async () => {
+    const trimmed = labelInput.trim();
+    if (trimmed !== (account.customLabel || '')) {
+      await updateLabel(account.id, trimmed || null);
+    }
+    setIsEditingLabel(false);
+  };
+
+  const handleCancelLabel = () => {
+    setLabelInput(account.customLabel || '');
+    setIsEditingLabel(false);
+  };
+
+  const handleExport = async () => {
+    const pairs = await exportAccounts([account.id]);
+    const text = JSON.stringify(Object.fromEntries(pairs), null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `antigravity_${account.email}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const tierBadge = () => {
@@ -164,7 +186,7 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
         <div className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r from-orange-500 to-pink-500" />
       )}
 
-      <div className="p-5">
+      <div className="p-4">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -223,19 +245,58 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
               </div>
             </div>
           </div>
-          {/* Active badge */}
-          {account.isActive && (
-            <span className="badge badge-sm bg-gradient-to-r from-orange-500 to-pink-500 text-white border-none gap-1 shrink-0">
-              <Zap className="w-3 h-3" fill="currentColor" />
-              {t('antigravity.active')}
-            </span>
-          )}
-          {account.disabled && (
-            <span className="badge badge-error badge-sm shrink-0">
-              {t('antigravity.disabled')}
-            </span>
-          )}
+          {/* Status badges */}
+          <div className="flex items-center gap-1 shrink-0">
+            {account.isActive && (
+              <span className="badge badge-sm bg-gradient-to-r from-orange-500 to-pink-500 text-white border-none gap-1">
+                <Zap className="w-3 h-3" fill="currentColor" />
+                {t('antigravity.active')}
+              </span>
+            )}
+            {account.disabled && (
+              <span className="badge badge-error badge-sm">
+                {t('antigravity.disabled')}
+              </span>
+            )}
+            {account.quota?.isForbidden && (
+              <span className="badge badge-sm bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-none gap-0.5">
+                <Lock className="w-2.5 h-2.5" />
+                FORBIDDEN
+              </span>
+            )}
+            {account.customLabel && !isEditingLabel && (
+              <span className="badge badge-sm bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border-none gap-0.5">
+                <Tag className="w-2.5 h-2.5" />
+                {account.customLabel}
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Label edit overlay */}
+        {isEditingLabel && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="text"
+              className="flex-1 px-2 py-1 text-sm border border-orange-300 dark:border-orange-700 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-base-200"
+              placeholder="Enter label..."
+              value={labelInput}
+              onChange={(e) => setLabelInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveLabel();
+                if (e.key === 'Escape') handleCancelLabel();
+              }}
+              autoFocus
+              maxLength={15}
+            />
+            <button className="p-1 text-green-600 hover:bg-green-50 rounded" onClick={handleSaveLabel}>
+              <Check className="w-4 h-4" />
+            </button>
+            <button className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" onClick={handleCancelLabel}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Quota preview */}
         {quotaSummary()}
@@ -248,67 +309,78 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-50 dark:border-base-200">
-          {/* Enable/disable toggle */}
+        {/* Actions - icon-only buttons */}
+        <div className="flex items-center justify-center gap-0.5 mt-3 pt-2.5 border-t border-gray-100 dark:border-base-200">
           <button
-            className={`btn btn-xs btn-ghost gap-1 ${account.disabled ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20'}`}
+            className={`p-1.5 rounded-lg transition-all ${
+              account.disabled
+                ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'
+                : 'text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+            }`}
             onClick={handleToggle}
             title={account.disabled ? t('antigravity.enable') : t('antigravity.disable')}
           >
-            <Power className="w-3 h-3" />
-            {account.disabled ? t('antigravity.enable') : t('antigravity.disable')}
+            {account.disabled
+              ? <Zap className="w-3.5 h-3.5" />
+              : <Zap className="w-3.5 h-3.5" />
+            }
           </button>
           {!account.disabled && !account.isActive && (
-            <div className="relative">
+            <>
               <button
-                className="btn btn-xs btn-ghost gap-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
-                onClick={() => setShowSwitchMenu(!showSwitchMenu)}
+                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                onClick={() => handleSwitch()}
+                disabled={switching}
+                title={t('antigravity.switch_antigravity')}
               >
-                <Zap className="w-3 h-3" />
-                {t('antigravity.switch')}
-                <ChevronDown className="w-2.5 h-2.5" />
+                <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
               </button>
-              {showSwitchMenu && (
-                <div className="absolute left-0 bottom-full mb-1 bg-white dark:bg-base-200 rounded-lg shadow-lg border border-gray-100 dark:border-base-300 py-1 z-50 min-w-[140px]">
-                  <button
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-base-300 flex items-center gap-2"
-                    onClick={() => handleSwitch()}
-                  >
-                    <Zap className="w-3 h-3" />
-                    Antigravity
-                  </button>
-                  <button
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 dark:hover:bg-base-300 flex items-center gap-2"
-                    onClick={() => handleSwitch('ide')}
-                  >
-                    <Zap className="w-3 h-3" />
-                    Antigravity IDE
-                  </button>
-                </div>
-              )}
-            </div>
+              <button
+                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-sky-500' : 'text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
+                onClick={() => handleSwitch('ide')}
+                disabled={switching}
+                title={t('antigravity.switch_antigravity_ide')}
+              >
+                <Repeat2 className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
+              </button>
+            </>
           )}
-          <div className="flex-1" />
           <button
-            className="btn btn-xs btn-ghost gap-1"
+            className={`p-1.5 rounded-lg transition-all ${refreshing ? 'text-green-500' : 'text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'}`}
             onClick={handleRefresh}
             disabled={refreshing}
+            title={t('antigravity.refresh_quota')}
           >
-            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           <button
-            className="btn btn-xs btn-ghost gap-1"
+            className="p-1.5 text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-all"
+            onClick={() => setIsEditingLabel(true)}
+            title={t('antigravity.edit_label')}
+          >
+            <Tag className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
             onClick={() => onViewDetails(account)}
+            title={t('antigravity.view_details')}
           >
-            <Eye className="w-3 h-3" />
+            <Eye className="w-3.5 h-3.5" />
           </button>
           <button
-            className={`btn btn-xs btn-ghost gap-1 ${confirmDelete ? 'text-error' : 'text-gray-400 hover:text-red-500'}`}
-            onClick={handleDelete}
+            className="p-1.5 text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all"
+            onClick={handleExport}
+            title={t('antigravity.export')}
           >
-            <Trash2 className="w-3 h-3" />
-            {confirmDelete && <span className="text-xs">{t('common.confirm')}</span>}
+            <Download className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className={`p-1.5 rounded-lg transition-all ${confirmDelete ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
+            onClick={handleDelete}
+            title={confirmDelete ? t('common.confirm') : t('common.delete')}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {confirmDelete && <span className="text-[10px] ml-0.5">{t('common.confirm')}</span>}
           </button>
         </div>
       </div>

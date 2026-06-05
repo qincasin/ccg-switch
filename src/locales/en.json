@@ -1100,6 +1100,14 @@
         "warmup": "Warmup Account",
         "warmup_all": "Warmup All",
         "warmup_success": "Warmup successful",
-        "warmup_failed": "Warmup failed"
+        "warmup_failed": "Warmup failed",
+        "batch_import": "Batch Import",
+        "batch_import_desc": "Paste a JSON array (with email and refresh_token fields), or paste multiple 1// tokens directly",
+        "batch_no_tokens": "No valid refresh tokens found",
+        "batch_imported": "Successfully imported {{count}} accounts",
+        "batch_failed": "{{count}} failed to import",
+        "edit_label": "Edit Label",
+        "export": "Export",
+        "view_details": "View Details"
     }
 }
