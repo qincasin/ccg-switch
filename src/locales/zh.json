@@ -511,6 +511,7 @@
         "refresh_quota": "刷新配额",
         "refresh_all": "全部刷新",
         "no_quota_data": "暂无配额数据",
+        "no_token_status": "暂无 Token 状态",
         "models_high": "个模型充足",
         "empty": "暂无 Antigravity 账号",
         "empty_title": "暂无账号",

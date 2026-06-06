@@ -1036,6 +1036,7 @@
         "refresh_quota": "Refresh Quota",
         "refresh_all": "Refresh All",
         "no_quota_data": "No quota data",
+        "no_token_status": "No token status",
         "models_high": "models high",
         "empty": "No Antigravity accounts yet",
         "empty_title": "No Accounts",

@@ -177,7 +177,7 @@ export default function AccountDetailsDialog({ account, open, onClose }: Props) 
   };
 
   return (
-    <ModalDialog isOpen={open} onClose={onClose} onConfirm={onClose} title={account.customLabel || account.email} confirmText={t('common.cancel')} confirmClass="btn btn-ghost" maxWidthClass="max-w-2xl">
+    <ModalDialog isOpen={open} onClose={onClose} onConfirm={onClose} title={account.customLabel || account.email} confirmText={t('common.cancel')} confirmClass="btn btn-ghost" maxWidthClass="max-w-4xl">
       <div className="space-y-5">
         {/* Account info grid */}
         <div className="grid grid-cols-2 gap-4">
@@ -310,7 +310,7 @@ export default function AccountDetailsDialog({ account, open, onClose }: Props) 
               </div>
             ) : (
               <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">
-                {t('antigravity.no_quota_data')}
+                {t('antigravity.no_token_status')}
               </div>
             )
           )}
