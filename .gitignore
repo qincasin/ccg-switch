@@ -42,3 +42,4 @@ src-tauri/gen
 *.sln
 *.sw?
 .ace-tool/
+.claude/settings.local.json
