@@ -329,11 +329,17 @@ fn find_standard_location(target_ide: Option<&str>) -> Option<PathBuf> {
     None
 }
 
-/// 启动 Antigravity 应用（macOS 用 `open -a`，其他平台直接执行）。
+/// 启动 Antigravity 应用（macOS 用 `open`，其他平台直接执行）。
 pub fn start_antigravity(target_ide: Option<&str>) -> Result<(), String> {
     tracing::info!("Starting Antigravity ({:?})...", target_ide);
 
-    let path = find_antigravity_path(target_ide)
+    start_antigravity_at_path(target_ide, None)
+}
+
+/// 用已知路径启动 Antigravity（优先使用缓存路径，避免关闭后找不到）。
+pub fn start_antigravity_at_path(target_ide: Option<&str>, cached_path: Option<PathBuf>) -> Result<(), String> {
+    let path = cached_path
+        .or_else(|| find_antigravity_path(target_ide))
         .ok_or_else(|| "Cannot find Antigravity installation".to_string())?;
 
     let path_str = path.to_string_lossy().to_string();
@@ -341,10 +347,14 @@ pub fn start_antigravity(target_ide: Option<&str>) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         if path_str.ends_with(".app") || path.is_dir() {
-            Command::new("open")
-                .args(["-a", &path_str])
-                .spawn()
-                .map_err(|e| format!("Failed to start Antigravity: {}", e))?;
+            let output = Command::new("open")
+                .arg(&path_str)
+                .output()
+                .map_err(|e| format!("Failed to execute open command: {}", e))?;
+            if !output.status.success() {
+                let err = String::from_utf8_lossy(&output.stderr);
+                return Err(format!("Failed to start Antigravity: {}", err.trim()));
+            }
         } else {
             Command::new(&path_str)
                 .spawn()
@@ -718,10 +728,12 @@ pub fn execute_local_switch(
         target_ide
     );
 
-    // 1. Close Antigravity if running
+    // 1. Capture app path before closing (so we can restart after)
+    let app_path = find_antigravity_path(target_ide);
+
+    // 2. Close Antigravity if running
     if is_antigravity_running(target_ide) {
         close_antigravity(20, target_ide)?;
-        // Small delay to ensure process fully exits
         thread::sleep(Duration::from_millis(500));
     }
 
@@ -770,8 +782,8 @@ pub fn execute_local_switch(
         }
     }
 
-    // 3. Restart Antigravity
-    start_antigravity(target_ide)?;
+    // 3. Restart Antigravity (use cached path to avoid "not found" after close)
+    start_antigravity_at_path(target_ide, app_path)?;
 
     tracing::info!("Local switch completed for {}", account.email);
     Ok(())
