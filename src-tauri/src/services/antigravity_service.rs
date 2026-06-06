@@ -28,6 +28,7 @@ const USERINFO_URL: &str = "https://www.googleapis.com/oauth2/v2/userinfo";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const PROJECT_URL: &str =
     "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist";
+const USER_AGENT: &str = "vscode/1.99.0 (Antigravity/4.2.1)";
 const QUOTA_ENDPOINTS: [&str; 3] = [
     "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels",
     "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
@@ -51,12 +52,11 @@ pub async fn refresh_access_token(refresh_token: &str) -> Result<TokenResponse, 
 
     let response = client
         .post(TOKEN_URL)
+        .header("User-Agent", USER_AGENT)
         .form(&params)
         .send()
         .await
-        .map_err(|e| format!("Refresh request failed: {}", e))?;
-
-    if response.status().is_success() {
+        .map_err(|e| format!("Refresh request failed: {}", e))?;    if response.status().is_success() {
         response
             .json::<TokenResponse>()
             .await
@@ -73,6 +73,7 @@ pub async fn get_user_info(access_token: &str) -> Result<UserInfo, String> {
     let client = reqwest::Client::new();
     let response = client
         .get(USERINFO_URL)
+        .header("User-Agent", USER_AGENT)
         .bearer_auth(access_token)
         .send()
         .await
@@ -96,6 +97,7 @@ async fn fetch_project_id_and_tier(access_token: &str) -> (Option<String>, Optio
     let res = client
         .post(PROJECT_URL)
         .header("Authorization", format!("Bearer {}", access_token))
+        .header("User-Agent", USER_AGENT)
         .json(&meta)
         .send()
         .await;
@@ -224,6 +226,7 @@ pub async fn fetch_quota(    access_token: &str,
         loop {
             match client
                 .post(*ep_url)
+                .header("User-Agent", USER_AGENT)
                 .bearer_auth(access_token)
                 .json(&current_payload)
                 .send()
@@ -521,8 +524,14 @@ pub async fn fetch_account_quota(
 
     let quota = fetch_quota(&account.access_token, account.project_id.as_deref()).await?;
 
-    // Also refresh subscription tier and project_id from loadCodeAssist
-    let (fresh_project_id, fresh_tier) = fetch_project_id_and_tier(&account.access_token).await;
+    // Refresh tier; skip loadCodeAssist if project_id is cached AND quota succeeded
+    // (If quota returned forbidden, we still want to refresh tier for the badge)
+    let skip_project_fetch = account.project_id.is_some() && !quota.is_forbidden;
+    let (fresh_project_id, fresh_tier) = if skip_project_fetch {
+        (None, None)
+    } else {
+        fetch_project_id_and_tier(&account.access_token).await
+    };
 
     // Save updated quota + tier + project_id back to account
     let mut account = get_account(db, id)?;
@@ -946,6 +955,7 @@ pub async fn warmup_account(
         // and "warm up" the quota counter
         match client.get(WARMUP_MODELS_URL)
             .header("Authorization", format!("Bearer {}", account.access_token))
+            .header("User-Agent", USER_AGENT)
             .send().await {
             Ok(response) => {
                 if response.status().is_success() {
@@ -1050,6 +1060,7 @@ async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenResponse, 
 
     let response = client
         .post(TOKEN_URL)
+        .header("User-Agent", USER_AGENT)
         .form(&params)
         .send()
         .await

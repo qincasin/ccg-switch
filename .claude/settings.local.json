@@ -58,7 +58,13 @@
       "mcp__idea__read_file",
       "mcp__idea__get_file_problems",
       "Read(//Users/jiaxing/.ccg-switch/**)",
-      "mcp__idea__get_file_text_by_path"
+      "mcp__idea__get_file_text_by_path",
+      "Bash(open --help)",
+      "Bash(kill 42837 48634)",
+      "Bash(pkill -f \"tauri-app\")",
+      "Bash(pkill -f \"ccg-switch\")",
+      "Bash(jobs)",
+      "Bash(sqlite3 *)"
     ]
   }
 }
