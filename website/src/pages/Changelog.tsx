@@ -12,7 +12,26 @@ interface Version {
 }
 
 const versions: Version[] = [
-    {
+      {
+    version: '1.6.0',
+    date: '2026-06-06',
+    type: 'minor',
+    changes: [
+      { type: 'feature', text: 'Antigravity 账号管理：账号增删改查、自定义标签、批量导入/导出' },
+      { type: 'feature', text: '本地一键切换 Antigravity / Antigravity IDE，自动注入凭证并重启应用' },
+      { type: 'feature', text: 'Token 状态可视化与手动刷新，过期自动告警' },
+      { type: 'feature', text: '配额可视化展示（按模型分组，进度条 + 重置时间）' },
+      { type: 'feature', text: '操作历史记录（切换/刷新/预热等）' },
+      { type: 'feature', text: '账号预热（warmup），防止账号被风控' },
+      { type: 'feature', text: '账号列表支持网格 / 列表双视图切换' },
+      { type: 'improvement', text: '统一加上 User-Agent 头，降低 Google 风控风险' },
+      { type: 'improvement', text: 'project_id 缓存，减少不必要的 loadCodeAssist 调用' },
+      { type: 'fix', text: '修复切换账号后 Antigravity 没有自动重启的问题' },
+      { type: 'fix', text: '修复 PRO/ULTRA 订阅等级显示与筛选错误' },
+      { type: 'fix', text: '修复 403 时直接放弃而不尝试降级请求的问题' }
+    ]
+  },
+{
     version: '1.5.1',
     date: '2026-06-05',
     type: 'patch',
