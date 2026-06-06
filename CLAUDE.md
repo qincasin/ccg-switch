@@ -1,4 +1,4 @@
-# CC Switch (claude-switch-1.0)
+# ccg-switch
 
 Claude Code 配置管理桌面应用，基于 Tauri 2 构建。
 

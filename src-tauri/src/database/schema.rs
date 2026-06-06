@@ -127,6 +127,39 @@ pub fn create_tables(conn: &Connection) -> Result<(), String> {
             updated_at TEXT NOT NULL,
             PRIMARY KEY (provider_id, app_type)
         );
+
+        -- Antigravity 账号表
+        CREATE TABLE IF NOT EXISTS antigravity_accounts (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            name TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT NOT NULL,
+            expires_in INTEGER DEFAULT 0,
+            expiry_timestamp INTEGER DEFAULT 0,
+            oauth_client_key TEXT,
+            project_id TEXT,
+            subscription_tier TEXT,
+            custom_label TEXT,
+            is_active INTEGER DEFAULT 0,
+            disabled INTEGER DEFAULT 0,
+            disabled_reason TEXT,
+            quota_json TEXT,
+            device_profile_json TEXT,
+            created_at INTEGER NOT NULL,
+            last_used INTEGER NOT NULL,
+            order_index INTEGER DEFAULT 0
+        );
+
+        -- Antigravity 操作日志表
+        CREATE TABLE IF NOT EXISTS ag_operation_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id TEXT NOT NULL,
+            account_email TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            detail TEXT,
+            created_at INTEGER NOT NULL
+        );
         ",
     )
     .map_err(|e| format!("Failed to create tables: {e}"))

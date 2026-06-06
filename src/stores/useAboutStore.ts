@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getVersion } from '@tauri-apps/api/app';
-import { ToolVersion, UpdateInfo, DownloadProgress, InstallProgress } from '../types/about';
+import { ToolVersion, UpdateInfo, DownloadProgress, InstallProgress, SourceUpdateInfo } from '../types/about';
 
 // ── 类型定义 ──────────────────────────────────────────────
 
@@ -17,6 +17,7 @@ interface AboutState {
     updateInfo: UpdateInfo | null;
     checking: boolean;
     checkError: string | null;
+    sourceUpdates: SourceUpdateInfo[];
     // 下载
     downloading: boolean;
     downloadProgress: DownloadProgress | null;
@@ -29,6 +30,7 @@ interface AboutState {
     fetchToolVersions: (force?: boolean) => Promise<void>;
     loadAppVersion: () => Promise<void>;
     checkForUpdates: () => Promise<void>;
+    checkForUpdatesAllSources: () => Promise<void>;
     downloadUpdate: (url: string) => Promise<void>;
     installUpdate: (filePath: string) => Promise<void>;
     handleRelaunch: () => void;
@@ -52,6 +54,7 @@ export const useAboutStore = create<AboutState>((set, get) => ({
     updateInfo: null,
     checking: false,
     checkError: null,
+    sourceUpdates: [],
     downloading: false,
     downloadProgress: null,
     downloadedPath: null,
@@ -84,10 +87,20 @@ export const useAboutStore = create<AboutState>((set, get) => ({
     },
 
     checkForUpdates: async () => {
-        set({ checking: true, updateInfo: null, checkError: null, downloadedPath: null, downloadProgress: null });
+        const { checkForUpdatesAllSources } = get();
+        await checkForUpdatesAllSources();
+    },
+
+    checkForUpdatesAllSources: async () => {
+        set({ checking: true, updateInfo: null, sourceUpdates: [], checkError: null, downloadedPath: null, downloadProgress: null });
         try {
-            const info = await invoke<UpdateInfo>('check_for_updates');
-            set({ updateInfo: info, checking: false });
+            const sources = await invoke<SourceUpdateInfo[]>('check_for_updates_all_sources');
+            const firstWithUpdate = sources.find(s => s.updateInfo.hasUpdate);
+            set({
+                sourceUpdates: sources,
+                updateInfo: firstWithUpdate ? firstWithUpdate.updateInfo : (sources[0]?.updateInfo || null),
+                checking: false,
+            });
         } catch (e: any) {
             set({
                 checkError: typeof e === 'string' ? e : e?.message || '检查更新失败',

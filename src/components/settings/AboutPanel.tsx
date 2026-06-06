@@ -7,13 +7,21 @@ import InstallCommandPanel from './about/InstallCommandPanel';
 
 function AboutPanel() {
     const { t } = useTranslation();
-    const { fetchToolVersions, loadAppVersion, initEventListeners } = useAboutStore();
+    const { fetchToolVersions, loadAppVersion, initEventListeners, updateInfo, sourceUpdates, checkForUpdatesAllSources } = useAboutStore();
 
     useEffect(() => {
         initEventListeners();
         loadAppVersion();
         fetchToolVersions();
     }, [fetchToolVersions, loadAppVersion, initEventListeners]);
+
+    // When navigating from auto-update toast, updateInfo is set but sourceUpdates is empty.
+    // Auto-trigger multi-source check so the source selector becomes available.
+    useEffect(() => {
+        if (updateInfo?.hasUpdate && sourceUpdates.length === 0) {
+            checkForUpdatesAllSources();
+        }
+    }, [updateInfo?.hasUpdate, sourceUpdates.length]);
 
     return (
         <div className="space-y-6">

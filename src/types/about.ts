@@ -26,3 +26,8 @@ export interface InstallProgress {
     message: string;
     percentage: number;
 }
+
+export interface SourceUpdateInfo {
+    repo: string;
+    updateInfo: UpdateInfo;
+}
