@@ -11,13 +11,21 @@ export interface ToastItem {
 }
 
 let toastCounter = 0;
-let addToastExternal: ((message: string, type: ToastType, duration?: number, onClick?: () => void) => void) | null = null;
+let addToastExternal: ((message: string, type: ToastType, duration?: number, onClick?: () => void) => string) | null = null;
+let removeToastExternal: ((id: string) => void) | null = null;
 
-export const showToast = (message: string, type: ToastType = 'info', duration: number = 3000, onClick?: () => void) => {
+export const showToast = (message: string, type: ToastType = 'info', duration: number = 3000, onClick?: () => void): string => {
     if (addToastExternal) {
-        addToastExternal(message, type, duration, onClick);
+        return addToastExternal(message, type, duration, onClick);
     } else {
         console.warn('ToastContainer not mounted');
+        return '';
+    }
+};
+
+export const dismissToast = (id: string) => {
+    if (removeToastExternal) {
+        removeToastExternal(id);
     }
 };
 
@@ -27,6 +35,7 @@ const ToastContainer = () => {
     const addToast = useCallback((message: string, type: ToastType, duration?: number, onClick?: () => void) => {
         const id = `toast-${Date.now()}-${toastCounter++}`;
         setToasts(prev => [...prev, { id, message, type, duration, onClick }]);
+        return id;
     }, []);
 
     const removeToast = useCallback((id: string) => {
@@ -35,10 +44,12 @@ const ToastContainer = () => {
 
     useEffect(() => {
         addToastExternal = addToast;
+        removeToastExternal = removeToast;
         return () => {
             addToastExternal = null;
+            removeToastExternal = null;
         };
-    }, [addToast]);
+    }, [addToast, removeToast]);
 
     return createPortal(
         <div className="fixed top-24 right-8 z-[200] flex flex-col gap-3 pointer-events-none">

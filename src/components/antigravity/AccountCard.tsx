@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Eye, Zap, Power, Mail, Clock, CheckSquare, Square, AlertTriangle, ArrowRightLeft, Repeat2, Lock, Tag, X, Check, Download } from 'lucide-react';
-import { showToast } from '../common/ToastContainer';
+import { showToast, dismissToast } from '../common/ToastContainer';
 import { AntigravityAccount, TokenStatus } from '../../types/antigravity';
 import { useAntigravityStore } from '../../stores/useAntigravityStore';
 
@@ -20,10 +20,10 @@ interface Props {
 
 export default function AccountCard({ account, onViewDetails, selectMode, selected, onToggleSelect }: Props) {
   const { t } = useTranslation();
-  const { deleteAccount, refreshToken, fetchQuota, switchAccount, toggleAccount, getTokenStatus, updateLabel, exportAccounts } = useAntigravityStore();
+  const { deleteAccount, fetchQuota, switchAccount, toggleAccount, getTokenStatus, updateLabel, exportAccounts } = useAntigravityStore();
   const [refreshing, setRefreshing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [switching, setSwitching] = useState(false);
+  const [switchingTarget, setSwitchingTarget] = useState<'antigravity' | 'ide' | null>(null);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [labelInput, setLabelInput] = useState(account.customLabel || '');
@@ -78,16 +78,19 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   }, [account.customLabel, isEditingLabel]);
 
   const handleSwitch = async (targetIde?: string) => {
-    setSwitching(true);
+    const target: 'ide' | 'antigravity' = targetIde ? 'ide' : 'antigravity';
+    setSwitchingTarget(target);
     const label = targetIde ? 'Antigravity IDE' : 'Antigravity';
-    showToast(t('antigravity.switching_to', { target: label }), 'info', 30000);
+    const progressToastId = showToast(t('antigravity.switching_to', { target: label }), 'info', 30000);
     try {
       await switchAccount(account.id, targetIde);
-      showToast(t('antigravity.switch_success', { target: label }), 'success');
+      dismissToast(progressToastId);
+      showToast(t('antigravity.switch_success', { target: label }), 'success', 3000);
     } catch (e) {
+      dismissToast(progressToastId);
       showToast(String(e), 'error', 8000);
     } finally {
-      setSwitching(false);
+      setSwitchingTarget(null);
     }
   };
 
@@ -371,20 +374,20 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
           {!account.disabled && (
             <>
               <button
-                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                className={`p-1.5 rounded-lg transition-all ${switchingTarget === 'antigravity' ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
                 onClick={() => handleSwitch()}
-                disabled={switching}
+                disabled={switchingTarget !== null}
                 title={t('antigravity.switch_antigravity')}
               >
-                <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
+                <ArrowRightLeft className={`w-3.5 h-3.5 ${switchingTarget === 'antigravity' ? 'animate-spin' : ''}`} />
               </button>
               <button
-                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-sky-500' : 'text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
+                className={`p-1.5 rounded-lg transition-all ${switchingTarget === 'ide' ? 'text-sky-500' : 'text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
                 onClick={() => handleSwitch('ide')}
-                disabled={switching}
+                disabled={switchingTarget !== null}
                 title={t('antigravity.switch_antigravity_ide')}
               >
-                <Repeat2 className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
+                <Repeat2 className={`w-3.5 h-3.5 ${switchingTarget === 'ide' ? 'animate-spin' : ''}`} />
               </button>
             </>
           )}

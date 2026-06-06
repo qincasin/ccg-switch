@@ -64,7 +64,9 @@
       "Bash(pkill -f \"tauri-app\")",
       "Bash(pkill -f \"ccg-switch\")",
       "Bash(jobs)",
-      "Bash(sqlite3 *)"
+      "Bash(sqlite3 *)",
+      "Bash(pkill -f \"cargo run\")",
+      "Bash(xargs kill)"
     ]
   }
 }
