@@ -20,7 +20,7 @@ interface Props {
 
 export default function AccountCard({ account, onViewDetails, selectMode, selected, onToggleSelect }: Props) {
   const { t } = useTranslation();
-  const { deleteAccount, refreshToken, switchAccount, toggleAccount, getTokenStatus, updateLabel, exportAccounts } = useAntigravityStore();
+  const { deleteAccount, refreshToken, fetchQuota, switchAccount, toggleAccount, getTokenStatus, updateLabel, exportAccounts } = useAntigravityStore();
   const [refreshing, setRefreshing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -46,7 +46,9 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await refreshToken(account.id);
+      await fetchQuota(account.id);
+    } catch (e) {
+      showToast(String(e), 'error');
     } finally {
       setRefreshing(false);
     }
@@ -368,16 +370,14 @@ export default function AccountCard({ account, onViewDetails, selectMode, select
           </button>
           {!account.disabled && (
             <>
-              {!account.isActive && (
-                <button
-                  className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
-                  onClick={() => handleSwitch()}
-                  disabled={switching}
-                  title={t('antigravity.switch_antigravity')}
-                >
-                  <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
-                </button>
-              )}
+              <button
+                className={`p-1.5 rounded-lg transition-all ${switching ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                onClick={() => handleSwitch()}
+                disabled={switching}
+                title={t('antigravity.switch_antigravity')}
+              >
+                <ArrowRightLeft className={`w-3.5 h-3.5 ${switching ? 'animate-spin' : ''}`} />
+              </button>
               <button
                 className={`p-1.5 rounded-lg transition-all ${switching ? 'text-sky-500' : 'text-gray-400 hover:text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
                 onClick={() => handleSwitch('ide')}

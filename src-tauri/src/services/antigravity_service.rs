@@ -215,77 +215,100 @@ pub async fn fetch_quota(    access_token: &str,
     };
 
     let mut last_error = None;
+    let mut got_forbidden = false;
 
     for ep_url in &QUOTA_ENDPOINTS {
-        match client
-            .post(*ep_url)
-            .bearer_auth(access_token)
-            .json(&payload)
-            .send()
-            .await
-        {
-            Ok(response) => {
-                if response.status().is_success() {
-                    let quota_response: QuotaResponse = response
-                        .json()
-                        .await
-                        .map_err(|e| format!("Quota parse failed: {}", e))?;
+        let mut retry_without_project = false;
+        let mut current_payload = payload.clone();
 
-                    let mut models = Vec::new();
-                    for (name, info) in quota_response.models {
-                        if let Some(qi) = info.quota_info {
-                            let percentage =
-                                qi.remaining_fraction.map(|f| (f * 100.0) as i32).unwrap_or(0);
-                            if name.starts_with("gemini")
-                                || name.starts_with("claude")
-                                || name.starts_with("gpt")
-                            {
-                                models.push(AntigravityModelQuota {
-                                    name,
-                                    percentage,
-                                    reset_time: qi.reset_time.unwrap_or_default(),
-                                    display_name: info.display_name,
-                                    supports_images: info.supports_images,
-                                    supports_thinking: info.supports_thinking,
-                                    thinking_budget: info.thinking_budget,
-                                    recommended: info.recommended,
-                                    max_tokens: info.max_tokens,
-                                    max_output_tokens: info.max_output_tokens,
-                                });
+        loop {
+            match client
+                .post(*ep_url)
+                .bearer_auth(access_token)
+                .json(&current_payload)
+                .send()
+                .await
+            {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        let quota_response: QuotaResponse = response
+                            .json()
+                            .await
+                            .map_err(|e| format!("Quota parse failed: {}", e))?;
+
+                        let mut models = Vec::new();
+                        for (name, info) in quota_response.models {
+                            if let Some(qi) = info.quota_info {
+                                let percentage =
+                                    qi.remaining_fraction.map(|f| (f * 100.0) as i32).unwrap_or(0);
+                                if name.starts_with("gemini")
+                                    || name.starts_with("claude")
+                                    || name.starts_with("gpt")
+                                    || name.starts_with("image")
+                                    || name.starts_with("imagen")
+                                {
+                                    models.push(AntigravityModelQuota {
+                                        name,
+                                        percentage,
+                                        reset_time: qi.reset_time.unwrap_or_default(),
+                                        display_name: info.display_name,
+                                        supports_images: info.supports_images,
+                                        supports_thinking: info.supports_thinking,
+                                        thinking_budget: info.thinking_budget,
+                                        recommended: info.recommended,
+                                        max_tokens: info.max_tokens,
+                                        max_output_tokens: info.max_output_tokens,
+                                    });
+                                }
                             }
                         }
+
+                        models.sort_by(|a, b| a.name.cmp(&b.name));
+
+                        return Ok(AntigravityQuotaData {
+                            models,
+                            last_updated: chrono::Utc::now().timestamp(),
+                            is_forbidden: false,
+                            forbidden_reason: None,
+                            subscription_tier: None,
+                        });
                     }
 
-                    models.sort_by(|a, b| a.name.cmp(&b.name));
+                    if response.status() == reqwest::StatusCode::FORBIDDEN {
+                        if current_payload.get("project").is_some() && !retry_without_project {
+                            tracing::warn!("Quota 403 with project, retrying without project ID...");
+                            current_payload = json!({});
+                            retry_without_project = true;
+                            continue; // retry same endpoint
+                        }
+                        got_forbidden = true;
+                        last_error = Some("403 Forbidden".to_string());
+                        break; // try next endpoint
+                    }
 
-                    return Ok(AntigravityQuotaData {
-                        models,
-                        last_updated: chrono::Utc::now().timestamp(),
-                        is_forbidden: false,
-                        forbidden_reason: None,
-                        subscription_tier: None,
-                    });
+                    last_error = Some(format!("HTTP {}", response.status()));
+                    break; // try next endpoint
                 }
-
-                if response.status() == reqwest::StatusCode::FORBIDDEN {
-                    return Ok(AntigravityQuotaData {
-                        models: Vec::new(),
-                        last_updated: chrono::Utc::now().timestamp(),
-                        is_forbidden: true,
-                        forbidden_reason: Some("403 Forbidden".to_string()),
-                        subscription_tier: None,
-                    });
+                Err(e) => {
+                    last_error = Some(e.to_string());
+                    break; // try next endpoint
                 }
-
-                last_error = Some(format!("HTTP {}", response.status()));
-            }
-            Err(e) => {
-                last_error = Some(e.to_string());
             }
         }
     }
 
-    Err(last_error.unwrap_or_else(|| "All quota endpoints failed".to_string()))
+    // All endpoints failed
+    if got_forbidden {
+        Ok(AntigravityQuotaData {
+            models: Vec::new(),
+            last_updated: chrono::Utc::now().timestamp(),
+            is_forbidden: true,
+            forbidden_reason: Some("403 Forbidden".to_string()),
+            subscription_tier: None,
+        })
+    } else {
+        Err(last_error.unwrap_or_else(|| "All quota endpoints failed".to_string()))
+    }
 }
 
 /// Check quota protection for an account after quota refresh.
@@ -409,7 +432,10 @@ pub async fn add_account(
 
     match fetch_quota(&account.access_token, account.project_id.as_deref()).await {
         Ok(quota) => {
-            account.subscription_tier = quota.subscription_tier.clone();
+            // Don't overwrite tier from fetch_project_id_and_tier with quota's None
+            if account.subscription_tier.is_none() {
+                account.subscription_tier = quota.subscription_tier.clone();
+            }
             account.quota = Some(quota);
         }
         Err(e) => {
@@ -495,12 +521,15 @@ pub async fn fetch_account_quota(
 
     let quota = fetch_quota(&account.access_token, account.project_id.as_deref()).await?;
 
-    // Also refresh subscription tier from loadCodeAssist
-    let (_, fresh_tier) = fetch_project_id_and_tier(&account.access_token).await;
+    // Also refresh subscription tier and project_id from loadCodeAssist
+    let (fresh_project_id, fresh_tier) = fetch_project_id_and_tier(&account.access_token).await;
 
-    // Save updated quota + tier back to account
+    // Save updated quota + tier + project_id back to account
     let mut account = get_account(db, id)?;
     account.quota = Some(quota.clone());
+    if let Some(pid) = fresh_project_id {
+        account.project_id = Some(pid);
+    }
     if let Some(tier) = fresh_tier {
         account.subscription_tier = Some(tier);
     }
@@ -551,10 +580,12 @@ pub async fn refresh_all_quotas(db: &Arc<Database>) -> Result<RefreshStats, Stri
 
         match fetch_quota(&account.access_token, account.project_id.as_deref()).await {
             Ok(quota) => {
-                account.subscription_tier = quota
-                    .subscription_tier
-                    .clone()
-                    .or(account.subscription_tier);
+                // Refresh subscription tier from loadCodeAssist API
+                let (_, fresh_tier) = fetch_project_id_and_tier(&account.access_token).await;
+                if let Some(tier) = fresh_tier {
+                    account.subscription_tier = Some(tier);
+                }
+
                 account.quota = Some(quota.clone());
                 account.last_used = chrono::Utc::now().timestamp();
                 db.upsert_antigravity_account(&account)?;
@@ -1236,7 +1267,9 @@ pub async fn start_oauth_login(
     };
 
     if let Ok(quota) = fetch_quota(&account.access_token, account.project_id.as_deref()).await {
-        account.subscription_tier = quota.subscription_tier.clone();
+        if account.subscription_tier.is_none() {
+            account.subscription_tier = quota.subscription_tier.clone();
+        }
         account.quota = Some(quota);
     }
 
