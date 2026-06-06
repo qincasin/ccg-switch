@@ -65,16 +65,16 @@ export default function QuotaDisplay({ models }: Props) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-2.5">
       {models.map((m) => (
         <div
           key={m.name}
-          className={`border-l-[3px] ${getBorderColor(m.percentage)} pl-3 py-2 rounded-r-md hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors`}
+          className={`border-l-[3px] ${getBorderColor(m.percentage)} pl-3 pr-2 py-2 rounded-r-md hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors`}
         >
           {/* Row 1: Model name + badges + percentage */}
           <div className="flex items-center gap-2">
             <span
-              className="text-sm font-medium text-gray-700 dark:text-gray-200 min-w-[140px] truncate"
+              className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate"
               title={m.displayName || m.name}
             >
               {m.displayName || m.name}
@@ -83,19 +83,16 @@ export default function QuotaDisplay({ models }: Props) {
               {m.recommended && (
                 <span className="badge badge-xs badge-outline badge-warning gap-0.5" title={t('antigravity.recommended')}>
                   <Star className="w-2.5 h-2.5" fill="currentColor" />
-                  <span className="text-[10px]">{t('antigravity.recommended')}</span>
                 </span>
               )}
               {m.supportsThinking && (
                 <span className="badge badge-xs badge-outline badge-info gap-0.5" title={t('antigravity.thinking')}>
                   <Brain className="w-2.5 h-2.5" />
-                  <span className="text-[10px]">{t('antigravity.thinking')}</span>
                 </span>
               )}
               {m.supportsImages && (
                 <span className="badge badge-xs badge-outline badge-success gap-0.5" title={t('antigravity.images')}>
                   <Image className="w-2.5 h-2.5" />
-                  <span className="text-[10px]">{t('antigravity.images')}</span>
                 </span>
               )}
             </div>
@@ -107,7 +104,7 @@ export default function QuotaDisplay({ models }: Props) {
 
           {/* Row 2: Progress bar */}
           <div className="flex items-center gap-2.5 mt-1.5">
-            <div className="flex-1 h-3 bg-gray-100 dark:bg-base-300 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-gray-100 dark:bg-base-300 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${getBarColor(m.percentage)}`}
                 style={{ width: `${Math.max(0, Math.min(100, m.percentage))}%` }}
@@ -115,7 +112,7 @@ export default function QuotaDisplay({ models }: Props) {
             </div>
           </div>
 
-          {/* Row 3: Meta info (thinking budget, max output, reset time) */}
+          {/* Row 3: Meta info */}
           {(m.thinkingBudget || m.maxOutputTokens || m.resetTime) && (
             <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400 dark:text-gray-500 flex-wrap">
               {m.thinkingBudget != null && m.thinkingBudget > 0 && (
@@ -125,14 +122,14 @@ export default function QuotaDisplay({ models }: Props) {
                 </span>
               )}
               {m.maxOutputTokens != null && m.maxOutputTokens > 0 && (
-                <span className="inline-flex items-center gap-0.5">
+                <span>
                   {t('antigravity.max_output')}: {formatTokenCount(m.maxOutputTokens)}
                 </span>
               )}
               {formatResetTime(m.resetTime) && (
                 <span className="inline-flex items-center gap-0.5">
                   <RotateCcw className="w-2.5 h-2.5" />
-                  {t('antigravity.reset_time')}: {formatResetTime(m.resetTime)}
+                  {formatResetTime(m.resetTime)}
                 </span>
               )}
             </div>
